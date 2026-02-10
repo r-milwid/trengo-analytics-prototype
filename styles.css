@@ -197,6 +197,21 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(249,115,22,0); transform: scale(1); }
 }
 
+.avatar-hint {
+  position: absolute;
+  right: -36px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 34px;
+  line-height: 1;
+  animation: hintPulse 1.6s ease-in-out infinite;
+}
+@keyframes hintPulse {
+  0% { transform: translateY(-50%) translateX(0); opacity: .6; }
+  50% { transform: translateY(-50%) translateX(8px); opacity: 1; }
+  100% { transform: translateY(-50%) translateX(0); opacity: .6; }
+}
+
 /* User popout */
 .user-popout {
   position: fixed;

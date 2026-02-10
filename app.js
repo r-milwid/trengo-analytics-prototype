@@ -2136,6 +2136,8 @@ if (userAvatar && userPopout) {
       userPopout.style.display = 'block';
       requestAnimationFrame(() => userPopout.classList.add('open'));
     }
+    const hint = document.querySelector('.avatar-hint');
+    if (hint) hint.style.display = 'none';
   });
 }
 if (userPopoutClose) {
@@ -2152,14 +2154,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Auto-open user popout after load
-window.addEventListener('load', () => {
-  if (!userPopout) return;
-  setTimeout(() => {
-    userPopout.style.display = 'block';
-    requestAnimationFrame(() => userPopout.classList.add('open'));
-  }, 500);
-});
+// No auto-open; hint arrow shown near avatar
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
 const filterConfigs = {
