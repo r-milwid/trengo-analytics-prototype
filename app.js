@@ -2154,7 +2154,12 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// No auto-open; hint arrow shown near avatar
+// Ensure popout starts hidden (no auto-open)
+window.addEventListener('load', () => {
+  if (!userPopout) return;
+  userPopout.classList.remove('open');
+  userPopout.style.display = 'none';
+});
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
 const filterConfigs = {

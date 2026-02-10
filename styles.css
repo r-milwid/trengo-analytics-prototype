@@ -147,6 +147,7 @@ body {
   align-items: center;
   padding-bottom: 16px;
   gap: 8px;
+  overflow: visible;
 }
 .sidebar-bottom-icons {
   display: flex;
@@ -205,6 +206,8 @@ body {
   font-size: 34px;
   line-height: 1;
   animation: hintPulse 1.6s ease-in-out infinite;
+  z-index: 3;
+  pointer-events: none;
 }
 @keyframes hintPulse {
   0% { transform: translateY(-50%) translateX(0); opacity: .6; }
