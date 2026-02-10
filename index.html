@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trengo Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- LEFT SIDEBAR NAV -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <ul class="sidebar-nav">
+        <!-- Inbox -->
+        <li class="nav-item" data-nav="inbox">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5h16a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+              <path d="M4 12h4l2 3h4l2-3h4"/>
+            </svg>
+          </div>
+          <span class="nav-tooltip">Inbox</span>
+        </li>
+        <!-- Pipeline -->
+        <li class="nav-item" data-nav="pipeline">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="6" height="16" rx="1.5"/>
+              <rect x="10.5" y="4" width="6" height="16" rx="1.5"/>
+              <rect x="18" y="4" width="3" height="16" rx="1.5"/>
+            </svg>
+          </div>
+          <span class="nav-tooltip">Pipeline</span>
+        </li>
+        <!-- AI & Automation -->
+        <li class="nav-item" data-nav="ai-automation">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l2.2 6.2h6.6l-5.3 3.8 2.1 6.2L12 15.5 6.4 19.2l2.1-6.2L3.2 9.2h6.6z"/>
+            </svg>
+          </div>
+          <span class="nav-tooltip">AI &amp; Automation</span>
+        </li>
+        <!-- Analytics (pie chart icon — active) -->
+        <li class="nav-item active" data-nav="analytics" id="nav-analytics">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v9h9"/>
+              <path d="M21 12a9 9 0 1 1-9-9"/>
+            </svg>
+          </div>
+          <span class="nav-tooltip">Analytics</span>
+        </li>
+        <!-- Broadcast -->
+        <li class="nav-item" data-nav="broadcast">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 11l12-5v12l-12-5z"/>
+              <path d="M15 12h4a2 2 0 0 1 2 2v4"/>
+            </svg>
+          </div>
+          <span class="nav-tooltip">Broadcast</span>
+        </li>
+        <!-- Settings -->
+        <li class="nav-item" data-nav="settings">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+          <span class="nav-tooltip">Settings</span>
+        </li>
+      </ul>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-bottom-icons">
+        <div class="sidebar-bottom-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+          <span class="nav-tooltip">Voice</span>
+        </div>
+        <div class="sidebar-bottom-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span class="nav-tooltip">Support</span>
+        </div>
+        <div class="sidebar-bottom-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="nav-tooltip">Notifications</span>
+        </div>
+      </div>
+      <div class="sidebar-avatar" id="user-avatar">
+        <div class="avatar-circle">R</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content" id="main-content">
+    <!-- Landing state (non-analytics) -->
+    <div class="landing-state" id="landing-state">
+      <div class="landing-inner">
+        <h1>Welcome to Trengo</h1>
+        <p>Click <strong>Analytics</strong> in the sidebar to view reporting.</p>
+      </div>
+    </div>
+
+    <!-- Analytics page -->
+    <div class="analytics-page" id="analytics-page" style="display:none;">
+      <!-- Page header -->
+      <div class="analytics-header" id="analytics-header">
+        <div class="analytics-header-top">
+          <h1>Analytics</h1>
+          <div class="header-controls">
+            <!-- Lens toggle (native product control) -->
+            <div class="toggle-group lens-toggle" id="lens-toggle">
+              <button class="toggle-btn active" data-lens="support">Support</button>
+              <button class="toggle-btn" data-lens="sales">Sales</button>
+            </div>
+            <!-- Filters -->
+            <div class="filter-bar">
+              <div class="filter-chip" id="filter-date">
+                <span>Last 7 days</span>
+                <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+              </div>
+              <div class="filter-chip" id="filter-channel">
+                <span>All channels</span>
+                <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+              </div>
+              <div class="filter-chip" id="filter-team">
+                <span>All teams</span>
+                <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Sticky sub-nav -->
+        <div class="sub-nav" id="sub-nav">
+          <button class="sub-nav-btn active" data-section="overview">Overview</button>
+          <button class="sub-nav-btn" data-section="understand">Understand</button>
+          <button class="sub-nav-btn" data-section="operate">Operate</button>
+          <button class="sub-nav-btn" data-section="improve">Improve</button>
+          <button class="sub-nav-btn" data-section="automate">Automate</button>
+        </div>
+      </div>
+
+      <!-- Scrollable sections -->
+      <div class="analytics-sections" id="analytics-sections">
+
+        <!-- ==================== OVERVIEW ==================== -->
+        <section class="analytics-section" id="section-overview" data-section="overview">
+          <div class="section-header">
+            <h2>Overview</h2>
+            <div class="section-actions">
+              <button class="add-widget-btn" data-section="overview">
+                <svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
+                Add widgets
+              </button>
+            </div>
+          </div>
+          <div class="section-sentinel" data-section="overview"></div>
+          <div class="section-content" data-section="overview"></div>
+        </section>
+
+        <!-- ==================== UNDERSTAND ==================== -->
+        <section class="analytics-section" id="section-understand" data-section="understand">
+          <div class="section-header">
+            <h2>Understand</h2>
+            <div class="section-actions">
+              <button class="add-widget-btn" data-section="understand">
+                <svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
+                Add widgets
+              </button>
+            </div>
+          </div>
+          <div class="section-sentinel" data-section="understand"></div>
+          <div class="section-content" data-section="understand"></div>
+        </section>
+
+        <!-- ==================== OPERATE ==================== -->
+        <section class="analytics-section" id="section-operate" data-section="operate">
+          <div class="section-header">
+            <h2>Operate</h2>
+            <div class="section-actions">
+              <button class="add-widget-btn" data-section="operate">
+                <svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
+                Add widgets
+              </button>
+            </div>
+          </div>
+          <div class="section-sentinel" data-section="operate"></div>
+          <div class="section-content" data-section="operate"></div>
+        </section>
+
+        <!-- ==================== IMPROVE ==================== -->
+        <section class="analytics-section" id="section-improve" data-section="improve">
+          <div class="section-header">
+            <h2>Improve</h2>
+            <div class="section-actions">
+              <button class="add-widget-btn" data-section="improve">
+                <svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
+                Add widgets
+              </button>
+            </div>
+          </div>
+          <div class="section-sentinel" data-section="improve"></div>
+          <div class="section-content" data-section="improve"></div>
+        </section>
+
+        <!-- ==================== AUTOMATE ==================== -->
+        <section class="analytics-section" id="section-automate" data-section="automate">
+          <div class="section-header">
+            <h2>Automate</h2>
+            <div class="section-actions">
+              <button class="add-widget-btn" data-section="automate">
+                <svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>
+                Add widgets
+              </button>
+            </div>
+          </div>
+          <div class="section-sentinel" data-section="automate"></div>
+          <div class="section-content" data-section="automate"></div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Add Widget Drawer (modal) -->
+  <div class="modal-overlay" id="widget-drawer-overlay" style="display:none;">
+    <div class="widget-drawer" id="widget-drawer">
+      <div class="drawer-header">
+        <h3>Add widgets</h3>
+        <button class="drawer-close" id="drawer-close">&times;</button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+    </div>
+  </div>
+
+  <!-- Filter dropdown (reusable) -->
+  <div class="filter-dropdown" id="filter-dropdown" style="display:none;">
+    <div class="filter-dropdown-content" id="filter-dropdown-content"></div>
+  </div>
+
+  <!-- Opportunity Action Modal -->
+  <div class="modal-overlay" id="opportunity-modal-overlay" style="display:none;">
+    <div class="opportunity-modal" id="opportunity-modal">
+      <div class="modal-header">
+        <h3>AI Recommendation</h3>
+        <button class="drawer-close" id="opp-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="opp-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="opp-modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="opp-modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User popout -->
+  <div class="user-popout" id="user-popout" style="display:none;">
+    <button class="user-popout-close" id="user-popout-close">&times;</button>
+    <div class="user-popout-avatar">R</div>
+    <div class="user-popout-name">Rowan Milwid</div>
+    <div class="user-popout-email">r.milwid@trengo.com</div>
+    <div class="user-popout-section">
+      <div class="user-popout-label">Preview role</div>
+      <div class="role-preview-toggle" id="role-toggle">
+        <button class="role-preview-btn active" data-role="supervisor">Supervisor</button>
+        <button class="role-preview-btn" data-role="agent">Agent</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
