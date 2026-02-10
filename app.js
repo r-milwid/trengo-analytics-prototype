@@ -882,6 +882,23 @@ function startDrag(e, sectionId, widgetId) {
   const ghost = card.cloneNode(true);
   ghost.classList.remove('dragging');
   ghost.classList.add('drag-ghost');
+  // Preserve chart visuals in ghost by swapping canvases with images
+  const origCanvases = card.querySelectorAll('canvas');
+  const ghostCanvases = ghost.querySelectorAll('canvas');
+  origCanvases.forEach((c, i) => {
+    const gc = ghostCanvases[i];
+    if (!gc) return;
+    try {
+      const img = document.createElement('img');
+      img.src = c.toDataURL('image/png');
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.display = 'block';
+      gc.parentNode.replaceChild(img, gc);
+    } catch (_) {
+      // If canvas is tainted or unavailable, keep the empty canvas
+    }
+  });
   ghost.style.width = `${card.getBoundingClientRect().width}px`;
   ghost.style.height = `${card.getBoundingClientRect().height}px`;
   document.body.appendChild(ghost);
@@ -1902,22 +1919,37 @@ window.openWidgetDrawer = function(sectionId) {
   const body = document.getElementById('drawer-body');
   overlay.style.display = 'flex';
 
-  const widgets = WIDGETS[sectionId] || [];
   let html = '';
-  widgets.forEach(w => {
-    const effVis = getEffectiveVisibility(w);
-    const isVisible = !state.hiddenWidgets.has(w.id) && (effVis !== 'hidden' || state.addedWidgets.has(w.id));
-    const isStateHidden = getStateOverride(w) === 'hide';
-    const canToggle = w.vis !== 'always' && !isStateHidden;
-    const statusText = isStateHidden ? 'Not available in this view' : (w.vis === 'always' ? 'Always visible' : isVisible ? 'Visible' : 'Hidden');
-    html += `<div class="drawer-widget-item" ${isStateHidden ? 'style="opacity:.4"' : ''}>
-      <div>
-        <div class="drawer-widget-name">${w.title}</div>
-        <div class="drawer-widget-status">${statusText}</div>
-      </div>
-      ${canToggle ? `<button class="btn btn-sm ${isVisible ? 'btn-secondary' : 'btn-primary'}" onclick="toggleWidgetFromDrawer('${w.id}', '${sectionId}', ${isVisible})">${isVisible ? 'Hide' : 'Add'}</button>` : ''}
-    </div>`;
-  });
+  const renderSection = (secId, label) => {
+    const widgets = WIDGETS[secId] || [];
+    if (!widgets.length) return;
+    html += `<div style="margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;">${label}</div>`;
+    widgets.forEach(w => {
+      const effVis = getEffectiveVisibility(w);
+      const isVisible = !state.hiddenWidgets.has(w.id) && (effVis !== 'hidden' || state.addedWidgets.has(w.id));
+      const isStateHidden = getStateOverride(w) === 'hide';
+      const canToggle = w.vis !== 'always' && !isStateHidden;
+      const statusText = isStateHidden ? 'Not available in this view' : (w.vis === 'always' ? 'Always visible' : isVisible ? 'Visible' : 'Hidden');
+      html += `<div class="drawer-widget-item" ${isStateHidden ? 'style="opacity:.4"' : ''}>
+        <div>
+          <div class="drawer-widget-name">${w.title}</div>
+          <div class="drawer-widget-status">${statusText}</div>
+        </div>
+        ${canToggle ? `<button class="btn btn-sm ${isVisible ? 'btn-secondary' : 'btn-primary'}" onclick="toggleWidgetFromDrawer('${w.id}', '${secId}', ${isVisible})">${isVisible ? 'Hide' : 'Add'}</button>` : ''}
+      </div>`;
+    });
+  };
+
+  if (!sectionId || !WIDGETS[sectionId]) {
+    renderSection('overview', 'Overview');
+    renderSection('understand', 'Understand');
+    renderSection('operate', 'Operate');
+    renderSection('improve', 'Improve');
+    renderSection('automate', 'Automate');
+  } else {
+    renderSection(sectionId, sectionId.charAt(0).toUpperCase() + sectionId.slice(1));
+  }
+
   body.innerHTML = html;
 };
 
