@@ -2082,6 +2082,7 @@ function setActiveSubNav(section) {
 
 function updateSectionsVisibility() {
   const sections = document.querySelectorAll('.analytics-section');
+  document.body.classList.toggle('nav-mode-tabs', state.navMode === 'tabs');
   sections.forEach(sec => {
     const id = sec.dataset.section;
     if (state.navMode === 'tabs') {

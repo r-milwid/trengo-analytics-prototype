@@ -521,6 +521,12 @@ body {
 .analytics-section {
   padding-top: 48px;
 }
+.analytics-section:first-child {
+  padding-top: 24px;
+}
+.nav-mode-tabs .analytics-section {
+  padding-top: 24px;
+}
 .section-header {
   display: flex;
   align-items: center;
