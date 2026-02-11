@@ -7,8 +7,11 @@ const state = {
   currentView: 'landing', // 'landing' | 'analytics'
   lens: 'support',        // 'support' | 'sales'
   role: 'supervisor',     // 'supervisor' | 'agent'
+  navMode: 'anchors',     // 'anchors' | 'tabs'
   activeSection: 'overview',
   loadedSections: new Set(),
+  pendingLoads: {},
+  instantLoadSections: new Set(),
   hiddenWidgets: new Set(),
   addedWidgets: new Set(),
   widgetSpans: {}, // id -> 1 | 2 | 4
@@ -1834,6 +1837,10 @@ window.actionOpportunity = function(id, source) {
 // ── SECTION MOUNTING ───────────────────────────────────────────
 function mountSection(sectionId) {
   if (state.loadedSections.has(sectionId)) return;
+  if (state.pendingLoads[sectionId]) {
+    clearTimeout(state.pendingLoads[sectionId]);
+    delete state.pendingLoads[sectionId];
+  }
   state.loadedSections.add(sectionId);
 
   const contentEl = document.querySelector(`.section-content[data-section="${sectionId}"]`);
@@ -1995,12 +2002,44 @@ function hideTooltip() {
 // ── INTERSECTION OBSERVER (LAZY LOADING) ───────────────────────
 const sentinelObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
-    if (entry.isIntersecting) {
+    if (entry.isIntersecting && entry.intersectionRatio >= 0.75) {
       const section = entry.target.dataset.section;
-      mountSection(section);
+      // Only apply lazy-loading in anchors mode
+      if (state.navMode !== 'anchors') {
+        mountSection(section);
+        return;
+      }
+
+      // If already loaded, do nothing
+      if (state.loadedSections.has(section)) return;
+
+      // If this section is explicitly requested (nav click), load immediately
+      if (state.instantLoadSections.has(section)) {
+        state.instantLoadSections.delete(section);
+        mountSection(section);
+        return;
+      }
+
+      // If a load is already pending, do nothing
+      if (state.pendingLoads[section]) return;
+
+      // Show loading state immediately
+      const contentEl = document.querySelector(`.section-content[data-section="${section}"]`);
+      if (contentEl) {
+        contentEl.innerHTML = `
+          <div class="section-loading">
+            <div class="spinner"></div>
+            Loading section…
+          </div>`;
+      }
+
+      state.pendingLoads[section] = setTimeout(() => {
+        mountSection(section);
+      }, 800);
+      return;
     }
   });
-}, { rootMargin: '0px', threshold: 0.1 });
+}, { rootMargin: '0px 0px -10% 0px', threshold: 0.75 });
 
 function setupSentinels() {
   document.querySelectorAll('.section-sentinel').forEach(s => {
@@ -2008,8 +2047,12 @@ function setupSentinels() {
   });
 }
 
+function teardownSentinels() {
+  sentinelObserver.disconnect();
+}
+
 // ── SECTION SCROLL OBSERVER (for sub-nav highlight) ────────────
-const sectionObserver = new IntersectionObserver((entries) => {
+let sectionObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
       const section = entry.target.dataset.section;
@@ -2019,9 +2062,15 @@ const sectionObserver = new IntersectionObserver((entries) => {
 }, { rootMargin: '-120px 0px -60% 0px', threshold: 0.1 });
 
 function setupSectionObserver() {
+  if (state.navMode === 'tabs') return;
   document.querySelectorAll('.analytics-section').forEach(s => {
     sectionObserver.observe(s);
   });
+}
+
+function teardownSectionObserver() {
+  if (!sectionObserver) return;
+  sectionObserver.disconnect();
 }
 
 function setActiveSubNav(section) {
@@ -2031,14 +2080,53 @@ function setActiveSubNav(section) {
   });
 }
 
+function updateSectionsVisibility() {
+  const sections = document.querySelectorAll('.analytics-section');
+  sections.forEach(sec => {
+    const id = sec.dataset.section;
+    if (state.navMode === 'tabs') {
+      sec.style.display = id === state.activeSection ? 'block' : 'none';
+    } else {
+      sec.style.display = 'block';
+    }
+  });
+}
+
+function resetLazySections() {
+  state.loadedSections = new Set();
+  Object.keys(state.pendingLoads).forEach(k => {
+    clearTimeout(state.pendingLoads[k]);
+  });
+  state.pendingLoads = {};
+  document.querySelectorAll('.section-content').forEach(el => {
+    el.innerHTML = '';
+    el.classList.remove('loaded');
+  });
+}
+
 // ── SCROLL TO SECTION ──────────────────────────────────────────
 function scrollToSection(sectionId, updateHash = false) {
+  if (state.navMode === 'tabs') {
+    setActiveSubNav(sectionId);
+    updateSectionsVisibility();
+    mountSection(sectionId);
+    if (updateHash) {
+      window.location.hash = `#analytics/${sectionId}`;
+    }
+    return;
+  }
+  if (updateHash) {
+    state.instantLoadSections.add(sectionId);
+  }
   const el = document.getElementById(`section-${sectionId}`);
   if (el) {
     const headerH = document.getElementById('analytics-header').offsetHeight;
     const y = el.getBoundingClientRect().top + window.pageYOffset - headerH - 8;
     window.scrollTo({ top: y, behavior: 'smooth' });
     setActiveSubNav(sectionId);
+    if (state.navMode === 'anchors') {
+      setupSentinels();
+    }
     if (updateHash) {
       window.location.hash = `#analytics/${sectionId}`;
     }
@@ -2054,8 +2142,13 @@ function navigate(view) {
     window.location.hash = '#analytics';
     // After showing, set up observers
     setTimeout(() => {
+      teardownSentinels();
       setupSentinels();
+      teardownSectionObserver();
       setupSectionObserver();
+      if (state.navMode === 'anchors') {
+        resetLazySections();
+      }
     }, 50);
   } else {
     state.currentView = 'landing';
@@ -2119,6 +2212,24 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
+  });
+});
+
+// Navigation mode toggle
+document.querySelectorAll('#nav-mode-toggle .nav-preview-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.navMode = btn.dataset.navmode;
+    document.querySelectorAll('#nav-mode-toggle .nav-preview-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    teardownSectionObserver();
+    updateSectionsVisibility();
+    if (state.navMode === 'anchors') {
+      resetLazySections();
+      setupSectionObserver();
+      setupSentinels();
+    } else {
+      mountSection(state.activeSection);
+    }
   });
 });
 
@@ -2237,6 +2348,7 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
 // ── INIT ───────────────────────────────────────────────────────
 handleHash();
 window.addEventListener('hashchange', handleHash);
+updateSectionsVisibility();
 
 // Set Chart.js defaults
 Chart.defaults.font.family = 'Inter';
