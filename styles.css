@@ -258,13 +258,17 @@ body {
 }
 .user-popout-section {
   margin-top: 18px;
-  background: #15151a;
+  background: #22c55e;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 16px;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.rainbow-text span {
+  font-weight: 700;
 }
 .user-popout-label {
   color: rgba(255,255,255,.7);
@@ -287,7 +291,7 @@ body {
 }
 .user-popout .role-preview-toggle {
   display: inline-flex;
-  border: 1px solid var(--orange);
+  border: 1px solid rgba(255,255,255,.2);
   border-radius: 6px;
   overflow: hidden;
   width: 100%;
@@ -299,16 +303,16 @@ body {
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font);
-  color: var(--orange);
+  color: rgba(255,255,255,.7);
   cursor: pointer;
   flex: 1;
   text-align: center;
 }
 .user-popout .role-preview-btn + .role-preview-btn {
-  border-left: 1px solid var(--orange);
+  border-left: 1px solid rgba(255,255,255,.15);
 }
 .user-popout .role-preview-btn.active {
-  background: var(--orange);
+  background: rgba(255,255,255,.1);
   color: #fff;
 }
 

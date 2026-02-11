@@ -2273,6 +2273,26 @@ window.addEventListener('load', () => {
   userPopout.style.display = 'none';
 });
 
+// Rainbow text for popout section
+function applyRainbowText(el) {
+  if (!el || el.dataset.rainbowApplied) return;
+  const colors = ['#ff0000','#ff7f00','#ffff00','#00ff00','#00ffff','#0000ff','#8b00ff'];
+  const text = el.textContent || '';
+  el.textContent = '';
+  text.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch;
+    span.style.color = colors[i % colors.length];
+    el.appendChild(span);
+  });
+  el.classList.add('rainbow-text');
+  el.dataset.rainbowApplied = 'true';
+}
+
+window.addEventListener('load', () => {
+  document.querySelectorAll('.user-popout-label, .role-preview-btn, .nav-preview-btn').forEach(applyRainbowText);
+});
+
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
 const filterConfigs = {
   'filter-date': {
