@@ -7,7 +7,7 @@ const state = {
   currentView: 'landing', // 'landing' | 'analytics'
   lens: 'support',        // 'support' | 'sales'
   role: 'supervisor',     // 'supervisor' | 'agent'
-  navMode: 'anchors',     // 'anchors' | 'tabs'
+  navMode: 'tabs',     // 'anchors' | 'tabs'
   activeSection: 'overview',
   loadedSections: new Set(),
   pendingLoads: {},
