@@ -222,6 +222,72 @@
     </div>
   </main>
 
+  <!-- ═══════════════════════════════════════════════════════════
+       AI PANEL — persistent right-side panel (meta feature)
+       States: bar (48px) | chat (320px, default) | wide (520px)
+       Controlled via body[data-panel="bar|chat|wide"]
+       ═══════════════════════════════════════════════════════════ -->
+  <aside class="ai-panel" id="ai-panel" aria-label="Prototype Guide">
+
+    <!-- BAR STATE: 48px collapsed strip -->
+    <div class="ai-panel-bar" id="ai-panel-bar">
+      <button class="ai-panel-bar-btn" id="ai-panel-expand-from-bar" aria-label="Expand AI chat">
+        <svg class="ai-panel-bar-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="ai-panel-bar-label">Prototype Guide</span>
+      </button>
+    </div>
+
+    <!-- CHAT + WIDE STATES: full panel UI -->
+    <div class="ai-panel-inner" id="ai-panel-inner">
+
+      <div class="ai-panel-header">
+        <!-- Left: spacer for title centering -->
+        <div class="ai-panel-header-left"></div>
+
+        <span class="ai-panel-header-title">
+          <span class="ai-panel-title-ask">Prototype</span> <span class="ai-panel-title-ai">Guide</span>
+        </span>
+
+        <!-- Right: expand/reduce chevron + X close-to-bar -->
+        <div class="ai-panel-header-right">
+          <button class="ai-panel-btn ai-panel-expand-btn" id="ai-panel-expand"
+                  aria-label="Expand to wide" title="Expand">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline id="ai-expand-chevron" points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <button class="ai-panel-btn" id="ai-panel-close" aria-label="Close panel" title="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- id="chat-messages" preserved — JS addBubble/showTyping use this ID -->
+      <div class="ai-panel-messages" id="chat-messages">
+        <div class="chat-bubble chat-bubble-bot">As you explore, I'll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.</div>
+      </div>
+
+      <div class="ai-panel-input-bar">
+        <!-- id="chat-input" and id="chat-send" preserved — JS sendMessage uses these IDs -->
+        <input type="text" class="chat-input" id="chat-input"
+               placeholder="Type a message..." autocomplete="off" />
+        <button class="chat-send" id="chat-send" aria-label="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+
+    </div><!-- /.ai-panel-inner -->
+  </aside><!-- /.ai-panel -->
+
   <!-- Add Widget Drawer (modal) -->
   <div class="modal-overlay" id="widget-drawer-overlay" style="display:none;">
     <div class="widget-drawer" id="widget-drawer">
@@ -285,26 +351,6 @@
     </div>
   </div>
 
-  <!-- Chat widget -->
-  <button class="chat-fab" id="chat-fab" aria-label="Open chat">
-    <img src="assets/chatbot-avatar.png" alt="Chat" class="chat-fab-img" />
-  </button>
-  <div class="chat-fab-tooltip" id="chat-fab-tooltip">Ask me anything about this prototype</div>
-  <div class="chat-window" id="chat-window" style="display:none;">
-    <div class="chat-header">
-      <span class="chat-header-title"><span class="chat-title-ask">Ask</span> <span class="chat-title-ai">AI</span></span>
-      <button class="chat-header-close" id="chat-close">&times;</button>
-    </div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="chat-bubble chat-bubble-bot">Hi, what would you like to know?</div>
-    </div>
-    <div class="chat-input-bar">
-      <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." autocomplete="off" />
-      <button class="chat-send" id="chat-send">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>

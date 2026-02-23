@@ -1,3 +1,7 @@
 name = "trengo-chatbot-proxy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "FEEDBACK_STORE"
+id = "82f267d0c51648f4a67f59d141317412"

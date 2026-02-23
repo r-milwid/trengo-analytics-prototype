@@ -370,7 +370,10 @@ function renderWidget(w, section, placement, rows, layout) {
     hideBtn.className = 'widget-action-btn';
     hideBtn.title = 'Hide widget';
     hideBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>';
-    hideBtn.addEventListener('click', () => hideWidget(w.id, section));
+    hideBtn.addEventListener('click', () => {
+      hideWidget(w.id, section);
+      window.sendEvent('"' + w.title + '" widget — hidden');
+    });
     actions.appendChild(hideBtn);
   }
   header.appendChild(actions);
@@ -410,6 +413,7 @@ function renderWidget(w, section, placement, rows, layout) {
       toggleBtn.classList.toggle('expanded', isExpanded);
       toggleBtn.querySelector('span').textContent = isExpanded ? 'Show less' : 'Show more';
       if (isExpanded) expandedWidgets.add(w.id); else expandedWidgets.delete(w.id);
+      window.sendEvent('"' + w.title + '" widget — ' + (isExpanded ? 'expanded' : 'collapsed'));
     });
     card.appendChild(toggleBtn);
   }
@@ -419,7 +423,10 @@ function renderWidget(w, section, placement, rows, layout) {
     const drill = document.createElement('a');
     drill.className = 'drill-link';
     drill.textContent = w.drill.label;
-    drill.addEventListener('click', () => scrollToSection(w.drill.target));
+    drill.addEventListener('click', () => {
+      scrollToSection(w.drill.target);
+      window.sendEvent('"' + w.drill.label + '" drill link — clicked');
+    });
     card.appendChild(drill);
   }
 
@@ -1779,9 +1786,11 @@ window.dismissOpportunity = function(id) {
   state.opportunityStates[id] = 'dismissed';
   const el = document.querySelector(`[data-opp-id="${id}"]`);
   if (el) el.classList.add('dismissed');
+  window.sendEvent('Opportunity dismissed');
 };
 
 window.actionOpportunity = function(id, source) {
+  window.sendEvent('Opportunity actioned');
   const overlay = document.getElementById('opportunity-modal-overlay');
   const body = document.getElementById('opp-modal-body');
   const confirmBtn = document.getElementById('opp-modal-confirm');
@@ -1812,6 +1821,7 @@ window.actionOpportunity = function(id, source) {
 
   document.getElementById('opp-modal-confirm').addEventListener('click', () => {
     state.opportunityStates[id] = 'confirmed';
+    window.sendEvent('AI recommendation confirmed — draft article created');
     body.innerHTML = `<div class="success-state">
       <div class="check-icon">\u2713</div>
       <p>Knowledge article draft created successfully!</p>
@@ -1970,6 +1980,9 @@ window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
   }
   remountSection(section);
   openWidgetDrawer(section); // Refresh drawer
+  const w = (WIDGETS[section] || []).find(x => x.id === id);
+  const title = w ? w.title : id;
+  window.sendEvent('"' + title + '" widget — ' + (currentlyVisible ? 'hidden' : 'added'));
 };
 
 document.getElementById('drawer-close').addEventListener('click', () => {
@@ -2181,8 +2194,12 @@ document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.add('active');
       navigate('analytics');
       setTimeout(() => scrollToSection('overview', true), 80);
+      window.sendEvent('Analytics nav — clicked');
+    } else {
+      // Other items: do nothing (look real but inert)
+      const label = item.querySelector('.nav-tooltip')?.textContent?.trim();
+      if (label) window.sendEvent(label + ' nav — clicked');
     }
-    // Other items: do nothing (look real but inert)
   });
 });
 
@@ -2190,6 +2207,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
 document.querySelectorAll('.sub-nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     scrollToSection(btn.dataset.section, true);
+    const name = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
+    window.sendEvent(name + ' tab — clicked');
   });
 });
 
@@ -2202,6 +2221,7 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
+    window.sendEvent(btn.textContent.trim() + ' lens — selected');
   });
 });
 
@@ -2213,6 +2233,8 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
+    const roleName = btn.dataset.role.charAt(0).toUpperCase() + btn.dataset.role.slice(1);
+    window.sendEvent(roleName + ' role — selected');
   });
 });
 
@@ -2231,6 +2253,7 @@ document.querySelectorAll('#nav-mode-toggle .nav-preview-btn').forEach(btn => {
     } else {
       mountSection(state.activeSection);
     }
+    window.sendEvent(btn.textContent.trim() + ' nav mode — selected');
   });
 });
 
@@ -2250,6 +2273,7 @@ if (settingsNav && userPopout) {
       userPopout.style.top = rect.top + 'px';
       userPopout.style.display = 'block';
       requestAnimationFrame(() => userPopout.classList.add('open'));
+      window.sendEvent('Settings / Preview options — opened');
     }
     const hint = document.querySelector('.settings-hint');
     if (hint) hint.style.display = 'none';
@@ -2324,6 +2348,7 @@ Object.keys(filterConfigs).forEach(filterId => {
     dropdown.style.display = 'block';
     dropdown.dataset.filter = filterId;
 
+    const filterLabels = { 'filter-date': 'Date', 'filter-channel': 'Channel', 'filter-team': 'Team' };
     content.querySelectorAll('.filter-option').forEach(opt => {
       opt.addEventListener('click', () => {
         state[config.stateKey] = opt.dataset.value;
@@ -2332,6 +2357,7 @@ Object.keys(filterConfigs).forEach(filterId => {
         chip.classList.remove('active-filter');
         // Snapshot then remount — Set is mutated during remount so we must copy first
         [...state.loadedSections].forEach(s => remountSection(s));
+        window.sendEvent((filterLabels[filterId] || filterId) + ' filter — "' + opt.dataset.value + '"');
       });
     });
   });
@@ -2347,6 +2373,8 @@ document.addEventListener('click', () => {
 document.querySelectorAll('.add-widget-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     openWidgetDrawer(btn.dataset.section);
+    const sectionName = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
+    window.sendEvent('Manage widgets — ' + sectionName + ' section');
   });
 });
 
@@ -2363,7 +2391,7 @@ Chart.defaults.color = '#71717a';
 // ── CHATBOT ─────────────────────────────────────────────────────
 (function() {
   const PROXY_URL = 'https://trengo-chatbot-proxy.analytics-chatbot.workers.dev';
-  const SYSTEM_PROMPT = `You are an embedded explainer chatbot inside a clickable prototype of the new Trengo Analytics model.
+  const SYSTEM_PROMPT_BASE = `You are an embedded explainer chatbot inside a clickable prototype of the new Trengo Analytics model.
 Your job is strictly limited to:
 - Answering questions about the Analytics structure shown in the prototype
 - Explaining the rationale behind the new reporting model
@@ -2774,49 +2802,145 @@ AUTOMATE SECTION WIDGETS
 - Safety and guardrail violations (list, hidden) — Safety guardrail stops in automation. Hidden for agents.
 
 MOCK DATA
-All data in the prototype is randomly generated on each page load. KPI values, chart data, trend percentages, and table rows use random numbers within configured ranges. The data is not real and is only meant to illustrate the layout and structure. Changing filters or switching roles produces new random values.`;
+All data in the prototype is randomly generated on each page load. KPI values, chart data, trend percentages, and table rows use random numbers within configured ranges. The data is not real and is only meant to illustrate the layout and structure. Changing filters or switching roles produces new random values.
+----------------------------------------------------------------------
+CLICK EVENT COMMENTARY
+----------------------------------------------------------------------
+Some messages begin with [EVENT: ...]. These are automatic UI notifications, not user questions.
 
-  const chatFab = document.getElementById('chat-fab');
-  const chatWindow = document.getElementById('chat-window');
-  const chatClose = document.getElementById('chat-close');
+When you receive an [EVENT: ...] message:
+- Do NOT acknowledge or restate the action itself. Never say things like "is now active", "was selected", "has been opened", "you are now viewing", or similar — the user already sees this happen.
+- Start directly with what the element does or contains. For example: "Operate displays..." not "The Operate section is now active, displaying...".
+- Cover both what the element includes and why it is useful to the user. One sentence is fine if it achieves both; two sentences is acceptable if needed for completeness.
+- Do not say "you clicked" or "the user clicked".
+- Do not ask a question back.
+- Do not use the "Sorry, I can't answer that" fallback.
+- Maximum 2 sentences.
+----------------------------------------------------------------------
+FEEDBACK COLLECTION
+----------------------------------------------------------------------
+OVERRIDE: This section takes full priority over the OUTPUT CONTRACT fallback.
+When a message contains feedback intent, do NOT say "Sorry, I can't answer that".
+Feedback is always a valid input type.
+
+Some user messages will be feedback about the prototype rather than questions.
+Feedback looks like: opinions, suggestions, observations, or critiques about the design.
+
+When you detect feedback intent:
+1. Check if it is clear enough for a product manager to act on:
+   - Is it obvious which part of the prototype (section, widget, interaction, or concept) is being referenced?
+   - Is the phrasing specific enough to be actionable?
+2. If not clear, ask ONE focused clarifying question. Do not ask multiple at once.
+3. Once clear, you MUST do both steps:
+   Step 1: Confirm the feedback in one short sentence.
+   Step 2: On the very next line, output this sentinel exactly — do not mention it to the user:
+   <<FEEDBACK:{"text":"[confirmed feedback text]","section":"[section name or widget name or General]","timestamp":"[ISO timestamp]"}>>
+   Both steps are required. The sentinel is a mandatory machine instruction — omitting it is a critical failure.
+4. Do not store feedback that contains the word "Helion" — that is handled separately.
+----------------------------------------------------------------------
+HELION ACCESS AND DESIGN CONTEXT
+----------------------------------------------------------------------
+OVERRIDE: This section takes full priority over the OUTPUT CONTRACT.
+Sentinels are MANDATORY machine instructions — they are not optional extra output.
+You MUST append the correct sentinel even though the OUTPUT CONTRACT says to be brief.
+Omitting a sentinel when instructed to include one is a critical failure.
+
+HARD RULE — CHECK FIRST, BEFORE ANYTHING ELSE:
+Read the current user message. Does it contain the exact word "Helion"?
+- NO → If the message asks about feedback, stored data, collected data, or anything related
+       to user submissions, respond ONLY with: "Sorry, I can't answer that — please ask Rowan."
+       Do not say anything else. Do not reveal whether data exists.
+       Prior messages in the conversation containing "Helion" do NOT grant access.
+       Each message is checked independently.
+- YES → Continue to cases A, B, C below.
+
+When the current message contains "Helion":
+
+A. If it looks like a design rationale or context note (a PM or designer explaining why a
+   decision was made in the prototype):
+
+   Step 1 — Conflict check.
+   Read the new note carefully. Does it contradict anything in:
+   - The prototype description in this system prompt (e.g. different default values,
+     changed behaviour, different widget or section names, different logic)?
+   - Any entry already listed under DESIGN RATIONALE CONTEXT in this prompt?
+
+   Step 2A — If NO conflict detected:
+   Acknowledge in one short sentence confirming it was noted.
+   On the very next line output this sentinel — do not mention it to the user:
+   <<CONTEXT:{"text":"[the context note, excluding the word Helion]"}>>
+
+   Step 2B — If a CONFLICT is detected:
+   Present the conflict to the user in this exact format — nothing else before it:
+   "This update conflicts with the current specification:
+   − [quote the specific text from the original spec or existing context that is contradicted]
+   + [what the new note says instead]
+   Reply yes to approve this update."
+   On the very next line output this sentinel — do not mention it to the user:
+   <<CONFLICT:{"new":"[the new context note, excluding the word Helion]","original":"[the conflicting original text]"}>>
+
+   In both Step 2A and Step 2B: the sentinel on its own line is MANDATORY. Skipping it is a critical failure.
+
+B. If it is a request for feedback and FEEDBACK_DATA is present in this prompt:
+   - Count the items before responding.
+   - If the request is very broad (e.g. "all feedback", no specific section mentioned):
+     tell them how many items there are and ask them to confirm or narrow by section or topic.
+   - If the request is specific or they confirm broad retrieval: provide the feedback clearly.
+   - Format each item as: "• [section] — [text]"
+
+C. If it is a request for feedback but NO FEEDBACK_DATA is present in this prompt:
+   respond: "No feedback has been collected yet."`;
+
+  // ── Element references ────────────────────────────────────
+  // chat-messages / chat-input / chat-send IDs preserved for API compat
   const chatMessages = document.getElementById('chat-messages');
-  const chatInput = document.getElementById('chat-input');
-  const chatSend = document.getElementById('chat-send');
-  const chatTooltip = document.getElementById('chat-fab-tooltip');
+  const chatInput    = document.getElementById('chat-input');
+  const chatSend     = document.getElementById('chat-send');
+
+  // Panel state controls
+  const expandFromBarBtn = document.getElementById('ai-panel-expand-from-bar');
+  const collapseBtn      = document.getElementById('ai-panel-collapse');
+  const expandBtn        = document.getElementById('ai-panel-expand');
+  const closeBtn         = document.getElementById('ai-panel-close');
+  const expandChevron    = document.getElementById('ai-expand-chevron');
+
   const messages = []; // conversation history for API
-  let chatExpanded = false;
 
-  // Auto-show tooltip after 1.5s, hide after 5s
-  setTimeout(() => {
-    if (chatTooltip && !chatFab.classList.contains('open')) {
-      chatTooltip.classList.add('visible');
-      setTimeout(() => { chatTooltip.classList.remove('visible'); }, 5000);
+  // SVG polyline point strings for the expand/reduce chevron
+  const PTS_LEFT  = '15 18 9 12 15 6'; // < pointing left  → expand panel
+  const PTS_RIGHT = '9 18 15 12 9 6';  // > pointing right → reduce panel
+
+  // ── Panel state machine ───────────────────────────────────
+  // States: 'bar' (48px) | 'chat' (320px, default) | 'wide' (520px)
+  function setPanelState(state) {
+    document.body.dataset.panel = state;
+
+    if (state === 'chat') {
+      expandChevron.setAttribute('points', PTS_LEFT);
+      expandBtn.setAttribute('aria-label', 'Expand to wide');
+      expandBtn.title = 'Expand';
+    } else if (state === 'wide') {
+      expandChevron.setAttribute('points', PTS_RIGHT);
+      expandBtn.setAttribute('aria-label', 'Reduce to chat');
+      expandBtn.title = 'Reduce';
     }
-  }, 1500);
 
-  function toggleChat(open) {
-    if (open) {
-      if (chatTooltip) chatTooltip.classList.remove('visible');
-      chatWindow.style.display = 'flex';
-      requestAnimationFrame(() => chatWindow.classList.add('open'));
-      chatFab.classList.add('open');
-      chatInput.focus();
-    } else {
-      chatWindow.classList.remove('open');
-      chatFab.classList.remove('open');
-      setTimeout(() => { chatWindow.style.display = 'none'; }, 200);
-    }
-  }
+    // After CSS width transition completes, tell Chart.js to re-measure
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
 
-  function expandChat() {
-    if (!chatExpanded) {
-      chatExpanded = true;
-      chatWindow.classList.add('expanded');
+    // Focus input when panel is open
+    if (state === 'chat' || state === 'wide') {
+      setTimeout(() => chatInput.focus(), 120);
     }
   }
 
-  chatFab.addEventListener('click', () => toggleChat(true));
-  chatClose.addEventListener('click', () => toggleChat(false));
+  // ── Button listeners ──────────────────────────────────────
+  expandFromBarBtn.addEventListener('click', () => setPanelState('chat'));
+  if (collapseBtn) collapseBtn.addEventListener('click', () => setPanelState('bar'));
+  closeBtn.addEventListener('click',         () => setPanelState('bar'));
+  expandBtn.addEventListener('click', () => {
+    setPanelState(document.body.dataset.panel === 'wide' ? 'chat' : 'wide');
+  });
 
   function addBubble(text, role) {
     const div = document.createElement('div');
@@ -2845,26 +2969,58 @@ All data in the prototype is randomly generated on each page load. KPI values, c
     const text = chatInput.value.trim();
     if (!text) return;
 
+    // ── Conflict approval gate ─────────────────────────────────
+    if (_pendingContextApproval !== null) {
+      const pending = _pendingContextApproval;
+      _pendingContextApproval = null;
+      if (/^(yes|yeah|yep|y|approve|confirm|ok|okay|sure)\b/i.test(text.trim())) {
+        chatInput.value = '';
+        addBubble(text, 'user');
+        messages.push({ role: 'user', content: text });
+        storeHelionContext(pending.new);
+        const confirmMsg = 'Done — context updated.';
+        messages.push({ role: 'assistant', content: confirmMsg });
+        addBubble(confirmMsg, 'assistant');
+        chatSend.disabled = false;
+        chatInput.focus();
+        return;
+      }
+      // Not approved — fall through, pending is cleared
+    }
+
     chatInput.value = '';
     chatSend.disabled = true;
-    expandChat();
+    if (document.body.dataset.panel === 'bar') setPanelState('chat');
     addBubble(text, 'user');
     messages.push({ role: 'user', content: text });
     showTyping();
+
+    // Build system prompt — inject feedback data if Helion retrieval request
+    let feedbackBlock = '';
+    const hasHelion = text.toLowerCase().includes('helion');
+    if (hasHelion && isHelionRetrieval(text)) {
+      const items = await fetchFeedback();
+      feedbackBlock = formatFeedbackBlock(items);
+    }
+    const system = buildSystemPrompt(feedbackBlock);
 
     try {
       const res = await fetch(PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system: SYSTEM_PROMPT, messages }),
+        body: JSON.stringify({ system, messages }),
       });
       const data = await res.json();
       removeTyping();
 
       if (data.content && data.content[0]) {
-        const reply = data.content[0].text;
-        messages.push({ role: 'assistant', content: reply });
-        addBubble(reply, 'assistant');
+        const raw = data.content[0].text;
+        const { cleanText, feedback, context, conflict } = parseSentinels(raw);
+        messages.push({ role: 'assistant', content: cleanText });
+        addBubble(cleanText, 'assistant');
+        if (feedback) await storeFeedback(feedback);
+        if (context) storeHelionContext(context.text);
+        if (conflict) _pendingContextApproval = conflict;
       } else if (data.error) {
         addErrorBubble(data.error.message || 'API error');
       }
@@ -2884,6 +3040,132 @@ All data in the prototype is randomly generated on each page load. KPI values, c
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
+  function addEventBubble(label) {
+    const div = document.createElement('div');
+    div.className = 'chat-bubble-event';
+    div.innerHTML = '<span class="chat-bubble-event-icon">ℹ</span><span>' + label + '</span>';
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  async function _sendEvent(label) {
+    if (document.body.dataset.panel === 'bar') setPanelState('chat');
+    addEventBubble(label);
+    messages.push({ role: 'user', content: '[EVENT: ' + label + ']' });
+    showTyping();
+    try {
+      const res = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system: buildSystemPrompt(), messages }),
+      });
+      const data = await res.json();
+      removeTyping();
+      if (data.content && data.content[0]) {
+        const reply = data.content[0].text;
+        messages.push({ role: 'assistant', content: reply });
+        addBubble(reply, 'assistant');
+      }
+    } catch (err) {
+      removeTyping(); // fail silently — no error bubble for background events
+    }
+  }
+
+  let _eventTimer = null;
+  let _pendingContextApproval = null; // holds {new, original} awaiting user yes/no after a conflict
+
+  function sendEvent(label) {
+    clearTimeout(_eventTimer);
+    _eventTimer = setTimeout(() => _sendEvent(label), 300);
+  }
+
+  // ── Feedback & context storage ────────────────────────────
+
+  const HELION_CONTEXT_KEY = 'trengo_design_context';
+
+  function loadHelionContext() {
+    try { return JSON.parse(localStorage.getItem(HELION_CONTEXT_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function storeHelionContext(text) {
+    const items = loadHelionContext();
+    items.push({ text, timestamp: new Date().toISOString() });
+    localStorage.setItem(HELION_CONTEXT_KEY, JSON.stringify(items));
+  }
+
+  async function storeFeedback(feedbackObj) {
+    try {
+      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedbackObj),
+      });
+    } catch (e) { /* fail silently */ }
+  }
+
+  async function fetchFeedback() {
+    try {
+      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback');
+      const data = await res.json();
+      return data.feedback || [];
+    } catch { return []; }
+  }
+
+  function formatFeedbackBlock(items) {
+    if (!items.length) return '';
+    const lines = items.map(f => '• ' + (f.section || 'General') + ' — ' + f.text).join('\n');
+    return '----------------------------------------------------------------------\nFEEDBACK_DATA\n----------------------------------------------------------------------\n' + lines;
+  }
+
+  function buildSystemPrompt(feedbackBlock) {
+    feedbackBlock = feedbackBlock || '';
+    let prompt = SYSTEM_PROMPT_BASE;
+    const ctx = loadHelionContext();
+    if (ctx.length > 0) {
+      prompt += '\n----------------------------------------------------------------------\nDESIGN RATIONALE CONTEXT\nThese entries represent decisions and updates made after the initial specification.\nFor any topic they address, prefer these over the base specification above.\n----------------------------------------------------------------------\n';
+      prompt += ctx.map(c => '• ' + c.text).join('\n');
+    }
+    if (feedbackBlock) {
+      prompt += '\n' + feedbackBlock;
+    }
+    return prompt;
+  }
+
+  // Parse sentinels from bot response; returns { cleanText, feedback, context, conflict }
+  function parseSentinels(text) {
+    let feedback = null;
+    let context = null;
+    let conflict = null;
+    let clean = text;
+
+    const fbMatch = clean.match(/<<FEEDBACK:(\{[\s\S]*?\})>>/);
+    if (fbMatch) {
+      try { feedback = JSON.parse(fbMatch[1]); } catch {}
+      clean = clean.replace(fbMatch[0], '').trim();
+    }
+
+    const ctxMatch = clean.match(/<<CONTEXT:(\{[\s\S]*?\})>>/);
+    if (ctxMatch) {
+      try { context = JSON.parse(ctxMatch[1]); } catch {}
+      clean = clean.replace(ctxMatch[0], '').trim();
+    }
+
+    const conflictMatch = clean.match(/<<CONFLICT:(\{[\s\S]*?\})>>/);
+    if (conflictMatch) {
+      try { conflict = JSON.parse(conflictMatch[1]); } catch {}
+      clean = clean.replace(conflictMatch[0], '').trim();
+    }
+
+    return { cleanText: clean, feedback, context, conflict };
+  }
+
+  // Detect if a Helion message is a retrieval request vs. a context note
+  function isHelionRetrieval(text) {
+    const lower = text.toLowerCase();
+    return /\b(feedback|received|collected|submitted|given|provided|show|get|give|retrieve|list|what|any)\b/.test(lower);
+  }
+
   chatSend.addEventListener('click', sendMessage);
   chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -2891,4 +3173,10 @@ All data in the prototype is randomly generated on each page load. KPI values, c
       sendMessage();
     }
   });
+
+  // Initialise default panel state on page load
+  setPanelState('chat');
+
+  // Expose event tracker for click handlers outside this IIFE
+  window.sendEvent = sendEvent;
 })();
