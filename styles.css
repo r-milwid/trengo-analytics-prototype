@@ -54,14 +54,14 @@
   --panel-bar-w: 48px;
   --panel-chat-w: 280px;
   --panel-wide-w: 450px;
-  --panel-bg: #0f172a;
-  --panel-gap-bg: #c8c8ce;  /* gap zone behind panel card — medium grey surround */
-  --panel-surface: #1e2d4a;
+  --panel-bg: #1a0d06;
+  --panel-gap-bg: #f5ede4;  /* gap zone behind panel card — warm linen surround */
+  --panel-surface: #2e1a0e;
   --panel-border: rgba(255,255,255,0.07);
   --panel-text: rgba(255,255,255,0.90);
   --panel-text-muted: rgba(255,255,255,0.42);
   --panel-btn-hover: rgba(255,255,255,0.09);
-  --panel-header-bg: #0a1020;
+  --panel-header-bg: #120b05;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1563,18 +1563,18 @@ body[data-panel="bar"] .ai-panel-inner {
 
 /* Dark background overrides for shared chat primitives */
 .ai-panel-messages .chat-bubble-bot {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--panel-text);
+  background: #3d2010;
+  color: #fff;
 }
 .ai-panel-messages .chat-bubble-user {
-  background: var(--orange);
+  background: #7a4020;
   color: #fff;
 }
 .ai-panel-messages .chat-typing {
-  background: rgba(255, 255, 255, 0.08);
+  background: #3b2010;
 }
 .ai-panel-messages .chat-typing-dot {
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.55);
 }
 .ai-panel-messages .chat-error {
   background: rgba(239, 68, 68, 0.15);
@@ -1611,9 +1611,13 @@ body[data-panel="bar"] .ai-panel-inner {
 }
 .ai-panel-input-bar .chat-input::placeholder { color: var(--panel-text-muted); }
 .ai-panel-input-bar .chat-input:focus {
-  border-color: var(--orange);
+  border-color: #7a4020;
   background: rgba(255, 255, 255, 0.10);
 }
+
+/* Panel-scoped send button — warm sienna to match brown palette */
+.ai-panel .chat-send       { background: #7a4020; }
+.ai-panel .chat-send:hover { background: #633518; }
 
 /* Mobile: panel not shown (too narrow to be useful at small widths) */
 @media (max-width: 768px) {
