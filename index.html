@@ -93,6 +93,9 @@
         </div>
       </div>
     </div>
+    <button class="sidebar-user-avatar" id="user-flag-btn"
+            aria-label="Feature flags" title="Feature flags"
+            style="display:none;">R</button>
   </nav>
 
   <!-- MAIN CONTENT AREA -->
@@ -355,6 +358,13 @@
     </div>
   </div>
 
+  <!-- Feature flags popout -->
+  <div class="feature-flag-popout" id="feature-flag-popout" style="display:none;">
+    <button class="user-popout-close" id="flag-popout-close">&times;</button>
+    <div class="user-popout-title">Feature flags</div>
+    <div class="user-popout-section" id="flag-list"></div>
+    <div class="flag-reload-note">Reload page to apply changes.</div>
+  </div>
 
   <!-- Nav scope toast -->
   <div id="nav-toast" class="nav-toast">Outside prototype scope.</div>

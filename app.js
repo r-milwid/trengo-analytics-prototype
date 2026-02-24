@@ -56,6 +56,44 @@ const resizeState = {
   gridRect: null
 };
 
+// ── FEATURE FLAGS ───────────────────────────────────────────────
+const FEATURE_FLAGS_KEY   = 'trengo_feature_flags';
+const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
+
+const FEATURE_FLAGS = [
+  { id: 'compact-header',       label: 'Compact header',       desc: 'Reduces the analytics header height' },
+  { id: 'widget-hover-actions', label: 'Widget hover actions',  desc: 'Shows edit/move controls on widget hover' },
+];
+
+function isFeatureEnabled(id) {
+  try {
+    const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
+    return flags[id] === true;
+  } catch { return false; }
+}
+
+function setFeatureFlag(id, value) {
+  try {
+    const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
+    flags[id] = value;
+    localStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify(flags));
+  } catch {}
+}
+
+function showHelionAvatar() {
+  const btn = document.getElementById('user-flag-btn');
+  if (btn) btn.style.display = 'flex';
+}
+
+function unlockHelionAccess() {
+  if (localStorage.getItem(HELION_UNLOCKED_KEY)) return;
+  localStorage.setItem(HELION_UNLOCKED_KEY, 'true');
+  showHelionAvatar();
+}
+
+// Restore unlock state on page load
+if (localStorage.getItem(HELION_UNLOCKED_KEY)) showHelionAvatar();
+
 // ── CHART PALETTE (aligned to provided screenshots) ────────────
 const CHART_COLORS = {
   teal: '#6fcdbf',
@@ -2305,6 +2343,57 @@ window.addEventListener('load', () => {
   userPopout.style.display = 'none';
 });
 
+// ── FEATURE FLAG POPOUT ─────────────────────────────────────────
+const flagBtn    = document.getElementById('user-flag-btn');
+const flagPopout = document.getElementById('feature-flag-popout');
+const flagClose  = document.getElementById('flag-popout-close');
+
+function renderFlagList() {
+  const list = document.getElementById('flag-list');
+  if (!list) return;
+  list.innerHTML = FEATURE_FLAGS.map(f => `
+    <div class="flag-item">
+      <div>
+        <div class="flag-label">${f.label}</div>
+        <div class="flag-desc">${f.desc}</div>
+      </div>
+      <label class="flag-toggle" title="${f.label}">
+        <input type="checkbox" data-flag="${f.id}"${isFeatureEnabled(f.id) ? ' checked' : ''}>
+        <span class="flag-track"></span>
+      </label>
+    </div>`).join('');
+  list.querySelectorAll('.flag-toggle input').forEach(cb => {
+    cb.addEventListener('change', () => setFeatureFlag(cb.dataset.flag, cb.checked));
+  });
+}
+
+if (flagBtn && flagPopout) {
+  flagBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (flagPopout.style.display === 'block') {
+      flagPopout.classList.remove('open');
+      setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
+    } else {
+      renderFlagList();
+      flagPopout.style.display = 'block';
+      requestAnimationFrame(() => flagPopout.classList.add('open'));
+    }
+  });
+  if (flagClose) {
+    flagClose.addEventListener('click', () => {
+      flagPopout.classList.remove('open');
+      setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (flagPopout.style.display !== 'block') return;
+    if (!flagPopout.contains(e.target) && !flagBtn.contains(e.target)) {
+      flagPopout.classList.remove('open');
+      setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
+    }
+  });
+}
+
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
 const filterConfigs = {
@@ -3085,6 +3174,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     let feedbackBlock = '';
     const hasHelion = text.toLowerCase().includes('helion');
     if (hasHelion) {
+      unlockHelionAccess();
       const items = await fetchFeedback();
       feedbackBlock = formatFeedbackBlock(items);
     }

@@ -356,6 +356,61 @@ body {
 }
 
 /* ============================================================
+   FEATURE FLAGS AVATAR + POPOUT
+   ============================================================ */
+.sidebar-user-avatar {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #00a884; color: #fff;
+  font-size: 13px; font-weight: 700; font-family: var(--font);
+  border: none; cursor: pointer;
+  margin: 0 auto 16px; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.sidebar-user-avatar:hover { opacity: .85; }
+
+.feature-flag-popout {
+  position: fixed;
+  left: calc(var(--sidebar-w) + 16px);
+  bottom: 16px;
+  width: 300px;
+  background: #0f0f12; color: #fff;
+  border-radius: 24px; padding: 22px 20px 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,.4);
+  z-index: 300; opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.feature-flag-popout.open { opacity: 1; transform: translateY(0) scale(1); }
+.flag-reload-note {
+  font-size: 10.5px; color: rgba(255,255,255,.3);
+  margin-top: 14px; text-align: center;
+}
+
+.flag-item {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.flag-item:last-child { border-bottom: none; }
+.flag-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.85); }
+.flag-desc  { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 3px; line-height: 1.35; }
+.flag-toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; margin-top: 2px; }
+.flag-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.flag-track {
+  position: absolute; inset: 0; border-radius: 10px;
+  background: rgba(255,255,255,.15); transition: background .2s;
+}
+.flag-track::after {
+  content: ''; position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.flag-toggle input:checked + .flag-track { background: #00a884; }
+.flag-toggle input:checked + .flag-track::after { transform: translateX(16px); }
+
+/* ============================================================
    MAIN CONTENT
    ============================================================ */
 .main-content {
