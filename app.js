@@ -1931,10 +1931,16 @@ function hideWidget(id, section) {
   remountSection(section);
 }
 
+let _drawerSection = null;
+
 window.openWidgetDrawer = function(sectionId) {
-  const overlay = document.getElementById('widget-drawer-overlay');
+  _drawerSection = sectionId;
   const body = document.getElementById('drawer-body');
-  overlay.style.display = 'flex';
+  document.body.classList.add('drawer-open');
+  // Collapse chat panel to bar when widget drawer opens
+  if (window.setPanelState && document.body.dataset.panel !== 'bar') {
+    window.setPanelState('bar');
+  }
 
   let html = '';
   const renderSection = (secId, label) => {
@@ -1986,12 +1992,8 @@ window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
 };
 
 document.getElementById('drawer-close').addEventListener('click', () => {
-  document.getElementById('widget-drawer-overlay').style.display = 'none';
-});
-document.getElementById('widget-drawer-overlay').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) {
-    document.getElementById('widget-drawer-overlay').style.display = 'none';
-  }
+  document.body.classList.remove('drawer-open');
+  _drawerSection = null;
 });
 
 // ── TOOLTIP ────────────────────────────────────────────────────
@@ -2209,6 +2211,10 @@ document.querySelectorAll('.sub-nav-btn').forEach(btn => {
     scrollToSection(btn.dataset.section, true);
     const name = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
     window.sendEvent(name + ' tab — clicked');
+    // Update widget drawer content if it's open
+    if (document.body.classList.contains('drawer-open')) {
+      openWidgetDrawer(btn.dataset.section);
+    }
   });
 });
 
@@ -2927,6 +2933,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       expandBtn.title = 'Reduce';
     }
 
+    // Clear event popups when the panel opens
+    if (state === 'chat' || state === 'wide') {
+      const popupContainer = document.getElementById('chat-popup-container');
+      if (popupContainer) popupContainer.innerHTML = '';
+    }
+
     // After CSS width transition completes, tell Chart.js to re-measure
     setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
 
@@ -2935,6 +2947,8 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       setTimeout(() => chatInput.focus(), 120);
     }
   }
+
+  window.setPanelState = setPanelState;
 
   // ── Button listeners ──────────────────────────────────────
   expandFromBarBtn.addEventListener('click', () => setPanelState('chat'));
@@ -3124,10 +3138,62 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
+  function showEventPopup(text) {
+    const container = document.getElementById('chat-popup-container');
+    if (!container) return;
+
+    const { cleanText } = parseSentinels(text);
+    const popup = document.createElement('div');
+    popup.className = 'chat-popup';
+
+    const content = document.createElement('div');
+    content.innerHTML = renderBotMessage(cleanText);
+    popup.appendChild(content);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'chat-popup-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close');
+    popup.appendChild(closeBtn);
+
+    container.appendChild(popup);
+
+    let fadeTimer, removeTimer;
+
+    function startTimer() {
+      clearTimeout(fadeTimer);
+      clearTimeout(removeTimer);
+      fadeTimer = setTimeout(() => {
+        popup.classList.add('fading');
+        removeTimer = setTimeout(() => popup.remove(), 5100);
+      }, 10000);
+    }
+
+    function resetTimer() {
+      popup.classList.remove('fading');
+      clearTimeout(fadeTimer);
+      clearTimeout(removeTimer);
+      startTimer();
+    }
+
+    closeBtn.addEventListener('click', () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(removeTimer);
+      popup.remove();
+    });
+
+    popup.addEventListener('mouseenter', resetTimer);
+    startTimer();
+  }
+
   async function _sendEvent(label) {
-    if (document.body.dataset.panel === 'bar') setPanelState('chat');
+    // Skip if this exact event has already been recorded in the conversation
+    const eventKey = '[EVENT: ' + label + ']';
+    if (messages.some(m => m.role === 'user' && m.content === eventKey)) return;
+
+    const isBarMode = document.body.dataset.panel === 'bar';
     addEventBubble(label);
-    messages.push({ role: 'user', content: '[EVENT: ' + label + ']' });
+    messages.push({ role: 'user', content: eventKey });
     showTyping();
     try {
       const res = await fetch(PROXY_URL, {
@@ -3141,6 +3207,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         const reply = data.content[0].text;
         messages.push({ role: 'assistant', content: reply });
         addBubble(reply, 'assistant');
+        if (isBarMode) showEventPopup(reply);
         saveChatHistory();
       }
     } catch (err) {

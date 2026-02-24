@@ -294,15 +294,13 @@
     </div><!-- /.ai-panel-inner -->
   </aside><!-- /.ai-panel -->
 
-  <!-- Add Widget Drawer (modal) -->
-  <div class="modal-overlay" id="widget-drawer-overlay" style="display:none;">
-    <div class="widget-drawer" id="widget-drawer">
-      <div class="drawer-header">
-        <h3>Add widgets</h3>
-        <button class="drawer-close" id="drawer-close">&times;</button>
-      </div>
-      <div class="drawer-body" id="drawer-body"></div>
+  <!-- Widget Drawer — persistent right panel -->
+  <div class="widget-drawer" id="widget-drawer">
+    <div class="drawer-header">
+      <h3>Manage widgets</h3>
+      <button class="drawer-close" id="drawer-close">&times;</button>
     </div>
+    <div class="drawer-body" id="drawer-body"></div>
   </div>
 
   <!-- Filter dropdown (reusable) -->
@@ -360,6 +358,9 @@
 
   <!-- Nav scope toast -->
   <div id="nav-toast" class="nav-toast">Outside prototype scope.</div>
+
+  <!-- Chat event popups (shown when panel is collapsed) -->
+  <div id="chat-popup-container"></div>
 
   <script src="app.js"></script>
 </body>

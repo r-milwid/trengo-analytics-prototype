@@ -1008,24 +1008,113 @@ body {
    ============================================================ */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0; bottom: 0; left: 0;
+  right: calc(var(--panel-chat-w) + 30px);
   background: rgba(0,0,0,.35);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+body[data-panel="bar"]  .modal-overlay { right: calc(var(--panel-bar-w)  + 30px); }
+body[data-panel="chat"] .modal-overlay { right: calc(var(--panel-chat-w) + 30px); }
+body[data-panel="wide"] .modal-overlay { right: calc(var(--panel-wide-w) + 30px); }
+
+/* Widget Drawer — persistent right panel */
 .widget-drawer {
   position: fixed;
-  top: 0; right: 0;
-  width: 380px;
+  top: 0;
+  right: calc(var(--panel-chat-w) + 30px);
+  width: 320px;
   height: 100vh;
   background: var(--white);
-  box-shadow: var(--shadow-lg);
+  box-shadow: -3px 0 12px rgba(0,0,0,.08);
   display: flex;
   flex-direction: column;
-  z-index: 201;
+  z-index: 89;
+  transform: translateX(105%);
+  visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              right 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s linear 0.28s;
 }
+body.drawer-open .widget-drawer {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              right 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s linear 0s;
+}
+body[data-panel="bar"]  .widget-drawer { right: calc(var(--panel-bar-w)  + 30px); }
+body[data-panel="chat"] .widget-drawer { right: calc(var(--panel-chat-w) + 30px); }
+body[data-panel="wide"] .widget-drawer { right: calc(var(--panel-wide-w) + 30px); }
+/* When drawer is open, push main-content left by drawer width */
+body.drawer-open                    .main-content { margin-right: calc(320px + var(--panel-chat-w) + 30px); }
+body.drawer-open[data-panel="bar"]  .main-content { margin-right: calc(320px + var(--panel-bar-w)  + 30px); }
+body.drawer-open[data-panel="chat"] .main-content { margin-right: calc(320px + var(--panel-chat-w) + 30px); }
+body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + var(--panel-wide-w) + 30px); }
+/* Chat event popup (shown when chat panel is collapsed) */
+#chat-popup-container {
+  position: fixed;
+  bottom: 80px;
+  right: calc(var(--panel-bar-w) + 30px + 12px);
+  width: var(--panel-chat-w);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  z-index: 300;
+  pointer-events: none;
+}
+.chat-popup {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-gap-bg);
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3);
+  padding: 12px 34px 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d0d4d6;
+  white-space: pre-wrap;
+  position: relative;
+  pointer-events: all;
+  opacity: 1;
+  transition: opacity 0.3s ease; /* fast fade-in when timer resets */
+}
+.chat-popup.fading {
+  opacity: 0;
+  transition: opacity 5s linear; /* slow fade-out on auto-close */
+}
+.chat-popup strong {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  margin-top: 20px;
+  margin-bottom: 3px;
+  white-space: normal;
+}
+.chat-popup strong:first-child { margin-top: 0; }
+.chat-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(255,255,255,0.35);
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+}
+.chat-popup-close:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.08); }
 .drawer-header {
   display: flex;
   align-items: center;
