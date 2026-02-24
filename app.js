@@ -2944,6 +2944,17 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     setPanelState(document.body.dataset.panel === 'wide' ? 'chat' : 'wide');
   });
 
+  document.getElementById('ai-panel-new-chat').addEventListener('click', () => {
+    messages.length = 0;
+    _pendingFeedback = null;
+    _pendingContextApproval = null;
+    clearChatHistory();
+    chatMessages.innerHTML = '';
+    addBubble('As you explore, I\'ll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.', 'assistant');
+    setTimeout(() => addBubble('Use the settings icon to switch roles and views.', 'assistant'), 1800);
+    chatInput.focus();
+  });
+
   function renderBotMessage(text) {
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const lines = text.split('\n');
@@ -3025,6 +3036,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         const confirmMsg = 'Done — context updated.';
         messages.push({ role: 'assistant', content: confirmMsg });
         addBubble(confirmMsg, 'assistant');
+        saveChatHistory();
         chatSend.disabled = false;
         chatInput.focus();
         return;
@@ -3042,6 +3054,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       const thanksMsg = 'Thanks, ' + text.trim() + '.';
       messages.push({ role: 'assistant', content: thanksMsg });
       addBubble(thanksMsg, 'assistant');
+      saveChatHistory();
       chatSend.disabled = false;
       chatInput.focus();
       return;
@@ -3077,6 +3090,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         const { cleanText, feedback, context, conflict } = parseSentinels(raw);
         messages.push({ role: 'assistant', content: cleanText });
         addBubble(cleanText, 'assistant');
+        saveChatHistory();
         if (feedback) {
           const feedbackId = await storeFeedback(feedback); // store immediately — never lost
           _pendingFeedback = { feedbackId, feedbackObj: feedback }; // name update on next turn
@@ -3127,6 +3141,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         const reply = data.content[0].text;
         messages.push({ role: 'assistant', content: reply });
         addBubble(reply, 'assistant');
+        saveChatHistory();
       }
     } catch (err) {
       removeTyping(); // fail silently — no error bubble for background events
@@ -3145,6 +3160,20 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   // ── Feedback & context storage ────────────────────────────
 
   const HELION_CONTEXT_KEY = 'trengo_design_context';
+  const CHAT_HISTORY_KEY   = 'trengo_chat_history';
+
+  function saveChatHistory() {
+    try { localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages)); } catch { /* full */ }
+  }
+
+  function loadChatHistory() {
+    try { return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function clearChatHistory() {
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+  }
 
   function loadHelionContext() {
     try { return JSON.parse(localStorage.getItem(HELION_CONTEXT_KEY) || '[]'); }
@@ -3257,10 +3286,20 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   // Initialise default panel state on page load
   setPanelState('chat');
 
-  // Second bot message — appears after a short delay on page load
-  setTimeout(() => {
-    addBubble('Use the settings icon to switch roles and views.', 'assistant');
-  }, 1800);
+  // Restore persisted chat history, or show greeting for a fresh session
+  const _savedHistory = loadChatHistory();
+  if (_savedHistory.length > 0) {
+    messages.push(..._savedHistory);
+    _savedHistory.forEach(msg => {
+      if (msg.role === 'user' && msg.content.startsWith('[EVENT:')) return;
+      addBubble(msg.content, msg.role === 'user' ? 'user' : 'assistant');
+    });
+  } else {
+    addBubble('As you explore, I\'ll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.', 'assistant');
+    setTimeout(() => {
+      addBubble('Use the settings icon to switch roles and views.', 'assistant');
+    }, 1800);
+  }
 
   // Nav toast — show "Outside prototype scope." for non-settings nav clicks
   const navToast = document.getElementById('nav-toast');
