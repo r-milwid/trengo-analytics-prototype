@@ -2991,7 +2991,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     }
 
     // ── Feedback name gate ─────────────────────────────────────
-    if (_pendingFeedback !== null) {
+    if (_pendingFeedback !== null && !text.toLowerCase().includes('helion')) {
       const { feedbackId, feedbackObj } = _pendingFeedback;
       _pendingFeedback = null;
       chatInput.value = '';
@@ -3141,9 +3141,16 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   async function fetchFeedback() {
     try {
       const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback');
+      if (!res.ok) {
+        console.error('[fetchFeedback] Worker returned', res.status);
+        return [];
+      }
       const data = await res.json();
       return data.feedback || [];
-    } catch { return []; }
+    } catch (e) {
+      console.error('[fetchFeedback] Network error:', e);
+      return [];
+    }
   }
 
   function formatFeedbackBlock(items) {
