@@ -2884,11 +2884,11 @@ A. If it looks like a design rationale or context note (a PM or designer explain
    In both Step 2A and Step 2B: the sentinel on its own line is MANDATORY. Skipping it is a critical failure.
 
 B. If it is a request for feedback and FEEDBACK_DATA is present in this prompt:
-   - Count the items before responding.
-   - If the request is very broad (e.g. "all feedback", no specific section mentioned):
-     tell them how many items there are and ask them to confirm or narrow by section or topic.
-   - If the request is specific or they confirm broad retrieval: provide the feedback clearly.
+   OVERRIDE: The OUTPUT CONTRACT format rules do not apply here. Use bullet formatting as specified below.
+   - List each feedback item as a bullet on its own line, with a blank line between each item.
    - Format each item as: "• [section] — [text] (from [name])" — omit the name part only if it is not present in the data.
+   - If a specific section is mentioned, list only matching items.
+   - If no items match the requested section, say so briefly.
 
 C. If it is a request for feedback but NO FEEDBACK_DATA is present in this prompt:
    respond: "No feedback has been collected yet."`;
@@ -2944,10 +2944,52 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     setPanelState(document.body.dataset.panel === 'wide' ? 'chat' : 'wide');
   });
 
+  function renderBotMessage(text) {
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lines = text.split('\n');
+
+    // Detect feedback-format bullets: "• Section — text..."
+    const feedbackBulletRe = /^• [A-Za-z][\w\s]+ — .+/;
+    const feedbackLines = lines.filter(l => feedbackBulletRe.test(l.trim()));
+
+    if (feedbackLines.length > 3) {
+      // Group by section name (text before " — "), preserving insertion order
+      const sectionRe = /^• ([^—]+) — /;
+      const groups = new Map();
+      feedbackLines.forEach(line => {
+        const m = line.trim().match(sectionRe);
+        const section = m ? m[1].trim() : 'General';
+        if (!groups.has(section)) groups.set(section, []);
+        groups.get(section).push(line.trim());
+      });
+
+      let html = '';
+      groups.forEach((items, section) => {
+        html += '<strong>' + esc(section) + '</strong>';
+        html += items.map(esc).join('\n\n');
+      });
+      return html;
+    }
+
+    // Default rendering: support ## headers from model, preserve newlines via pre-wrap
+    return lines.map((line, i, arr) => {
+      const trimmed = line.trim();
+      const isLast = i === arr.length - 1;
+      if (trimmed.startsWith('## ')) {
+        return '<strong>' + esc(trimmed.slice(3).trim()) + '</strong>';
+      }
+      return esc(line) + (isLast ? '' : '\n');
+    }).join('');
+  }
+
   function addBubble(text, role) {
     const div = document.createElement('div');
     div.className = 'chat-bubble ' + (role === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot');
-    div.textContent = text;
+    if (role === 'assistant') {
+      div.innerHTML = renderBotMessage(text);
+    } else {
+      div.textContent = text;
+    }
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;
@@ -3012,10 +3054,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     messages.push({ role: 'user', content: text });
     showTyping();
 
-    // Build system prompt — inject feedback data if Helion retrieval request
+    // Build system prompt — inject feedback data whenever a Helion message is sent
     let feedbackBlock = '';
     const hasHelion = text.toLowerCase().includes('helion');
-    if (hasHelion && isHelionRetrieval(text)) {
+    if (hasHelion) {
       const items = await fetchFeedback();
       feedbackBlock = formatFeedbackBlock(items);
     }
@@ -3202,12 +3244,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     }
 
     return { cleanText: clean, feedback, context, conflict };
-  }
-
-  // Detect if a Helion message is a retrieval request vs. a context note
-  function isHelionRetrieval(text) {
-    const lower = text.toLowerCase();
-    return /\b(feedback|received|collected|submitted|given|provided|show|get|give|retrieve|list|what|any)\b/.test(lower);
   }
 
   chatSend.addEventListener('click', sendMessage);

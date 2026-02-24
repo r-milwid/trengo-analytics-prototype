@@ -1315,6 +1315,21 @@ body {
   background: var(--gray-100);
   color: var(--black);
   border-bottom-left-radius: 4px;
+  white-space: pre-wrap;
+}
+.chat-bubble-bot strong {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  margin-top: 20px;
+  margin-bottom: 3px;
+  white-space: normal;
+}
+.chat-bubble-bot strong:first-child {
+  margin-top: 0;
 }
 .chat-bubble-user {
   align-self: flex-end;
