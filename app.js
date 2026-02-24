@@ -17,7 +17,7 @@ const state = {
   widgetSpans: {}, // id -> 1 | 2 | 4
   sectionOrder: {}, // sectionId -> [widgetId...]
   sectionLayout: {}, // sectionId -> { rows, placements }
-  dateFilter: 'Last 7 days',
+  dateFilter: 'Last 30 days',
   channelFilter: 'All channels',
   teamFilter: 'All teams',
   charts: {},
@@ -2714,7 +2714,7 @@ NAVIGATION AND LAYOUT
 - In Anchors mode, all sections are visible on a single scrollable page with a sticky nav that highlights the active section.
 
 FILTERS
-- Date filter: Today, Last 7 days (default), Last 14 days, Last 30 days, Last 90 days
+- Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
 - Channel filter: All channels (default), Email, WhatsApp, Live chat, Phone, Instagram, Facebook
 - Team filter: All teams (default), Support Team, Sales Team, Technical Team, Billing Team
 - A Label filter chip is visible but not functional.
