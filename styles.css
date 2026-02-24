@@ -54,14 +54,14 @@
   --panel-bar-w: 48px;
   --panel-chat-w: 280px;
   --panel-wide-w: 450px;
-  --panel-bg: #1a0d06;
-  --panel-gap-bg: #f5ede4;  /* gap zone behind panel card — warm linen surround */
-  --panel-surface: #2e1a0e;
+  --panel-bg: #0b141a;
+  --panel-gap-bg: #c5d0d8;  /* gap zone behind panel card — light blue-grey surround */
+  --panel-surface: #202c33;
   --panel-border: rgba(255,255,255,0.07);
   --panel-text: rgba(255,255,255,0.90);
   --panel-text-muted: rgba(255,255,255,0.42);
   --panel-btn-hover: rgba(255,255,255,0.09);
-  --panel-header-bg: #120b05;
+  --panel-header-bg: #202c33;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -154,6 +154,27 @@ body {
   transform: translateY(-50%) translateX(2px);
 }
 
+/* Nav scope toast */
+.nav-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2b2b30;
+  color: rgba(255, 255, 255, 0.80);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.nav-toast.visible { opacity: 1; }
+
 .sidebar-bottom {
   display: flex;
   flex-direction: column;
@@ -189,22 +210,6 @@ body {
 }
 .nav-item[data-nav="settings"] {
   cursor: pointer;
-}
-.settings-hint {
-  position: absolute;
-  right: -36px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 34px;
-  line-height: 1;
-  animation: hintPulse 1.6s ease-in-out infinite;
-  z-index: 3;
-  pointer-events: none;
-}
-@keyframes hintPulse {
-  0% { transform: translateY(-50%) translateX(0); opacity: .6; }
-  50% { transform: translateY(-50%) translateX(8px); opacity: 1; }
-  100% { transform: translateY(-50%) translateX(0); opacity: .6; }
 }
 
 /* User popout */
@@ -1528,7 +1533,7 @@ body[data-panel="bar"] .ai-panel-inner {
   color: var(--panel-text);
   letter-spacing: 0.01em;
 }
-.ai-panel-title-ask { font-weight: 400; color: var(--panel-text-muted); }
+.ai-panel-title-ask { font-weight: 800; color: var(--panel-text-muted); }
 .ai-panel-title-ai  { font-weight: 800; color: var(--panel-text); }
 
 /* Header icon buttons */
@@ -1561,20 +1566,20 @@ body[data-panel="bar"] .ai-panel-inner {
   gap: 10px;
 }
 
-/* Dark background overrides for shared chat primitives */
+/* WhatsApp dark mode inspired overrides for shared chat primitives */
 .ai-panel-messages .chat-bubble-bot {
-  background: #3d2010;
-  color: #fff;
+  background: #202c33;
+  color: #d0d4d6;
 }
 .ai-panel-messages .chat-bubble-user {
-  background: #7a4020;
-  color: #fff;
+  background: #005c4b;
+  color: #d0d4d6;
 }
 .ai-panel-messages .chat-typing {
-  background: #3b2010;
+  background: #202c33;
 }
 .ai-panel-messages .chat-typing-dot {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(233, 237, 239, 0.55);
 }
 .ai-panel-messages .chat-error {
   background: rgba(239, 68, 68, 0.15);
@@ -1611,13 +1616,13 @@ body[data-panel="bar"] .ai-panel-inner {
 }
 .ai-panel-input-bar .chat-input::placeholder { color: var(--panel-text-muted); }
 .ai-panel-input-bar .chat-input:focus {
-  border-color: #7a4020;
+  border-color: #00a884;
   background: rgba(255, 255, 255, 0.10);
 }
 
-/* Panel-scoped send button — warm sienna to match brown palette */
-.ai-panel .chat-send       { background: #7a4020; }
-.ai-panel .chat-send:hover { background: #633518; }
+/* Panel-scoped send button — WhatsApp teal-green */
+.ai-panel .chat-send       { background: #00a884; }
+.ai-panel .chat-send:hover { background: #008a6e; }
 
 /* Mobile: panel not shown (too narrow to be useful at small widths) */
 @media (max-width: 768px) {

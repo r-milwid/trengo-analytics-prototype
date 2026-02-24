@@ -2275,8 +2275,7 @@ if (settingsNav && userPopout) {
       requestAnimationFrame(() => userPopout.classList.add('open'));
       window.sendEvent('Settings / Preview options — opened');
     }
-    const hint = document.querySelector('.settings-hint');
-    if (hint) hint.style.display = 'none';
+
   });
 }
 if (userPopoutClose) {
@@ -2832,8 +2831,8 @@ When you detect feedback intent:
    - Is the phrasing specific enough to be actionable?
 2. If not clear, ask ONE focused clarifying question. Do not ask multiple at once.
 3. Once clear, you MUST do both steps:
-   Step 1: Confirm the feedback in one short sentence.
-   Step 2: On the very next line, output this sentinel exactly — do not mention it to the user:
+   Step 1: Thank the user for their input in one short sentence. Make it unambiguous that you are logging their feedback — not confirming a change will be made. Restate what was understood so they know it was captured. Do not say only "Confirmed". Example: "Thanks — I've noted your feedback that the intent trend highlights widget should default to a wider layout." Then, on the very next line of your response (not as a separate step), ask: "Could I get your name to log alongside it?"
+   Step 2: On the very next line after your full response, output this sentinel exactly — do not mention it to the user:
    <<FEEDBACK:{"text":"[confirmed feedback text]","section":"[section name or widget name or General]","timestamp":"[ISO timestamp]"}>>
    Both steps are required. The sentinel is a mandatory machine instruction — omitting it is a critical failure.
 4. Do not store feedback that contains the word "Helion" — that is handled separately.
@@ -2849,7 +2848,10 @@ HARD RULE — CHECK FIRST, BEFORE ANYTHING ELSE:
 Read the current user message. Does it contain the exact word "Helion"?
 - NO → If the message asks about feedback, stored data, collected data, or anything related
        to user submissions, respond ONLY with: "Sorry, I can't answer that — please ask Rowan."
-       Do not say anything else. Do not reveal whether data exists.
+       That sentence is the complete response. Do not add anything after it.
+       Do not elaborate, explain, or add context. Do not make any claims about your own
+       capabilities or what you do or do not collect — that is a false statement and is not
+       permitted. Do not reveal whether data exists.
        Prior messages in the conversation containing "Helion" do NOT grant access.
        Each message is checked independently.
 - YES → Continue to cases A, B, C below.
@@ -2886,7 +2888,7 @@ B. If it is a request for feedback and FEEDBACK_DATA is present in this prompt:
    - If the request is very broad (e.g. "all feedback", no specific section mentioned):
      tell them how many items there are and ask them to confirm or narrow by section or topic.
    - If the request is specific or they confirm broad retrieval: provide the feedback clearly.
-   - Format each item as: "• [section] — [text]"
+   - Format each item as: "• [section] — [text] (from [name])" — omit the name part only if it is not present in the data.
 
 C. If it is a request for feedback but NO FEEDBACK_DATA is present in this prompt:
    respond: "No feedback has been collected yet."`;
@@ -2988,6 +2990,21 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       // Not approved — fall through, pending is cleared
     }
 
+    // ── Feedback name gate ─────────────────────────────────────
+    if (_pendingFeedback !== null) {
+      const { feedbackId, feedbackObj } = _pendingFeedback;
+      _pendingFeedback = null;
+      chatInput.value = '';
+      addBubble(text, 'user');
+      await updateFeedback(feedbackId, { name: text.trim() });
+      const thanksMsg = 'Thanks, ' + text.trim() + '.';
+      messages.push({ role: 'assistant', content: thanksMsg });
+      addBubble(thanksMsg, 'assistant');
+      chatSend.disabled = false;
+      chatInput.focus();
+      return;
+    }
+
     chatInput.value = '';
     chatSend.disabled = true;
     if (document.body.dataset.panel === 'bar') setPanelState('chat');
@@ -3018,7 +3035,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         const { cleanText, feedback, context, conflict } = parseSentinels(raw);
         messages.push({ role: 'assistant', content: cleanText });
         addBubble(cleanText, 'assistant');
-        if (feedback) await storeFeedback(feedback);
+        if (feedback) {
+          const feedbackId = await storeFeedback(feedback); // store immediately — never lost
+          _pendingFeedback = { feedbackId, feedbackObj: feedback }; // name update on next turn
+        }
         if (context) storeHelionContext(context.text);
         if (conflict) _pendingContextApproval = conflict;
       } else if (data.error) {
@@ -3073,6 +3093,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   let _eventTimer = null;
   let _pendingContextApproval = null; // holds {new, original} awaiting user yes/no after a conflict
+  let _pendingFeedback = null;        // holds feedback object awaiting name before storing
 
   function sendEvent(label) {
     clearTimeout(_eventTimer);
@@ -3096,10 +3117,23 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   async function storeFeedback(feedbackObj) {
     try {
-      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback', {
+      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackObj),
+      });
+      const data = await res.json();
+      return data.id || null;
+    } catch (e) { return null; }
+  }
+
+  async function updateFeedback(id, patch) {
+    if (!id) return;
+    try {
+      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
       });
     } catch (e) { /* fail silently */ }
   }
@@ -3114,7 +3148,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   function formatFeedbackBlock(items) {
     if (!items.length) return '';
-    const lines = items.map(f => '• ' + (f.section || 'General') + ' — ' + f.text).join('\n');
+    const lines = items.map(f => {
+      const nameStr = f.name ? ` (from ${f.name})` : '';
+      return '• ' + (f.section || 'General') + ' — ' + f.text + nameStr;
+    }).join('\n');
     return '----------------------------------------------------------------------\nFEEDBACK_DATA\n----------------------------------------------------------------------\n' + lines;
   }
 
@@ -3176,6 +3213,22 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   // Initialise default panel state on page load
   setPanelState('chat');
+
+  // Second bot message — appears after a short delay on page load
+  setTimeout(() => {
+    addBubble('Use the settings icon to switch roles and views.', 'assistant');
+  }, 1800);
+
+  // Nav toast — show "Outside prototype scope." for non-settings nav clicks
+  const navToast = document.getElementById('nav-toast');
+  let navToastTimer = null;
+  document.querySelectorAll('.nav-item:not([data-nav="settings"])').forEach(item => {
+    item.addEventListener('click', () => {
+      clearTimeout(navToastTimer);
+      navToast.classList.add('visible');
+      navToastTimer = setTimeout(() => navToast.classList.remove('visible'), 3000);
+    });
+  });
 
   // Expose event tracker for click handlers outside this IIFE
   window.sendEvent = sendEvent;
