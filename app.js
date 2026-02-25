@@ -22,7 +22,8 @@ const state = {
   teamFilter: 'All teams',
   charts: {},
   mockData: { kpi: {}, lists: {}, tables: {}, charts: {} },
-  opportunityStates: {} // id -> 'dismissed' | 'confirmed'
+  opportunityStates: {}, // id -> 'dismissed' | 'confirmed'
+  chartViewMode: {}      // widgetId -> 'chart' | 'numbers'
 };
 
 const dragState = {
@@ -258,7 +259,7 @@ const WIDGETS = {
       states: { support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' },
       tooltipByState: { sales_supervisor: 'Where contacts are getting stuck in your pipeline stages.' }
     },
-    { id: 'op-capacity-demand', title: 'Capacity vs demand', vis: 'hidden', type: 'line-chart',
+    { id: 'op-capacity-demand', title: 'Capacity vs demand', vis: 'hidden', type: 'line-chart', halfWidth: true,
       tooltip: 'Volume of incoming work vs available agent capacity. Gaps indicate understaffing.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
     },
@@ -419,6 +420,27 @@ function renderWidget(w, section, placement, rows, layout) {
   const actions = document.createElement('div');
   actions.className = 'widget-actions';
 
+  // Chart/numbers view toggle — only for chart widget types
+  const chartTypes = ['bar-chart', 'line-chart', 'doughnut-chart'];
+  if (chartTypes.includes(w.type)) {
+    const toggle = document.createElement('div');
+    toggle.className = 'widget-view-toggle';
+    const currentMode = state.chartViewMode[w.id] || 'chart';
+    toggle.innerHTML = `
+      <button class="widget-view-btn${currentMode === 'chart' ? ' active' : ''}" data-mode="chart" title="Chart view">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="7" width="3" height="7" rx="1"/><rect x="6" y="4" width="3" height="10" rx="1"/><rect x="11" y="1" width="3" height="13" rx="1"/>
+        </svg>
+      </button>
+      <button class="widget-view-btn${currentMode === 'numbers' ? ' active' : ''}" data-mode="numbers" title="Numbers view">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <line x1="1" y1="4" x2="9" y2="4"/><line x1="1" y1="8" x2="9" y2="8"/><line x1="1" y1="12" x2="9" y2="12"/>
+          <line x1="12" y1="2" x2="12" y2="14"/><line x1="10" y1="4" x2="14" y2="4"/><line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+      </button>`;
+    actions.appendChild(toggle);
+  }
+
   if (w.vis !== 'always') {
     const hideBtn = document.createElement('button');
     hideBtn.className = 'widget-action-btn';
@@ -437,12 +459,45 @@ function renderWidget(w, section, placement, rows, layout) {
   const body = document.createElement('div');
   body.className = 'widget-body';
 
+  // Wire up view toggle after body is created
+  if (chartTypes.includes(w.type)) {
+    const toggle = actions.querySelector('.widget-view-toggle');
+    toggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.widget-view-btn');
+      if (!btn) return;
+      const mode = btn.dataset.mode;
+      if (mode === (state.chartViewMode[w.id] || 'chart')) return;
+      state.chartViewMode[w.id] = mode;
+      toggle.querySelectorAll('.widget-view-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+      body.innerHTML = '';
+      if (state.charts[w.id]) { state.charts[w.id].destroy(); delete state.charts[w.id]; }
+      if (mode === 'chart') {
+        if (w.type === 'bar-chart') renderBarChart(body, w);
+        else if (w.type === 'line-chart') renderLineChart(body, w);
+        else if (w.type === 'doughnut-chart') renderDoughnutChart(body, w);
+      } else {
+        renderChartNumbers(body, w);
+      }
+      window.sendEvent('"' + w.title + '" widget — ' + mode + ' view');
+    });
+  }
+
+  const initialMode = state.chartViewMode[w.id] || 'chart';
   switch (w.type) {
     case 'kpi': renderKPI(body, w); break;
     case 'kpi-group': renderKPIGroup(body, w); break;
-    case 'bar-chart': renderBarChart(body, w); break;
-    case 'line-chart': renderLineChart(body, w); break;
-    case 'doughnut-chart': renderDoughnutChart(body, w); break;
+    case 'bar-chart':
+      if (initialMode === 'numbers') renderChartNumbers(body, w);
+      else renderBarChart(body, w);
+      break;
+    case 'line-chart':
+      if (initialMode === 'numbers') renderChartNumbers(body, w);
+      else renderLineChart(body, w);
+      break;
+    case 'doughnut-chart':
+      if (initialMode === 'numbers') renderChartNumbers(body, w);
+      else renderDoughnutChart(body, w);
+      break;
     case 'table': renderTable(body, w); break;
     case 'list': renderList(body, w); break;
     case 'list-actions': renderListActions(body, w); break;
@@ -539,6 +594,7 @@ function getAllowedSpans(w) {
 function getBaseSpan(w) {
   if (w.fullWidth) return 12;
   if (w.halfWidth) return 6;
+  if (w.type === 'bar-chart') return 6;
   return 3;
 }
 
@@ -1315,6 +1371,17 @@ function onResizeEnd(e) {
 }
 
 // ── KPI ────────────────────────────────────────────────────────
+function getPrevPeriodLabel() {
+  const map = {
+    'Today':        'vs yesterday',
+    'Last 7 days':  'vs prev 7 days',
+    'Last 14 days': 'vs prev 14 days',
+    'Last 30 days': 'vs prev 30 days',
+    'Last 90 days': 'vs prev 90 days',
+  };
+  return map[state.dateFilter] || 'vs prev period';
+}
+
 function renderKPI(container, w) {
   const data = getMockKPIData(w.id);
   // Use scope-aware label if available
@@ -1327,7 +1394,7 @@ function renderKPI(container, w) {
     <div class="kpi-sub">${subText}</div>
     <div class="kpi-trend ${data.trend.dir}">
       ${data.trend.dir === 'up' ? '\u2191' : '\u2193'} ${data.trend.val}%
-      <span style="color:var(--gray-400);margin-left:4px">vs prev period</span>
+      <span style="color:var(--gray-400);margin-left:4px">${getPrevPeriodLabel()}</span>
     </div>
   `;
 }
@@ -1377,6 +1444,76 @@ function getMockKPIData(id) {
   const value = map[id] || { value: rand(100,9999).toLocaleString(), sub: '', trend: pickTrend() };
   state.mockData.kpi[id] = value;
   return value;
+}
+
+// ── CHART NUMBERS VIEW ─────────────────────────────────────────
+function renderChartNumbers(container, w) {
+  let data;
+  if (w.type === 'doughnut-chart') {
+    data = getMockDoughnutData(w.id);
+    const vals = data.datasets[0].data;
+    const total = vals.reduce((a, b) => a + b, 0);
+    let html = '<div class="chart-numbers">';
+    data.labels.forEach((label, i) => {
+      const val = vals[i];
+      const pct = total > 0 ? Math.round(val / total * 100) : 0;
+      html += `<div class="chart-numbers-row">
+        <span class="chart-numbers-dot" style="background:${data.datasets[0].backgroundColor[i]}"></span>
+        <span class="chart-numbers-label">${label}</span>
+        <span class="chart-numbers-value">${val.toLocaleString()}</span>
+        <span class="chart-numbers-pct">${pct}%</span>
+      </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } else {
+    // bar / line: show each dataset's total or latest value
+    const getter = w.type === 'bar-chart' ? getMockBarData : getMockLineData;
+    data = getter(w.id);
+    let html = '<div class="chart-numbers">';
+    // Single-dataset with per-bar colours → one row per label (like doughnut view)
+    const ds0 = data.datasets[0];
+    const isPerBarColor = data.datasets.length === 1 && Array.isArray(ds0.backgroundColor) && ds0.backgroundColor.length > 1;
+    if (isPerBarColor) {
+      data.labels.forEach((label, i) => {
+        const val = ds0.data[i];
+        if (typeof val !== 'number') return;
+        html += `<div class="chart-numbers-row">
+          <span class="chart-numbers-dot" style="background:${ds0.backgroundColor[i]}"></span>
+          <span class="chart-numbers-label">${label}</span>
+          <span class="chart-numbers-value">${val.toLocaleString()}</span>
+        </div>`;
+      });
+    } else {
+      data.datasets.forEach(ds => {
+        const vals = ds.data.filter(v => typeof v === 'number');
+        const total = vals.reduce((a, b) => a + b, 0);
+        const avg = vals.length ? Math.round(total / vals.length) : 0;
+        const color = ds.borderColor || (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor) || 'var(--gray-400)';
+        html += `<div class="chart-numbers-row">
+          <span class="chart-numbers-dot" style="background:${color}"></span>
+          <span class="chart-numbers-label">${ds.label}</span>
+          <span class="chart-numbers-value">${total.toLocaleString()}</span>
+          <span class="chart-numbers-pct">avg ${avg.toLocaleString()}/day</span>
+        </div>`;
+      });
+      // Also show label-by-label breakdown if single dataset and ≤8 labels
+      if (data.datasets.length === 1 && data.labels.length <= 8) {
+        html += '<div class="chart-numbers-breakdown">';
+        data.labels.forEach((label, i) => {
+          const val = data.datasets[0].data[i];
+          if (typeof val !== 'number') return;
+          html += `<div class="chart-numbers-breakdown-row">
+            <span class="chart-numbers-breakdown-label">${label}</span>
+            <span class="chart-numbers-breakdown-value">${val.toLocaleString()}</span>
+          </div>`;
+        });
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  }
 }
 
 // ── CHARTS ─────────────────────────────────────────────────────
@@ -1439,7 +1576,41 @@ function renderDoughnutChart(container, w) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, padding: 12 } } }
+        plugins: {
+          legend: { position: 'bottom', labels: {
+            font: { family: 'Inter', size: 11 }, padding: 12,
+            usePointStyle: true, pointStyle: 'circle',
+            generateLabels(chart) {
+              const bg = chart.data.datasets[0]?.backgroundColor || [];
+              const labels = chart.data.labels || [];
+              return labels.map((label, i) => ({
+                text:        label,
+                fillStyle:   Array.isArray(bg) ? bg[i] : bg,
+                strokeStyle: Array.isArray(bg) ? bg[i] : bg,
+                lineWidth:   0,
+                pointStyle:  'circle',
+                hidden:      false,
+                index:       i,
+              }));
+            }
+          } },
+          tooltip: {
+            backgroundColor: '#18181b',
+            titleFont: { family: 'Inter', size: 12 },
+            bodyFont: { family: 'Inter', size: 12 },
+            padding: 10,
+            cornerRadius: 6,
+            usePointStyle: true,
+            callbacks: {
+              labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
+              labelColor(context) {
+                const bg = context.chart.data.datasets[0]?.backgroundColor || [];
+                const colour = Array.isArray(bg) ? bg[context.dataIndex] : bg;
+                return { borderColor: colour, backgroundColor: colour, borderWidth: 0 };
+              }
+            }
+          }
+        }
       }
     });
     state.charts[w.id] = chart;
@@ -1465,7 +1636,32 @@ function chartOptions(w) {
       legend: {
         display: true,
         position: 'bottom',
-        labels: { font: { family: 'Inter', size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
+        labels: {
+          font: { family: 'Inter', size: 11 },
+          padding: 12,
+          usePointStyle: true,
+          pointStyle: 'circle',
+          generateLabels(chart) {
+            const datasets = chart.data.datasets;
+            // Single-dataset bar chart with per-bar colours → no legend (x-axis labels already name each bar)
+            if (datasets.length === 1 && Array.isArray(datasets[0].backgroundColor) && datasets[0].backgroundColor.length > 1) {
+              return [];
+            }
+            // Default: one legend item per dataset
+            const items = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+            items.forEach((item, i) => {
+              const ds = datasets[i];
+              if (!ds) return;
+              // Solid colour: line charts use borderColor, bar charts use backgroundColor
+              const colour = ds.borderColor || (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor) || item.fillStyle;
+              item.fillStyle   = colour;
+              item.strokeStyle = colour;
+              item.lineWidth   = 0;
+              item.pointStyle  = 'circle';
+            });
+            return items;
+          }
+        }
       },
       tooltip: {
         backgroundColor: '#18181b',
@@ -1473,6 +1669,17 @@ function chartOptions(w) {
         bodyFont: { family: 'Inter', size: 12 },
         padding: 10,
         cornerRadius: 6,
+        usePointStyle: true,
+        callbacks: {
+          labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
+          labelColor(context) {
+            const ds = context.chart.data.datasets[context.datasetIndex];
+            const colour = ds.borderColor ||
+              (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[context.dataIndex] : ds.backgroundColor) ||
+              '#fff';
+            return { borderColor: colour, backgroundColor: colour, borderWidth: 0 };
+          }
+        }
       }
     },
     scales: {
@@ -1640,6 +1847,21 @@ function getMockLineData(id) {
 }
 
 // ── TABLE ──────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#5b8af5', '#e8734a', '#4bb08a', '#a06cd5',
+  '#e0a030', '#d95f7b', '#3eaecf', '#7b9e5a'
+];
+function agentAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function agentAvatar(name) {
+  const letter = name.charAt(0).toUpperCase();
+  const color  = agentAvatarColor(name);
+  return `<span class="agent-avatar" style="background:${color}">${letter}</span>`;
+}
+
 function renderTable(container, w) {
   if (w.id === 'op-workload-agent') {
     if (!state.mockData.tables[w.id]) {
@@ -1660,7 +1882,7 @@ function renderTable(container, w) {
     </tr></thead><tbody>`;
     rows.forEach(r => {
       html += `<tr>
-        <td style="font-weight:500">${r.agent}</td>
+        <td><div class="agent-cell">${agentAvatar(r.agent)}<span style="font-weight:500">${r.agent}</span></div></td>
         <td>${r.assigned}</td>
         <td>${r.firstResponse}</td>
         <td>${r.totalResolution}</td>
@@ -2067,9 +2289,19 @@ window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
   window.sendEvent('"' + title + '" widget — ' + (currentlyVisible ? 'hidden' : 'added'));
 };
 
+const ICON_PLUS  = `<svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>`;
+const ICON_CLOSE = `<svg width="14" height="14" viewBox="0 0 14 14"><line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>`;
+
+function setManageWidgetsBtnLabel(open) {
+  document.querySelectorAll('.add-widget-btn').forEach(btn => {
+    btn.innerHTML = (open ? ICON_CLOSE : ICON_PLUS) + (open ? ' Close widgets' : ' Manage widgets');
+  });
+}
+
 document.getElementById('drawer-close').addEventListener('click', () => {
   document.body.classList.remove('drawer-open');
   _drawerSection = null;
+  setManageWidgetsBtnLabel(false);
 });
 
 // ── TOOLTIP ────────────────────────────────────────────────────
@@ -2352,6 +2584,10 @@ document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach
   });
 });
 
+// Default: View/Edit mode enabled on load
+headerViewEditControl.style.display = '';
+setViewEditMode('edit');
+
 if (headerSegmentToggle) {
   headerSegmentToggle.addEventListener('click', (e) => {
     const btn = e.target.closest('.header-segment-btn');
@@ -2532,9 +2768,17 @@ document.addEventListener('click', () => {
 // ── ADD WIDGET BUTTONS ─────────────────────────────────────────
 document.querySelectorAll('.add-widget-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    openWidgetDrawer(btn.dataset.section);
-    const sectionName = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
-    window.sendEvent('Manage widgets — ' + sectionName + ' section');
+    const isOpen = document.body.classList.contains('drawer-open');
+    if (isOpen) {
+      document.body.classList.remove('drawer-open');
+      _drawerSection = null;
+      setManageWidgetsBtnLabel(false);
+    } else {
+      openWidgetDrawer(btn.dataset.section);
+      setManageWidgetsBtnLabel(true);
+      const sectionName = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
+      window.sendEvent('Manage widgets — ' + sectionName + ' section');
+    }
   });
 });
 
