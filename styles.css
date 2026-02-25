@@ -301,32 +301,6 @@ body {
   color: #fff;
 }
 
-.user-popout .nav-preview-toggle {
-  display: inline-flex;
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 6px;
-  overflow: hidden;
-  width: 100%;
-}
-.user-popout .nav-preview-btn {
-  padding: 6px 14px;
-  border: none;
-  background: none;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font);
-  color: rgba(255,255,255,.7);
-  cursor: pointer;
-  flex: 1;
-  text-align: center;
-}
-.user-popout .nav-preview-btn + .nav-preview-btn {
-  border-left: 1px solid rgba(255,255,255,.15);
-}
-.user-popout .nav-preview-btn.active {
-  background: rgba(255,255,255,.1);
-  color: #fff;
-}
 
 .user-popout .lens-preview-toggle {
   display: inline-flex;

@@ -61,8 +61,7 @@ const FEATURE_FLAGS_KEY   = 'trengo_feature_flags';
 const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
 
 const FEATURE_FLAGS = [
-  { id: 'compact-header',       label: 'Compact header',       desc: 'Reduces the analytics header height' },
-  { id: 'widget-hover-actions', label: 'Widget hover actions',  desc: 'Shows edit/move controls on widget hover' },
+  { id: 'anchors-nav', label: 'Anchors navigation', desc: 'Navigate between sections by scrolling instead of tabs' },
 ];
 
 function isFeatureEnabled(id) {
@@ -93,6 +92,23 @@ function unlockHelionAccess() {
 
 // Restore unlock state on page load
 if (localStorage.getItem(HELION_UNLOCKED_KEY)) showHelionAvatar();
+
+// Bootstrap nav mode from feature flag (before sections render)
+if (isFeatureEnabled('anchors-nav')) state.navMode = 'anchors';
+
+// Apply nav mode change — shared by the feature flag toggle and page bootstrap
+function applyNavMode(mode) {
+  state.navMode = mode;
+  teardownSectionObserver();
+  updateSectionsVisibility();
+  if (state.navMode === 'anchors') {
+    resetLazySections();
+    setupSectionObserver();
+    setupSentinels();
+  } else {
+    mountSection(state.activeSection);
+  }
+}
 
 // ── CHART PALETTE (aligned to provided screenshots) ────────────
 const CHART_COLORS = {
@@ -2282,24 +2298,6 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
   });
 });
 
-// Navigation mode toggle
-document.querySelectorAll('#nav-mode-toggle .nav-preview-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.navMode = btn.dataset.navmode;
-    document.querySelectorAll('#nav-mode-toggle .nav-preview-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    teardownSectionObserver();
-    updateSectionsVisibility();
-    if (state.navMode === 'anchors') {
-      resetLazySections();
-      setupSectionObserver();
-      setupSentinels();
-    } else {
-      mountSection(state.activeSection);
-    }
-    window.sendEvent(btn.textContent.trim() + ' nav mode — selected');
-  });
-});
 
 // User popout toggle (triggered by settings cog)
 const settingsNav = document.getElementById('settings-nav');
@@ -2363,7 +2361,13 @@ function renderFlagList() {
       </label>
     </div>`).join('');
   list.querySelectorAll('.flag-toggle input').forEach(cb => {
-    cb.addEventListener('change', () => setFeatureFlag(cb.dataset.flag, cb.checked));
+    cb.addEventListener('change', () => {
+      setFeatureFlag(cb.dataset.flag, cb.checked);
+      // Flags with immediate side-effects
+      if (cb.dataset.flag === 'anchors-nav') {
+        applyNavMode(cb.checked ? 'anchors' : 'tabs');
+      }
+    });
   });
 }
 
@@ -2795,12 +2799,9 @@ Below is a complete description of everything implemented in the clickable proto
 
 NAVIGATION AND LAYOUT
 - The sidebar contains navigation icons: Inbox, Contacts, Automations, Knowledge, Broadcast, Settings. Only Analytics is functional; the rest are visual placeholders.
-- The Settings cog opens a popout with three preview toggles:
+- The Settings cog opens a popout with two preview toggles:
   - Role: Supervisor (default) or Agent — filters content by role perspective
   - Use Case: Resolve (default) or Convert — filters content by use case goal
-  - Sub Navigation: Tabs (default) or Anchors — changes how sections are navigated
-- In Tabs mode, one section is shown at a time via clickable tabs.
-- In Anchors mode, all sections are visible on a single scrollable page with a sticky nav that highlights the active section.
 
 FILTERS
 - Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
@@ -3054,7 +3055,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     clearChatHistory();
     chatMessages.innerHTML = '';
     addBubble('As you explore, I\'ll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.', 'assistant');
-    setTimeout(() => addBubble('Use the settings icon to switch roles and views.', 'assistant'), 1800);
+    setTimeout(() => addBubble('Use the settings icon to switch role or use case.', 'assistant'), 1800);
     chatInput.focus();
   });
 
@@ -3454,7 +3455,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   } else {
     addBubble('As you explore, I\'ll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.', 'assistant');
     setTimeout(() => {
-      addBubble('Use the settings icon to switch roles and views.', 'assistant');
+      addBubble('Use the settings icon to switch role or use case.', 'assistant');
     }, 1800);
   }
 
