@@ -485,9 +485,15 @@ function renderWidget(w, section, placement, rows, layout) {
   }
 
   const dragHandle = card.querySelector('.drag-handle');
-  dragHandle.addEventListener('pointerdown', (e) => startDrag(e, section, w.id));
+  dragHandle.addEventListener('pointerdown', (e) => {
+    if (document.body.dataset.viewmode === 'view') return;
+    startDrag(e, section, w.id);
+  });
   const resizeHandle = card.querySelector('.resize-handle');
-  resizeHandle.addEventListener('pointerdown', (e) => startResize(e, section, w.id));
+  resizeHandle.addEventListener('pointerdown', (e) => {
+    if (document.body.dataset.viewmode === 'view') return;
+    startResize(e, section, w.id);
+  });
 
   return card;
 }
@@ -920,6 +926,7 @@ function findSlotNear(row, span, colGuess) {
 }
 
 function startDrag(e, sectionId, widgetId) {
+  if (document.body.dataset.viewmode === 'view') return;
   if (dragState.active) return;
   if (resizeState.active) return;
   e.stopPropagation();
@@ -1083,6 +1090,7 @@ function onDragEnd() {
 }
 
 function startResize(e, sectionId, widgetId) {
+  if (document.body.dataset.viewmode === 'view') return;
   e.preventDefault();
   e.stopPropagation();
   if (resizeState.active) return;
@@ -1924,13 +1932,14 @@ function mountSection(sectionId) {
     if (card) grid.appendChild(card);
   });
 
-  // Check if we need empty tiles for widgets that are effectively hidden and not yet added
+  // Count widgets that could be added via the drawer (not currently visible on the grid)
   const allWidgets = WIDGETS[sectionId] || [];
   const hiddenCount = allWidgets.filter(w => {
-    if (state.addedWidgets.has(w.id)) return false;
-    if (state.hiddenWidgets.has(w.id)) return false; // already hidden by user, don't count
-    const eff = getEffectiveVisibility(w);
-    return eff === 'hidden';
+    if (getStateOverride(w) === 'hide') return false; // not available in this role/lens
+    if (w.vis === 'always') return false; // always visible, can't be toggled
+    const isVisible = !state.hiddenWidgets.has(w.id) &&
+      (getEffectiveVisibility(w) !== 'hidden' || state.addedWidgets.has(w.id));
+    return !isVisible;
   }).length;
   if (emptyTiles.length > 0) {
     emptyTiles.forEach(tile => {
@@ -2007,12 +2016,25 @@ window.openWidgetDrawer = function(sectionId) {
       const isStateHidden = getStateOverride(w) === 'hide';
       const canToggle = w.vis !== 'always' && !isStateHidden;
       const statusText = isStateHidden ? 'Not available in this view' : (w.vis === 'always' ? 'Always visible' : isVisible ? 'Visible' : 'Hidden');
-      html += `<div class="drawer-widget-item" ${isStateHidden ? 'style="opacity:.4"' : ''}>
-        <div>
+      const typeIcon = {
+        'kpi':            `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="14" height="8" rx="1.5"/><line x1="5" y1="5" x2="5" y2="3"/><line x1="8" y1="5" x2="8" y2="2"/><line x1="11" y1="5" x2="11" y2="3"/></svg>`,
+        'kpi-group':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="4" width="4" height="9" rx="1"/><rect x="11" y="2" width="4" height="11" rx="1"/></svg>`,
+        'bar-chart':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="3" width="4" height="10" rx="1"/><rect x="11" y="8" width="4" height="5" rx="1"/></svg>`,
+        'line-chart':     `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 9,9 13,4 15,5"/></svg>`,
+        'doughnut-chart': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/></svg>`,
+        'list':           `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="14" y2="8"/><line x1="4" y1="12" x2="14" y2="12"/><circle cx="1.5" cy="4" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r=".8" fill="currentColor" stroke="none"/></svg>`,
+        'list-actions':   `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="4" x2="11" y2="4"/><line x1="4" y1="8" x2="11" y2="8"/><line x1="4" y1="12" x2="11" y2="12"/><circle cx="1.5" cy="4" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r=".8" fill="currentColor" stroke="none"/><polyline points="12,6 14,8 12,10" stroke-linejoin="round"/></svg>`,
+        'table':          `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="1" y1="5" x2="15" y2="5"/><line x1="6" y1="5" x2="6" y2="15"/></svg>`,
+        'progress':       `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="6" width="14" height="4" rx="2"/><rect x="1" y="6" width="9" height="4" rx="2" fill="currentColor" stroke="none" opacity=".25"/></svg>`,
+        'opportunities':  `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="6" r="3.5"/><path d="M6 9.5 L5 14 L8 12.5 L11 14 L10 9.5"/></svg>`,
+      }[w.type] || `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/></svg>`;
+      html += `<div class="drawer-widget-item${canToggle ? ' drawer-widget-item--toggleable' : ''}" ${isStateHidden ? 'style="opacity:.4"' : ''} ${canToggle ? `onclick="this.querySelector('button').click()"` : ''}>
+        <div class="drawer-widget-icon">${typeIcon}</div>
+        <div class="drawer-widget-info">
           <div class="drawer-widget-name">${w.title}</div>
           <div class="drawer-widget-status">${statusText}</div>
         </div>
-        ${canToggle ? `<button class="btn btn-sm ${isVisible ? 'btn-secondary' : 'btn-primary'}" onclick="toggleWidgetFromDrawer('${w.id}', '${secId}', ${isVisible})">${isVisible ? 'Hide' : 'Add'}</button>` : ''}
+        ${canToggle ? `<button class="btn btn-sm ${isVisible ? 'btn-secondary' : 'btn-primary'}" onclick="event.stopPropagation();toggleWidgetFromDrawer('${w.id}', '${secId}', ${isVisible})">${isVisible ? 'Hide' : 'Add'}</button>` : ''}
       </div>`;
     });
   };
@@ -2298,6 +2320,46 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
   });
 });
 
+
+// ── VIEW / EDIT MODE ────────────────────────────────────────────
+const headerViewEditControl = document.getElementById('header-viewedit-control');
+const headerSegmentToggle   = document.getElementById('header-segment-toggle');
+
+function setViewEditMode(mode) {
+  document.querySelectorAll('#header-segment-toggle .header-segment-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === mode);
+  });
+  if (mode === 'view') {
+    document.body.dataset.viewmode = 'view';
+  } else {
+    delete document.body.dataset.viewmode;
+  }
+}
+
+document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const enabled = btn.dataset.editmode === 'enabled';
+    if (enabled) {
+      headerViewEditControl.style.display = '';
+      setViewEditMode('edit');
+    } else {
+      headerViewEditControl.style.display = 'none';
+      delete document.body.dataset.viewmode;
+    }
+    window.sendEvent('View/Edit mode — ' + (enabled ? 'enabled' : 'disabled'));
+  });
+});
+
+if (headerSegmentToggle) {
+  headerSegmentToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.header-segment-btn');
+    if (!btn) return;
+    setViewEditMode(btn.dataset.view);
+    window.sendEvent('View/Edit — ' + btn.dataset.view + ' selected');
+  });
+}
 
 // User popout toggle (triggered by settings cog)
 const settingsNav = document.getElementById('settings-nav');
@@ -3000,13 +3062,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   const collapseBtn      = document.getElementById('ai-panel-collapse');
   const expandBtn        = document.getElementById('ai-panel-expand');
   const closeBtn         = document.getElementById('ai-panel-close');
-  const expandChevron    = document.getElementById('ai-expand-chevron');
+  const iconExpand   = document.getElementById('ai-icon-expand');
+  const iconCompress = document.getElementById('ai-icon-compress');
 
   const messages = []; // conversation history for API
-
-  // SVG polyline point strings for the expand/reduce chevron
-  const PTS_LEFT  = '15 18 9 12 15 6'; // < pointing left  → expand panel
-  const PTS_RIGHT = '9 18 15 12 9 6';  // > pointing right → reduce panel
 
   // ── Panel state machine ───────────────────────────────────
   // States: 'bar' (48px) | 'chat' (320px, default) | 'wide' (520px)
@@ -3014,11 +3073,13 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     document.body.dataset.panel = state;
 
     if (state === 'chat') {
-      expandChevron.setAttribute('points', PTS_LEFT);
+      if (iconExpand)   iconExpand.style.display   = '';
+      if (iconCompress) iconCompress.style.display = 'none';
       expandBtn.setAttribute('aria-label', 'Expand to wide');
       expandBtn.title = 'Expand';
     } else if (state === 'wide') {
-      expandChevron.setAttribute('points', PTS_RIGHT);
+      if (iconExpand)   iconExpand.style.display   = 'none';
+      if (iconCompress) iconCompress.style.display = '';
       expandBtn.setAttribute('aria-label', 'Reduce to chat');
       expandBtn.title = 'Reduce';
     }

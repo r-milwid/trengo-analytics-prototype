@@ -226,7 +226,7 @@ body {
   z-index: 300;
   opacity: 0;
   transform: translateY(8px) scale(0.98);
-  transition: opacity 1.75s ease, transform 1.75s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 .user-popout.open {
   opacity: 1;
@@ -420,9 +420,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px 0;
+  padding: 20px 32px;
   flex-wrap: wrap;
   gap: 12px;
+  position: relative;
 }
 .analytics-header-top h1 { font-size: 22px; font-weight: 700; }
 .header-controls {
@@ -538,12 +539,11 @@ body {
 /* Sub-nav */
 .sub-nav {
   display: flex;
-  gap: 0;
+  gap: 24px;
   padding: 0 32px;
-  border-top: 1px solid var(--gray-100);
 }
 .sub-nav-btn {
-  padding: 12px 20px;
+  padding: 12px 0;
   border: none;
   background: none;
   font-size: 13px;
@@ -1171,10 +1171,29 @@ body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + v
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 0 -12px;
   border-bottom: 1px solid var(--gray-100);
+  border-radius: 6px;
+  transition: background .12s;
 }
 .drawer-widget-item:last-child { border-bottom: none; }
+.drawer-widget-item--toggleable { cursor: pointer; }
+.drawer-widget-item--toggleable:hover { background: var(--gray-100); }
+.drawer-widget-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100);
+  border-radius: 6px;
+  color: var(--gray-500);
+}
+.drawer-widget-item--toggleable:hover .drawer-widget-icon { background: var(--gray-200); }
+.drawer-widget-info { flex: 1; min-width: 0; }
 .drawer-widget-name { font-size: 13px; font-weight: 500; color: var(--gray-700); }
 .drawer-widget-status { font-size: 11px; color: var(--gray-400); }
 
@@ -1762,3 +1781,76 @@ body[data-panel="bar"] .ai-panel-inner {
   .ai-panel { display: none; }
   .main-content { margin-right: 0; }
 }
+
+/* ============================================================
+   VIEW / EDIT MODE — preview option
+   ============================================================ */
+
+/* Popout toggle — matches existing role/lens/nav style */
+.user-popout .editmode-preview-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100%;
+}
+.user-popout .editmode-preview-btn {
+  padding: 6px 14px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: rgba(255,255,255,.7);
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+.user-popout .editmode-preview-btn + .editmode-preview-btn {
+  border-left: 1px solid rgba(255,255,255,.15);
+}
+.user-popout .editmode-preview-btn.active {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+
+/* Header segmented control — absolutely centred */
+.header-viewedit-control {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.header-segment-toggle {
+  display: inline-flex;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  pointer-events: auto;
+}
+.header-segment-btn {
+  padding: 5px 18px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.header-segment-btn.active {
+  background: var(--white);
+  color: var(--gray-800);
+  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+
+/* View mode — hide all edit-only chrome */
+body[data-viewmode="view"] .add-widget-btn    { display: none !important; }
+body[data-viewmode="view"] .drag-handle       { display: none !important; }
+body[data-viewmode="view"] .resize-handle     { display: none !important; }
+body[data-viewmode="view"] .widget-action-btn { display: none !important; }
+body[data-viewmode="view"] .empty-tile        { display: none !important; }

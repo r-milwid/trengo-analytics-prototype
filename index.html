@@ -114,6 +114,13 @@
       <div class="analytics-header" id="analytics-header">
         <div class="analytics-header-top">
           <h1>Analytics</h1>
+          <!-- View/Edit segmented control — centred absolutely, hidden until enabled -->
+          <div class="header-viewedit-control" id="header-viewedit-control" style="display:none;">
+            <div class="header-segment-toggle" id="header-segment-toggle">
+              <button class="header-segment-btn" data-view="view">View</button>
+              <button class="header-segment-btn active" data-view="edit">Edit</button>
+            </div>
+          </div>
           <div class="header-controls">
             <!-- Filters -->
             <div class="filter-bar">
@@ -265,9 +272,22 @@
         <div class="ai-panel-header-right">
           <button class="ai-panel-btn ai-panel-expand-btn" id="ai-panel-expand"
                   aria-label="Expand to wide" title="Expand">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            <svg id="ai-expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline id="ai-expand-chevron" points="15 18 9 12 15 6"/>
+              <!-- expand: arrows pointing outward — shown when chat (will expand) -->
+              <g id="ai-icon-expand">
+                <polyline points="15 3 21 3 21 9"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+              </g>
+              <!-- compress: arrowheads pointing inward — shown when wide (will shrink) -->
+              <g id="ai-icon-compress" style="display:none">
+                <polyline points="21 3 14 10 20 10"/>
+                <polyline points="3 21 10 14 10 20"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+              </g>
             </svg>
           </button>
           <button class="ai-panel-btn" id="ai-panel-close" aria-label="Close panel" title="Close">
@@ -345,6 +365,14 @@
         <div class="lens-preview-toggle" id="popout-lens-toggle">
           <button class="lens-preview-btn active" data-lens="support">Resolve</button>
           <button class="lens-preview-btn" data-lens="sales">Convert</button>
+        </div>
+      </div>
+      <div class="popout-toggle-block">
+        <div class="popout-toggle-header">View / Edit mode</div>
+        <div class="popout-toggle-subtext">Shows a segmented control to switch between view-only and edit modes</div>
+        <div class="editmode-preview-toggle" id="editmode-mode-toggle">
+          <button class="editmode-preview-btn active" data-editmode="disabled">Disabled</button>
+          <button class="editmode-preview-btn" data-editmode="enabled">Enabled</button>
         </div>
       </div>
     </div>
