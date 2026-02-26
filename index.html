@@ -384,6 +384,7 @@
     <div class="user-popout-title">Feature flags</div>
     <div class="user-popout-section" id="flag-list"></div>
     <div class="flag-reload-note">Reload page to apply changes.</div>
+    <button class="reset-onboarding-btn" id="reset-onboarding-btn">Reset onboarding</button>
   </div>
 
   <!-- Nav scope toast -->
@@ -391,6 +392,24 @@
 
   <!-- Chat event popups (shown when panel is collapsed) -->
   <div id="chat-popup-container"></div>
+
+  <!-- Onboarding overlay -->
+  <div id="onboarding-overlay" class="onboarding-overlay" style="display:none;">
+    <div class="onboarding-scrim"></div>
+    <svg class="onboarding-arrows" id="onboarding-arrows" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="onboarding-steps" id="onboarding-steps"></div>
+    <div class="onboarding-bottom">
+      <div class="onboarding-dots" id="onboarding-dots"></div>
+      <button class="onboarding-next" id="onboarding-next">
+        <span id="onboarding-next-text">Next</span>
+        <svg id="onboarding-next-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+      </button>
+      <button class="onboarding-skip" id="onboarding-skip">
+        Skip intro
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

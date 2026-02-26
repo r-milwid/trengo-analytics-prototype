@@ -2631,6 +2631,15 @@ document.addEventListener('click', (e) => {
     setTimeout(() => { userPopout.style.display = 'none'; }, 200);
   }
 });
+// Reset onboarding button
+const resetOnboardingBtn = document.getElementById('reset-onboarding-btn');
+if (resetOnboardingBtn) {
+  resetOnboardingBtn.addEventListener('click', () => {
+    localStorage.removeItem('trengo_onboarding_done');
+    resetOnboardingBtn.textContent = 'Onboarding reset ✓';
+    setTimeout(() => { resetOnboardingBtn.textContent = 'Reset onboarding'; }, 1500);
+  });
+}
 
 // Ensure popout starts hidden (no auto-open)
 window.addEventListener('load', () => {
@@ -2708,7 +2717,7 @@ const filterConfigs = {
     stateKey: 'channelFilter'
   },
   'filter-team': {
-    options: ['All teams', 'Support Team', 'Sales Team', 'Technical Team', 'Billing Team'],
+    options: ['All teams', 'Enterprise West', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'],
     stateKey: 'teamFilter'
   }
 };
@@ -3112,7 +3121,7 @@ NAVIGATION AND LAYOUT
 FILTERS
 - Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
 - Channel filter: All channels (default), Email, WhatsApp, Live chat, Phone, Instagram, Facebook
-- Team filter: All teams (default), Support Team, Sales Team, Technical Team, Billing Team
+- Team filter: All teams (default), Enterprise West, SMB Central, Mid-Market, Expansion, Retention, Core Services
 - A Label filter chip is visible but not functional.
 - Changing filters re-renders sections. All data in the prototype is randomly generated mock data, so filter changes produce new random values.
 
@@ -3777,4 +3786,304 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   // Expose event tracker for click handlers outside this IIFE
   window.sendEvent = sendEvent;
+
+  // ── ONBOARDING OVERLAY ──────────────────────────────────────
+  const ONBOARDING_KEY = 'trengo_onboarding_done';
+  const ONBOARDING_STEPS = [
+    {
+      text: 'The Guide is not part of the prototype \u2014 it\u2019s internal only. Use it to ask questions and provide feedback.',
+      getTargets: () => [document.querySelector('#ai-panel')],
+      placement: 'left-of-panel'
+    },
+    {
+      text: 'The Analytics navigation answers operational questions: Overview (where to look), Understand (why work enters), Operate (is it flowing), Improve (what changes help), and Automate (what runs without humans).',
+      getTargets: () => [document.querySelector('#sub-nav')],
+      placement: 'above-subnav'
+    },
+    {
+      text: 'Use the settings icon to switch roles and views.',
+      getTargets: () => [document.querySelector('#settings-nav')],
+      placement: 'right-of-cog'
+    },
+    {
+      text: 'Customise which metrics are visible in each section. Add hidden widgets or remove ones you don\u2019t need.',
+      getTargets: () => [
+        document.querySelector('.add-widget-btn[data-section="overview"]'),
+        document.querySelector('#section-overview .widget-action-btn')
+      ],
+      placement: 'center-dual'
+    }
+  ];
+
+  let onboardingStep = 0;
+  const overlay = document.getElementById('onboarding-overlay');
+  const stepsContainer = document.getElementById('onboarding-steps');
+  const arrowsSvg = document.getElementById('onboarding-arrows');
+  const nextBtn = document.getElementById('onboarding-next');
+  const nextText = document.getElementById('onboarding-next-text');
+  const nextIcon = document.getElementById('onboarding-next-icon');
+  const dotsContainer = document.getElementById('onboarding-dots');
+
+  function buildArrowPath(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const curvature = Math.min(dist * 0.3, 60);
+    // perpendicular offset for curve
+    const nx = -dy / dist * curvature;
+    const ny = dx / dist * curvature;
+    const mx = (x1 + x2) / 2 + nx;
+    const my = (y1 + y2) / 2 + ny;
+    return `M${x1},${y1} Q${mx},${my} ${x2},${y2}`;
+  }
+
+  function drawArrow(x1, y1, x2, y2) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', buildArrowPath(x1, y1, x2, y2));
+    arrowsSvg.appendChild(path);
+
+    // Arrowhead — triangle at the endpoint
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const curvature = Math.min(dist * 0.3, 60);
+    const nx = -dy / dist * curvature;
+    const ny = dx / dist * curvature;
+    const mx = (x1 + x2) / 2 + nx;
+    const my = (y1 + y2) / 2 + ny;
+    // tangent at endpoint of quadratic bezier: derivative at t=1
+    const tx = x2 - mx;
+    const ty = y2 - my;
+    const tLen = Math.sqrt(tx * tx + ty * ty);
+    const ux = tx / tLen;
+    const uy = ty / tLen;
+    const size = 12;
+    const px = -uy, py = ux;
+    const tipX = x2, tipY = y2;
+    const p1x = tipX - ux * size + px * size * 0.45;
+    const p1y = tipY - uy * size + py * size * 0.45;
+    const p2x = tipX - ux * size - px * size * 0.45;
+    const p2y = tipY - uy * size - py * size * 0.45;
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    arrow.setAttribute('points', `${tipX},${tipY} ${p1x},${p1y} ${p2x},${p2y}`);
+    arrowsSvg.appendChild(arrow);
+  }
+
+  function positionStep(index) {
+    arrowsSvg.innerHTML = '';
+    const step = ONBOARDING_STEPS[index];
+    const card = stepsContainer.children[index];
+    if (!card) return;
+
+    const targets = step.getTargets();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Reset card position so we can measure it
+    card.style.top = '0px';
+    card.style.left = '0px';
+    card.style.removeProperty('right');
+    const cardRect = card.getBoundingClientRect();
+    const cw = cardRect.width;
+    const ch = cardRect.height;
+
+    if (step.placement === 'left-of-panel') {
+      const panel = targets[0];
+      if (!panel) return;
+      const pr = panel.getBoundingClientRect();
+      // Centre card in the main content area, vertically near panel top
+      const mainLeft = 64;
+      const centerX = (mainLeft + pr.left) / 2;
+      const cardLeft = centerX - cw / 2;
+      const cardTop = pr.top + 64;
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+      // Arrow from card right edge to panel top area
+      drawArrow(cardLeft + cw + 4, cardTop + ch / 2, pr.left + (pr.width / 2), pr.top + 58);
+
+    } else if (step.placement === 'above-subnav') {
+      const nav = targets[0];
+      if (!nav) return;
+      const nr = nav.getBoundingClientRect();
+      // Position card below the sub-nav with a gap, centered horizontally
+      const mainLeft = 64; // sidebar width
+      const mainRight = vw;
+      const centerX = (mainLeft + mainRight) / 2;
+      const cardLeft = centerX - cw / 2;
+      const cardTop = nr.bottom + 32;
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+      // Arrow from card top-center UP to sub-nav (slightly left of center, near top)
+      drawArrow(cardLeft + cw / 2, cardTop - 4, nr.left + nr.width * 0.35, nr.top + 4);
+
+    } else if (step.placement === 'right-of-cog') {
+      const cog = targets[0];
+      if (!cog) return;
+      const cr = cog.getBoundingClientRect();
+      // Card well to the right of sidebar so arrow is clearly visible
+      const cardLeft = 140;
+      const cardTop = cr.top + cr.height / 2 - ch / 2;
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+      // Arrow from card left edge to just right of cog
+      drawArrow(cardLeft - 4, cardTop + ch / 2, cr.right + 2, cr.top + cr.height / 2);
+
+    } else if (step.placement === 'center-dual') {
+      const mainLeft = 64;
+      const mainRight = vw;
+      const centerX = (mainLeft + mainRight) / 2;
+      const centerY = vh / 2;
+      const cardLeft = centerX - cw / 2;
+      const cardTop = centerY - ch / 2;
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+
+      // Arrow 1: to manage widgets button
+      if (targets[0]) {
+        const br = targets[0].getBoundingClientRect();
+        drawArrow(cardLeft + cw - 20, cardTop + 10, br.left + br.width / 2, br.top + br.height / 2);
+      }
+      // Arrow 2: to widget X button (start from same top-right corner as arrow 1)
+      if (targets[1]) {
+        const xr = targets[1].getBoundingClientRect();
+        drawArrow(cardLeft + cw - 20, cardTop + 10, xr.left + xr.width / 2, xr.top + xr.height / 2);
+      }
+    }
+  }
+
+  function updateDots() {
+    dotsContainer.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === onboardingStep);
+    });
+  }
+
+  function updateNextButton() {
+    var skipBtn = document.getElementById('onboarding-skip');
+    if (onboardingStep === ONBOARDING_STEPS.length - 1) {
+      nextText.textContent = 'Done';
+      nextIcon.innerHTML = '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+      if (skipBtn) skipBtn.classList.add('hidden');
+    } else {
+      nextText.textContent = 'Next';
+      nextIcon.innerHTML = '<polyline points="9 6 15 12 9 18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+      if (skipBtn) skipBtn.classList.remove('hidden');
+    }
+  }
+
+  function showStep(index) {
+    const cards = stepsContainer.querySelectorAll('.onboarding-step-card');
+    cards.forEach((c, i) => {
+      if (i === index) {
+        c.style.display = '';
+        c.classList.remove('exit');
+        // Position before making visible so card doesn't flash at wrong spot
+        positionStep(index);
+        // Force reflow then add active
+        void c.offsetWidth;
+        c.classList.add('active');
+      } else {
+        c.classList.remove('active');
+      }
+    });
+    updateDots();
+    updateNextButton();
+  }
+
+  function nextOnboardingStep() {
+    const cards = stepsContainer.querySelectorAll('.onboarding-step-card');
+    const current = cards[onboardingStep];
+    if (current) {
+      current.classList.remove('active');
+      current.classList.add('exit');
+    }
+
+    onboardingStep++;
+    if (onboardingStep >= ONBOARDING_STEPS.length) {
+      closeOnboarding();
+      return;
+    }
+
+    // Wait for exit transition, then show next
+    setTimeout(() => {
+      if (current) current.style.display = 'none';
+      showStep(onboardingStep);
+    }, 350);
+  }
+
+  function closeOnboarding() {
+    overlay.classList.add('closing');
+    localStorage.setItem(ONBOARDING_KEY, 'true');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('closing');
+    }, 350);
+  }
+
+  function showOnboarding() {
+    // Build step cards
+    stepsContainer.innerHTML = '';
+    ONBOARDING_STEPS.forEach((step, i) => {
+      const card = document.createElement('div');
+      card.className = 'onboarding-step-card';
+      card.textContent = step.text;
+      if (i !== 0) card.style.display = 'none';
+      stepsContainer.appendChild(card);
+    });
+
+    // Build dots
+    dotsContainer.innerHTML = '';
+    ONBOARDING_STEPS.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'onboarding-dot' + (i === 0 ? ' active' : '');
+      dotsContainer.appendChild(dot);
+    });
+
+    onboardingStep = 0;
+    overlay.style.display = 'block';
+    updateNextButton();
+
+    // Position first step after a short delay so layout is computed
+    setTimeout(() => {
+      const firstCard = stepsContainer.children[0];
+      if (firstCard) {
+        positionStep(0);
+        void firstCard.offsetWidth;
+        firstCard.classList.add('active');
+      }
+    }, 50);
+  }
+
+  function initOnboarding() {
+    if (localStorage.getItem(ONBOARDING_KEY)) return;
+
+    // Wait for analytics page to be visible, then show onboarding
+    const waitForReady = () => {
+      const analyticsPage = document.getElementById('analytics-page');
+      if (analyticsPage && analyticsPage.style.display !== 'none') {
+        // Force mount overview section if not loaded (needed for step 4 widget X target)
+        const overviewContent = document.querySelector('.section-content[data-section="overview"]');
+        if (overviewContent && !overviewContent.classList.contains('loaded')) {
+          mountSection('overview');
+        }
+        // Small extra delay to let mount finish rendering
+        setTimeout(showOnboarding, 100);
+      } else {
+        setTimeout(waitForReady, 200);
+      }
+    };
+    setTimeout(waitForReady, 300);
+  }
+
+  nextBtn.addEventListener('click', nextOnboardingStep);
+  document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
+
+  // Reposition on resize
+  let onboardingResizeTimer;
+  window.addEventListener('resize', () => {
+    if (overlay.style.display === 'none') return;
+    clearTimeout(onboardingResizeTimer);
+    onboardingResizeTimer = setTimeout(() => positionStep(onboardingStep), 100);
+  });
+
+  initOnboarding();
 })();

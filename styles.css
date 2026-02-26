@@ -261,6 +261,25 @@ body {
   line-height: 1.35;
   margin-bottom: 4px;
 }
+.reset-onboarding-btn {
+  margin-top: 10px;
+  padding: 7px 14px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.7);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all .15s;
+  width: 100%;
+}
+.reset-onboarding-btn:hover {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border-color: rgba(255,255,255,.35);
+}
 .user-popout-close {
   position: absolute;
   right: 12px;
@@ -1954,3 +1973,151 @@ body[data-viewmode="view"] .empty-tile        { display: none !important; }
 }
 .chart-numbers-breakdown-label { color: var(--gray-500); }
 .chart-numbers-breakdown-value { font-weight: 600; color: var(--gray-800); }
+
+/* ============================================================
+   ONBOARDING OVERLAY
+   ============================================================ */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.onboarding-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+.onboarding-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+.onboarding-arrows path {
+  fill: none;
+  stroke: #00a884;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+}
+.onboarding-arrows polygon {
+  fill: #00a884;
+}
+
+/* Step cards */
+.onboarding-steps {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.onboarding-step-card {
+  position: absolute;
+  background: var(--white);
+  color: var(--gray-800);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px 24px;
+  max-width: 380px;
+  font-size: 14px;
+  line-height: 1.55;
+  font-family: var(--font);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.onboarding-step-card.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+.onboarding-step-card.exit {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+/* Bottom bar — dots + next + skip */
+.onboarding-bottom {
+  position: absolute;
+  bottom: 32px;
+  right: 32px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Skip button — bottom right, subtle */
+.onboarding-skip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.25s;
+}
+.onboarding-skip:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+.onboarding-skip.hidden {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+.onboarding-dots {
+  display: flex;
+  gap: 8px;
+}
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: background 0.25s;
+}
+.onboarding-dot.active {
+  background: #fff;
+}
+
+/* Next / Done button — prominent */
+.onboarding-next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #fff;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.onboarding-next:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+.onboarding-next:active {
+  transform: translateY(0);
+}
+
+/* Fade-out animation for the whole overlay */
+.onboarding-overlay.closing {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
