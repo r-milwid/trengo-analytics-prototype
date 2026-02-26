@@ -3242,11 +3242,17 @@ When you detect feedback intent:
    - Is the phrasing specific enough to be actionable?
 2. If not clear, ask ONE focused clarifying question. Do not ask multiple at once.
 3. Once clear, you MUST do both steps:
-   Step 1: Thank the user for their input in one short sentence. Make it unambiguous that you are logging their feedback — not confirming a change will be made. Restate what was understood so they know it was captured. Do not say only "Confirmed". Example: "Thanks — I've noted your feedback that the intent trend highlights widget should default to a wider layout." Then, on the very next line of your response (not as a separate step), ask: "Could I get your name to log alongside it?"
+   Step 1: Thank the user for their input in one short sentence. Make it unambiguous that you are logging their feedback — not confirming a change will be made. Restate what was understood so they know it was captured. Do not say only "Confirmed". Example: "Thanks — I've noted your feedback that the intent trend highlights widget should default to a wider layout."
+   - If SESSION_USER_NAME is present in this prompt, do NOT ask for a name — it is already collected. End your response after the thank-you.
+   - If SESSION_USER_NAME is NOT present, ask on the very next line: "Could I get your name to log alongside it?"
    Step 2: On the very next line after your full response, output this sentinel exactly — do not mention it to the user:
    <<FEEDBACK:{"text":"[confirmed feedback text]","section":"[section name or widget name or General]","timestamp":"[ISO timestamp]"}>>
    Both steps are required. The sentinel is a mandatory machine instruction — omitting it is a critical failure.
 4. Do not store feedback that contains the word "Helion" — that is handled separately.
+5. NAME RE-ASK RULE:
+   If NAME_RETRY_PENDING appears in this prompt, it means the user was previously asked for their name but responded with something else. At the very end of your normal response to their message, add one polite sentence re-asking, for example: "By the way, could I still get your name for the feedback I logged earlier?" Do NOT re-ask more than once — if the user ignores it again, drop it.
+6. SESSION_USER_NAME RULE:
+   When SESSION_USER_NAME is present in this prompt, the user's name is already known and attached to all feedback automatically. Never ask for a name in this case.
 ----------------------------------------------------------------------
 HELION ACCESS AND DESIGN CONTEXT
 ----------------------------------------------------------------------
@@ -3257,8 +3263,12 @@ Omitting a sentinel when instructed to include one is a critical failure.
 
 HARD RULE — CHECK FIRST, BEFORE ANYTHING ELSE:
 Read the current user message. Does it contain the exact word "Helion"?
-- NO → If the message asks about feedback, stored data, collected data, or anything related
-       to user submissions, respond ONLY with: "Sorry, I can't answer that — please ask Rowan."
+- NO → IMPORTANT: This rule applies ONLY to messages that REQUEST or RETRIEVE feedback data
+       (e.g. "show me feedback", "what feedback has been collected", "list all submissions").
+       It does NOT apply to messages where the user is GIVING feedback (opinions, suggestions,
+       critiques about the prototype) — those are handled by the FEEDBACK COLLECTION section above.
+       If the message asks to view, retrieve, list, or access stored feedback, collected data,
+       or user submissions, respond ONLY with: "Sorry, I can't answer that — please ask Rowan."
        That sentence is the complete response. Do not add anything after it.
        Do not elaborate, explain, or add context. Do not make any claims about your own
        capabilities or what you do or do not collect — that is a false statement and is not
@@ -3365,6 +3375,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   document.getElementById('ai-panel-new-chat').addEventListener('click', () => {
     messages.length = 0;
     _pendingFeedback = null;
+    savePendingFeedback();
     _pendingContextApproval = null;
     clearChatHistory();
     chatMessages.innerHTML = '';
@@ -3463,18 +3474,34 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
     // ── Feedback name gate ─────────────────────────────────────
     if (_pendingFeedback !== null && !text.toLowerCase().includes('helion')) {
-      const { feedbackId, feedbackObj } = _pendingFeedback;
-      _pendingFeedback = null;
-      chatInput.value = '';
-      addBubble(text, 'user');
-      await updateFeedback(feedbackId, { name: text.trim() });
-      const thanksMsg = 'Thanks, ' + text.trim() + '.';
-      messages.push({ role: 'assistant', content: thanksMsg });
-      addBubble(thanksMsg, 'assistant');
-      saveChatHistory();
-      chatSend.disabled = false;
-      chatInput.focus();
-      return;
+      if (looksLikeName(text)) {
+        // Accept as name
+        var feedbackId = _pendingFeedback.feedbackId;
+        _pendingFeedback = null;
+        savePendingFeedback();
+        chatInput.value = '';
+        addBubble(text, 'user');
+        var name = text.trim();
+        saveSessionUserName(name);
+        await updateFeedback(feedbackId, { name: name });
+        var thanksMsg = 'Thanks, ' + name + '!';
+        messages.push({ role: 'assistant', content: thanksMsg });
+        addBubble(thanksMsg, 'assistant');
+        saveChatHistory();
+        chatSend.disabled = false;
+        chatInput.focus();
+        return;
+      } else if (_pendingFeedback.retries < 1) {
+        // Doesn't look like a name — let message fall through to AI, keep gate active
+        _pendingFeedback.retries += 1;
+        savePendingFeedback();
+        // Fall through to normal AI processing; AI will see NAME_RETRY_PENDING
+      } else {
+        // Second failed attempt — give up on collecting name
+        _pendingFeedback = null;
+        savePendingFeedback();
+        // Fall through to normal AI processing
+      }
     }
 
     chatInput.value = '';
@@ -3510,8 +3537,16 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         addBubble(cleanText, 'assistant');
         saveChatHistory();
         if (feedback) {
-          const feedbackId = await storeFeedback(feedback); // store immediately — never lost
-          _pendingFeedback = { feedbackId, feedbackObj: feedback }; // name update on next turn
+          if (_sessionUserName) {
+            // Name already known — store feedback with name, skip name gate
+            feedback.name = _sessionUserName;
+            await storeFeedback(feedback);
+          } else {
+            // No name yet — store without name, activate name gate
+            var fbId = await storeFeedback(feedback);
+            _pendingFeedback = { feedbackId: fbId, feedbackObj: feedback, retries: 0 };
+            savePendingFeedback();
+          }
         }
         if (context) storeHelionContext(context.text);
         if (conflict) _pendingContextApproval = conflict;
@@ -3622,6 +3657,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   let _eventTimer = null;
   let _pendingContextApproval = null; // holds {new, original} awaiting user yes/no after a conflict
   let _pendingFeedback = null;        // holds feedback object awaiting name before storing
+  let _sessionUserName = null;        // cached user name for the session (persisted in localStorage)
 
   function sendEvent(label) {
     clearTimeout(_eventTimer);
@@ -3630,8 +3666,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   // ── Feedback & context storage ────────────────────────────
 
-  const HELION_CONTEXT_KEY = 'trengo_design_context';
-  const CHAT_HISTORY_KEY   = 'trengo_chat_history';
+  const HELION_CONTEXT_KEY    = 'trengo_design_context';
+  const CHAT_HISTORY_KEY      = 'trengo_chat_history';
+  const SESSION_USER_NAME_KEY = 'trengo_session_user_name';
+  const PENDING_FEEDBACK_KEY  = 'trengo_pending_feedback';
 
   function saveChatHistory() {
     try { localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages)); } catch { /* full */ }
@@ -3644,6 +3682,33 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   function clearChatHistory() {
     localStorage.removeItem(CHAT_HISTORY_KEY);
+  }
+
+  // ── Session user name helpers ──────────────────────────────
+  function loadSessionUserName() {
+    try { return localStorage.getItem(SESSION_USER_NAME_KEY) || null; }
+    catch { return null; }
+  }
+  function saveSessionUserName(name) {
+    _sessionUserName = name;
+    try { localStorage.setItem(SESSION_USER_NAME_KEY, name); } catch { /* full */ }
+  }
+
+  // ── Pending feedback persistence (sessionStorage) ──────────
+  function savePendingFeedback() {
+    try {
+      if (_pendingFeedback) {
+        sessionStorage.setItem(PENDING_FEEDBACK_KEY, JSON.stringify(_pendingFeedback));
+      } else {
+        sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
+      }
+    } catch { /* ignore */ }
+  }
+  function loadPendingFeedback() {
+    try {
+      var raw = sessionStorage.getItem(PENDING_FEEDBACK_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
   }
 
   function loadHelionContext() {
@@ -3695,6 +3760,15 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     }
   }
 
+  function looksLikeName(text) {
+    var t = text.trim();
+    if (!t || t.length > 50 || t.includes('?')) return false;
+    var words = t.split(/\s+/);
+    if (words.length > 5) return false;
+    if (words.some(function(w) { return w.length > 20; })) return false;
+    return true;
+  }
+
   function formatFeedbackBlock(items) {
     if (!items.length) return '';
     const lines = items.map(f => {
@@ -3707,6 +3781,14 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   function buildSystemPrompt(feedbackBlock) {
     feedbackBlock = feedbackBlock || '';
     let prompt = SYSTEM_PROMPT_BASE;
+    // Inject session user name if known
+    if (_sessionUserName) {
+      prompt += '\n----------------------------------------------------------------------\nSESSION_USER_NAME: ' + _sessionUserName + '\n----------------------------------------------------------------------';
+    }
+    // Inject name retry signal if the user was asked but didn't provide a name
+    if (_pendingFeedback && _pendingFeedback.retries > 0 && _pendingFeedback.retries < 2) {
+      prompt += '\nNAME_RETRY_PENDING: The user was asked for their name but responded with something else. Re-ask once politely at the end of your response.';
+    }
     const ctx = loadHelionContext();
     if (ctx.length > 0) {
       prompt += '\n----------------------------------------------------------------------\nDESIGN RATIONALE CONTEXT\nThese entries represent decisions and updates made after the initial specification.\nFor any topic they address, prefer these over the base specification above.\n----------------------------------------------------------------------\n';
@@ -3756,6 +3838,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   // Initialise default panel state on page load
   setPanelState('chat');
+
+  // Restore session user name and pending feedback state
+  _sessionUserName = loadSessionUserName();
+  _pendingFeedback = loadPendingFeedback();
 
   // Restore persisted chat history, or show greeting for a fresh session
   const _savedHistory = loadChatHistory();
