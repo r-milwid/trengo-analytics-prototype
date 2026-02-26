@@ -136,6 +136,14 @@
                 <span>All teams</span>
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
               </div>
+              <button class="filter-chip filter-chip-icon" id="team-display-settings-btn" title="Display settings" style="display:none;">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+                  <circle cx="5" cy="4" r="1.5" fill="var(--white)" stroke="currentColor"/>
+                  <circle cx="10" cy="8" r="1.5" fill="var(--white)" stroke="currentColor"/>
+                  <circle cx="6" cy="12" r="1.5" fill="var(--white)" stroke="currentColor"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -346,6 +354,26 @@
     </div>
   </div>
 
+  <!-- Team Display Settings Modal -->
+  <div class="modal-overlay" id="team-settings-modal-overlay" style="display:none;">
+    <div class="team-settings-modal" id="team-settings-modal">
+      <div class="modal-header">
+        <div>
+          <h3>Team display settings</h3>
+          <p class="modal-subtitle">Assign a usecase to each team to personalise their analytics view.</p>
+        </div>
+        <button class="drawer-close" id="team-settings-modal-close">&times;</button>
+      </div>
+      <div class="modal-body team-settings-body" id="team-settings-body">
+        <!-- Populated by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="team-settings-cancel">Cancel</button>
+        <button class="btn btn-primary" id="team-settings-save">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- User popout -->
   <div class="user-popout" id="user-popout" style="display:none;">
     <button class="user-popout-close" id="user-popout-close">&times;</button>
@@ -401,17 +429,6 @@
     </div>
     <svg class="onboarding-arrows" id="onboarding-arrows" xmlns="http://www.w3.org/2000/svg"></svg>
     <div class="onboarding-steps" id="onboarding-steps"></div>
-    <div class="onboarding-bottom">
-      <div class="onboarding-dots" id="onboarding-dots"></div>
-      <button class="onboarding-next" id="onboarding-next">
-        <span id="onboarding-next-text">Next</span>
-        <svg id="onboarding-next-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-      </button>
-      <button class="onboarding-skip" id="onboarding-skip">
-        Skip intro
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
   </div>
 
   <script src="app.js"></script>

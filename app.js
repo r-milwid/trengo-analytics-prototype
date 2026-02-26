@@ -62,7 +62,8 @@ const FEATURE_FLAGS_KEY   = 'trengo_feature_flags';
 const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
 
 const FEATURE_FLAGS = [
-  { id: 'anchors-nav', label: 'Anchors navigation', desc: 'Navigate between sections by scrolling instead of tabs' },
+  { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
+  { id: 'team-usecases',   label: 'Team specific usecases',  desc: 'Assign Convert or Resolve usecases per team from a display settings button next to the team filter' },
 ];
 
 function isFeatureEnabled(id) {
@@ -554,8 +555,31 @@ function renderWidget(w, section, placement, rows, layout) {
 }
 
 // ── STATE KEY HELPER ───────────────────────────────────────────
+// When a specific team is selected and has a usecase assigned, derive the
+// lens from that usecase (resolve → support, convert → sales) instead of
+// using the manually selected lens from Preview options.
+function getEffectiveLens() {
+  if (state.teamFilter && state.teamFilter !== 'All teams') {
+    const usecase = (state.teamUsecases && state.teamUsecases[state.teamFilter]) || 'resolve';
+    return usecase === 'convert' ? 'sales' : 'support';
+  }
+  return state.lens;
+}
+
 function stateKey() {
-  return `${state.lens}_${state.role}`;
+  return `${getEffectiveLens()}_${state.role}`;
+}
+
+// Sync the lens toggle buttons in Preview options to reflect the effective lens.
+// When a team overrides the lens the buttons are dimmed to show they're overridden.
+function syncLensButtons() {
+  const effectiveLens = getEffectiveLens();
+  const overridden = state.teamFilter && state.teamFilter !== 'All teams';
+  document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lens === effectiveLens);
+    b.style.opacity = overridden ? '0.45' : '';
+    b.style.pointerEvents = overridden ? 'none' : '';
+  });
 }
 
 function getStateOverride(w) {
@@ -2530,11 +2554,10 @@ document.querySelectorAll('.sub-nav-btn').forEach(btn => {
 document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     state.lens = btn.dataset.lens;
-    document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
+    syncLensButtons();
     window.sendEvent(btn.textContent.trim() + ' lens — selected');
   });
 });
@@ -2674,6 +2697,9 @@ function renderFlagList() {
       if (cb.dataset.flag === 'anchors-nav') {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
       }
+      if (cb.dataset.flag === 'team-usecases') {
+        applyTeamSettingsFlag();
+      }
     });
   });
 }
@@ -2762,6 +2788,8 @@ Object.keys(filterConfigs).forEach(filterId => {
         chip.classList.remove('active-filter');
         // Snapshot then remount — Set is mutated during remount so we must copy first
         [...state.loadedSections].forEach(s => remountSection(s));
+        // If team filter changed, sync lens buttons to reflect team usecase override
+        if (filterId === 'filter-team') syncLensButtons();
         window.sendEvent((filterLabels[filterId] || filterId) + ' filter — "' + opt.dataset.value + '"');
       });
     });
@@ -2773,6 +2801,118 @@ document.addEventListener('click', () => {
   document.getElementById('filter-dropdown').style.display = 'none';
   document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
 });
+
+// ── TEAM DISPLAY SETTINGS ──────────────────────────────────────
+const TEAMS_DATA = [
+  { name: 'Enterprise West', members: ['Victor Montala', 'Isabella Escobar', 'Donovan van der Weerd'] },
+  { name: 'SMB Central',     members: ['Greg Aquino', 'Deborah Pia'] },
+  { name: 'Mid-Market',      members: ['Federico Lai', 'Rowan Milwid'] },
+  { name: 'Expansion',       members: ['Dmytro Hachok', 'Victor Montala'] },
+  { name: 'Retention',       members: ['Isabella Escobar', 'Greg Aquino', 'Deborah Pia'] },
+  { name: 'Core Services',   members: ['Rowan Milwid', 'Federico Lai', 'Donovan van der Weerd'] },
+];
+
+// Persisted usecase assignments: { teamName: 'convert' | 'resolve' | null }
+if (!state.teamUsecases) state.teamUsecases = {};
+
+function applyTeamSettingsFlag() {
+  const btn = document.getElementById('team-display-settings-btn');
+  if (!btn) return;
+  btn.style.display = isFeatureEnabled('team-usecases') ? '' : 'none';
+}
+
+function buildTeamSettingsModal() {
+  const body = document.getElementById('team-settings-body');
+  if (!body) return;
+
+  const rows = TEAMS_DATA.map(team => {
+    const current = state.teamUsecases[team.name] || 'resolve';
+    const memberPills = team.members.map(name => {
+      const initial = name.charAt(0).toUpperCase();
+      const colour  = agentAvatarColor(name);
+      return `<span class="team-member-pill">
+        <span class="team-member-avatar" style="background:${colour}">${initial}</span>
+        ${name.split(' ')[0]}
+      </span>`;
+    }).join('');
+
+    return `<tr class="team-settings-row" data-team="${team.name}">
+      <td class="team-settings-team-cell">
+        <div class="team-settings-team-name">${team.name}</div>
+        <div class="team-settings-members">${memberPills}</div>
+      </td>
+      <td class="team-settings-usecase-cell">
+        <div class="usecase-toggle">
+          <button class="usecase-btn ${current === 'convert' ? 'active' : ''}" data-usecase="convert">Convert</button>
+          <button class="usecase-btn ${current === 'resolve' ? 'active' : ''}" data-usecase="resolve">Resolve</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<table class="team-settings-table">
+    <thead>
+      <tr>
+        <th>Team &amp; members</th>
+        <th class="col-usecase">Usecase</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+
+  // Usecase toggle interaction — boolean, always one selected
+  body.querySelectorAll('.usecase-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('active')) return; // already selected, no-op
+      const row      = btn.closest('.team-settings-row');
+      const teamName = row.dataset.team;
+      row.querySelectorAll('.usecase-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.teamUsecases[teamName] = btn.dataset.usecase;
+    });
+  });
+}
+
+function openTeamSettingsModal() {
+  buildTeamSettingsModal();
+  document.getElementById('team-settings-modal-overlay').style.display = 'flex';
+}
+
+function closeTeamSettingsModal() {
+  document.getElementById('team-settings-modal-overlay').style.display = 'none';
+}
+
+// Wire up button and modal controls
+const teamSettingsBtn = document.getElementById('team-display-settings-btn');
+if (teamSettingsBtn) {
+  teamSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openTeamSettingsModal();
+    window.sendEvent('Team display settings — opened');
+  });
+}
+
+document.getElementById('team-settings-modal-close')?.addEventListener('click', closeTeamSettingsModal);
+document.getElementById('team-settings-cancel')?.addEventListener('click', closeTeamSettingsModal);
+document.getElementById('team-settings-save')?.addEventListener('click', () => {
+  closeTeamSettingsModal();
+  // If a specific team is selected, re-apply the (possibly changed) usecase lens
+  if (state.teamFilter && state.teamFilter !== 'All teams') {
+    [...state.loadedSections].forEach(s => remountSection(s));
+    syncLensButtons();
+  }
+  window.sendEvent('Team display settings — saved');
+});
+
+// Close on overlay backdrop click
+document.getElementById('team-settings-modal-overlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('team-settings-modal-overlay')) closeTeamSettingsModal();
+});
+
+// Apply flag visibility on load
+applyTeamSettingsFlag();
+syncLensButtons();
+
 
 // ── ADD WIDGET BUTTONS ─────────────────────────────────────────
 document.querySelectorAll('.add-widget-btn').forEach(btn => {
@@ -3812,54 +3952,48 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   ];
 
   let onboardingStep = 0;
-  const overlay = document.getElementById('onboarding-overlay');
+  const overlay       = document.getElementById('onboarding-overlay');
   const stepsContainer = document.getElementById('onboarding-steps');
-  const arrowsSvg = document.getElementById('onboarding-arrows');
-  const nextBtn = document.getElementById('onboarding-next');
-  const nextText = document.getElementById('onboarding-next-text');
-  const nextIcon = document.getElementById('onboarding-next-icon');
-  const dotsContainer = document.getElementById('onboarding-dots');
+  const arrowsSvg     = document.getElementById('onboarding-arrows');
 
-  function buildArrowPath(x1, y1, x2, y2) {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
+  function arrowGeometry(x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const curvature = Math.min(dist * 0.3, 60);
-    // perpendicular offset for curve
     const nx = -dy / dist * curvature;
-    const ny = dx / dist * curvature;
+    const ny =  dx / dist * curvature;
     const mx = (x1 + x2) / 2 + nx;
     const my = (y1 + y2) / 2 + ny;
-    return `M${x1},${y1} Q${mx},${my} ${x2},${y2}`;
+    // Tangent direction at t=1 on quadratic bezier
+    const tx = x2 - mx, ty = y2 - my;
+    const tLen = Math.sqrt(tx * tx + ty * ty);
+    const ux = tx / tLen, uy = ty / tLen; // unit tangent
+    const px = -uy,       py =  ux;       // unit perpendicular
+    return { mx, my, ux, uy, px, py };
   }
 
   function drawArrow(x1, y1, x2, y2) {
+    const HEAD = 13;   // arrowhead length
+    const WING = 0.38; // half-width ratio relative to HEAD
+
+    const { mx, my, ux, uy, px, py } = arrowGeometry(x1, y1, x2, y2);
+
+    // Stop the path slightly before the tip so the stroke doesn't bleed through
+    const pathEndX = x2 - ux * HEAD * 0.6;
+    const pathEndY = y2 - uy * HEAD * 0.6;
+
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', buildArrowPath(x1, y1, x2, y2));
+    path.setAttribute('d', `M${x1},${y1} Q${mx},${my} ${pathEndX},${pathEndY}`);
     arrowsSvg.appendChild(path);
 
-    // Arrowhead — triangle at the endpoint
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const curvature = Math.min(dist * 0.3, 60);
-    const nx = -dy / dist * curvature;
-    const ny = dx / dist * curvature;
-    const mx = (x1 + x2) / 2 + nx;
-    const my = (y1 + y2) / 2 + ny;
-    // tangent at endpoint of quadratic bezier: derivative at t=1
-    const tx = x2 - mx;
-    const ty = y2 - my;
-    const tLen = Math.sqrt(tx * tx + ty * ty);
-    const ux = tx / tLen;
-    const uy = ty / tLen;
-    const size = 12;
-    const px = -uy, py = ux;
+    // Arrowhead — sharp isoceles triangle pointing at (x2, y2)
     const tipX = x2, tipY = y2;
-    const p1x = tipX - ux * size + px * size * 0.45;
-    const p1y = tipY - uy * size + py * size * 0.45;
-    const p2x = tipX - ux * size - px * size * 0.45;
-    const p2y = tipY - uy * size - py * size * 0.45;
+    const baseX = tipX - ux * HEAD;
+    const baseY = tipY - uy * HEAD;
+    const p1x = baseX + px * HEAD * WING;
+    const p1y = baseY + py * HEAD * WING;
+    const p2x = baseX - px * HEAD * WING;
+    const p2y = baseY - py * HEAD * WING;
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     arrow.setAttribute('points', `${tipX},${tipY} ${p1x},${p1y} ${p2x},${p2y}`);
     arrowsSvg.appendChild(arrow);
@@ -3948,22 +4082,26 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   }
 
   function updateDots() {
-    dotsContainer.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
+    // Each card has its own dot set — only update the active card's dots
+    const card = stepsContainer.children[onboardingStep];
+    if (!card) return;
+    card.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
       dot.classList.toggle('active', i === onboardingStep);
     });
   }
 
   function updateNextButton() {
-    var skipBtn = document.getElementById('onboarding-skip');
-    if (onboardingStep === ONBOARDING_STEPS.length - 1) {
-      nextText.textContent = 'Done';
-      nextIcon.innerHTML = '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
-      if (skipBtn) skipBtn.classList.add('hidden');
-    } else {
-      nextText.textContent = 'Next';
-      nextIcon.innerHTML = '<polyline points="9 6 15 12 9 18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
-      if (skipBtn) skipBtn.classList.remove('hidden');
-    }
+    const card = stepsContainer.children[onboardingStep];
+    if (!card) return;
+    const nextText = card.querySelector('.onboarding-next-text');
+    const nextIcon = card.querySelector('.onboarding-next-icon');
+    const skipBtn  = card.querySelector('.onboarding-skip');
+    const isLast   = onboardingStep === ONBOARDING_STEPS.length - 1;
+    if (nextText) nextText.textContent = isLast ? 'Done' : 'Next';
+    if (nextIcon) nextIcon.innerHTML = isLast
+      ? '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+      : '<polyline points="9 6 15 12 9 18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+    if (skipBtn) skipBtn.classList.toggle('hidden', isLast);
   }
 
   function showStep(index) {
@@ -4016,22 +4154,50 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   }
 
   function showOnboarding() {
-    // Build step cards
     stepsContainer.innerHTML = '';
+
     ONBOARDING_STEPS.forEach((step, i) => {
       const card = document.createElement('div');
       card.className = 'onboarding-step-card';
-      card.textContent = step.text;
+
+      // Text body
+      const body = document.createElement('p');
+      body.className = 'onboarding-step-text';
+      body.textContent = step.text;
+      card.appendChild(body);
+
+      // Footer: dots · skip · next
+      const footer = document.createElement('div');
+      footer.className = 'onboarding-card-footer';
+
+      // Dots (same set in every card, active one updated per step)
+      const dotsWrap = document.createElement('div');
+      dotsWrap.className = 'onboarding-dots';
+      ONBOARDING_STEPS.forEach((_, di) => {
+        const dot = document.createElement('div');
+        dot.className = 'onboarding-dot' + (di === i ? ' active' : '');
+        dotsWrap.appendChild(dot);
+      });
+
+      // Skip button
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'onboarding-skip';
+      skipBtn.innerHTML = 'Skip intro <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      skipBtn.addEventListener('click', closeOnboarding);
+
+      // Next/Done button
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'onboarding-next';
+      nextBtn.innerHTML = '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+      nextBtn.addEventListener('click', nextOnboardingStep);
+
+      footer.appendChild(dotsWrap);
+      footer.appendChild(skipBtn);
+      footer.appendChild(nextBtn);
+      card.appendChild(footer);
+
       if (i !== 0) card.style.display = 'none';
       stepsContainer.appendChild(card);
-    });
-
-    // Build dots
-    dotsContainer.innerHTML = '';
-    ONBOARDING_STEPS.forEach((_, i) => {
-      const dot = document.createElement('div');
-      dot.className = 'onboarding-dot' + (i === 0 ? ' active' : '');
-      dotsContainer.appendChild(dot);
     });
 
     onboardingStep = 0;
@@ -4069,9 +4235,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     };
     setTimeout(waitForReady, 300);
   }
-
-  nextBtn.addEventListener('click', nextOnboardingStep);
-  document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
 
   // Reposition on resize
   let onboardingResizeTimer;
