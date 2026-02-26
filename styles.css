@@ -1982,6 +1982,34 @@ body[data-viewmode="view"] .empty-tile        { display: none !important; }
   inset: 0;
   z-index: 1000;
 }
+.onboarding-header {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  text-align: center;
+  pointer-events: none;
+  background: var(--white);
+  padding: 8px 20px 10px;
+  border-radius: var(--radius);
+}
+.onboarding-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+  font-family: var(--font);
+  letter-spacing: -0.01em;
+}
+.onboarding-subtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.55);
+  font-family: var(--font);
+  font-weight: 400;
+}
 .onboarding-scrim {
   position: absolute;
   inset: 0;

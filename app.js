@@ -2636,8 +2636,8 @@ const resetOnboardingBtn = document.getElementById('reset-onboarding-btn');
 if (resetOnboardingBtn) {
   resetOnboardingBtn.addEventListener('click', () => {
     localStorage.removeItem('trengo_onboarding_done');
-    resetOnboardingBtn.textContent = 'Onboarding reset ✓';
-    setTimeout(() => { resetOnboardingBtn.textContent = 'Reset onboarding'; }, 1500);
+    resetOnboardingBtn.textContent = 'Walkthrough reset ✓';
+    setTimeout(() => { location.reload(); }, 800);
   });
 }
 
@@ -3891,7 +3891,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       const mainLeft = 64;
       const centerX = (mainLeft + pr.left) / 2;
       const cardLeft = centerX - cw / 2;
-      const cardTop = pr.top + 64;
+      const cardTop = pr.top + 140;
       card.style.left = cardLeft + 'px';
       card.style.top = cardTop + 'px';
       // Arrow from card right edge to panel top area
@@ -3901,16 +3901,16 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       const nav = targets[0];
       if (!nav) return;
       const nr = nav.getBoundingClientRect();
-      // Position card below the sub-nav with a gap, centered horizontally
+      // Position card below the sub-nav with a larger gap to clear the header/subtitle
       const mainLeft = 64; // sidebar width
       const mainRight = vw;
       const centerX = (mainLeft + mainRight) / 2;
       const cardLeft = centerX - cw / 2;
-      const cardTop = nr.bottom + 32;
+      const cardTop = nr.bottom + 80;
       card.style.left = cardLeft + 'px';
       card.style.top = cardTop + 'px';
-      // Arrow from card top-center UP to sub-nav (slightly left of center, near top)
-      drawArrow(cardLeft + cw / 2, cardTop - 4, nr.left + nr.width * 0.35, nr.top + 4);
+      // Arrow from card top-center UP to sub-nav bottom edge
+      drawArrow(cardLeft + cw / 2, cardTop - 4, nr.left + nr.width * 0.35, nr.bottom - 4);
 
     } else if (step.placement === 'right-of-cog') {
       const cog = targets[0];
