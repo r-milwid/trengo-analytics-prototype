@@ -3797,7 +3797,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       placement: 'above-subnav'
     },
     {
-      text: 'Use the settings icon to switch roles and views.',
+      text: 'Use the settings icon to preview how this dashboard appears for different roles and use cases. This will most likely be configuration that Trengo or an admin would set up for users.',
       getTargets: () => [document.querySelector('#settings-nav')],
       placement: 'right-of-cog'
     },
