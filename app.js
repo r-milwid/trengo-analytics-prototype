@@ -3368,8 +3368,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     _pendingContextApproval = null;
     clearChatHistory();
     chatMessages.innerHTML = '';
-    addBubble('As you explore, I\'ll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.', 'assistant');
-    setTimeout(() => addBubble('Use the settings icon to switch role or use case.', 'assistant'), 1800);
+    addBubble('I\'m here to help. I\'ll provide context as you explore and capture your feedback. Share questions or thoughts anytime.', 'assistant');
     chatInput.focus();
   });
 
@@ -3767,10 +3766,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       addBubble(msg.content, msg.role === 'user' ? 'user' : 'assistant');
     });
   } else {
-    addBubble('As you explore, I\'ll provide context, explain key decisions, and capture your feedback. Ask questions or share thoughts at any time.', 'assistant');
-    setTimeout(() => {
-      addBubble('Use the settings icon to switch role or use case.', 'assistant');
-    }, 1800);
+    addBubble('I\'m here to help. I\'ll provide context as you explore and capture your feedback. Share questions or thoughts anytime.', 'assistant');
   }
 
   // Nav toast — show "Outside prototype scope." for non-settings nav clicks
