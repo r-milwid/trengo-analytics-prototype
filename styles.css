@@ -662,6 +662,7 @@ body {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 20px;
+  position: relative;
 }
 .widget-card {
   background: var(--white);
@@ -688,30 +689,37 @@ body {
   opacity: 0.55;
 }
 
-/* Drag handle */
+/* Drag handle — inline button next to widget title.
+   Uses margin-right: -30px to collapse space when hidden, avoiding gap issues. */
 .drag-handle {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 16px;
-  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
   cursor: grab;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 2px;
+  color: var(--gray-400);
   opacity: 0;
-  transition: opacity .15s;
-  z-index: 3;
-  pointer-events: auto;
+  margin-right: -30px;
+  transition: opacity .15s, background .15s, color .15s, margin-right .15s;
+  pointer-events: none;
   touch-action: none;
+  padding: 0;
 }
-.widget-card:hover .drag-handle { opacity: .4; }
-.drag-handle span {
-  width: 3px; height: 3px;
-  background: var(--gray-400);
-  border-radius: 50%;
+.widget-card:hover .drag-handle {
+  opacity: 1;
+  margin-right: 0;
+  pointer-events: auto;
 }
+.drag-handle:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+.drag-handle:active { cursor: grabbing; }
 .widget-card.dragging {
   opacity: 0.35;
 }
@@ -719,7 +727,6 @@ body {
   position: fixed;
   z-index: 500;
   pointer-events: none;
-  transform: translate(-50%, -50%);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
   background: var(--white);
@@ -738,9 +745,19 @@ body {
   opacity: 0.9;
 }
 .drag-placeholder {
-  border: 2px dashed var(--gray-300);
   border-radius: var(--radius-lg);
-  background: var(--gray-50);
+  background: var(--gray-200);
+  border: none;
+}
+/* Vertical insert-bar shown while dragging to indicate drop position */
+.drag-insert-bar {
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 510;
+  transform: translateX(-1px);
 }
 
 /* Resize snap indicators */

@@ -389,13 +389,8 @@ function renderWidget(w, section, placement, rows, layout) {
   if (shouldEmphasize(w)) card.classList.add('emphasized');
   if (shouldDeemphasize(w)) card.classList.add('de-emphasized');
 
-  // Drag handle
-  card.innerHTML = `
-    <div class="drag-handle" title="Drag to reorder">
-      <span></span><span></span><span></span><span></span><span></span><span></span>
-    </div>
-    <div class="resize-handle" title="Drag to resize"></div>
-  `;
+  // Resize handle (stays absolute on right edge)
+  card.innerHTML = `<div class="resize-handle" title="Drag to resize"></div>`;
 
   // Header
   const header = document.createElement('div');
@@ -403,7 +398,25 @@ function renderWidget(w, section, placement, rows, layout) {
 
   const titleEl = document.createElement('div');
   titleEl.className = 'widget-title';
-  titleEl.textContent = w.title;
+
+  // Drag handle — inline, left of title text, styled like action buttons
+  const dragHandle = document.createElement('button');
+  dragHandle.className = 'drag-handle';
+  dragHandle.title = 'Drag to reorder';
+  dragHandle.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <circle cx="4.5" cy="3.5" r="1.2" fill="currentColor"/>
+    <circle cx="9.5" cy="3.5" r="1.2" fill="currentColor"/>
+    <circle cx="4.5" cy="7" r="1.2" fill="currentColor"/>
+    <circle cx="9.5" cy="7" r="1.2" fill="currentColor"/>
+    <circle cx="4.5" cy="10.5" r="1.2" fill="currentColor"/>
+    <circle cx="9.5" cy="10.5" r="1.2" fill="currentColor"/>
+  </svg>`;
+  titleEl.appendChild(dragHandle);
+
+  const titleText = document.createElement('span');
+  titleText.className = 'widget-title-text';
+  titleText.textContent = w.title;
+  titleEl.appendChild(titleText);
 
   // Info icon with tooltip (state-aware)
   const tipText = getTooltip(w);
@@ -540,7 +553,6 @@ function renderWidget(w, section, placement, rows, layout) {
     card.appendChild(drill);
   }
 
-  const dragHandle = card.querySelector('.drag-handle');
   dragHandle.addEventListener('pointerdown', (e) => {
     if (document.body.dataset.viewmode === 'view') return;
     startDrag(e, section, w.id);
@@ -1005,6 +1017,62 @@ function findSlotNear(row, span, colGuess) {
   return best;
 }
 
+// Remove the drop insert-bar from the grid
+// Returns the left pixel position (in viewport coords) of a given grid column,
+// properly accounting for column gaps in the CSS grid.
+function colPixelLeft(gridEl, gridRect, colIdx) {
+  // Use getComputedStyle to read the actual column track positions
+  const style = window.getComputedStyle(gridEl);
+  const cols = style.gridTemplateColumns.split(' ');
+  const gap = parseFloat(style.columnGap || style.gap || '0');
+  let left = gridRect.left;
+  for (let i = 0; i < colIdx; i++) {
+    left += parseFloat(cols[i] || '0') + gap;
+  }
+  return left;
+}
+
+function clearInsertBar() {
+  if (dragState.insertBar) { dragState.insertBar.remove(); dragState.insertBar = null; }
+}
+
+// Place an insert-bar at a pixel x position within the grid, at a given row
+function updateInsertBar(gridEl, x, rowTop, rowBottom) {
+  if (!dragState.insertBar) {
+    const bar = document.createElement('div');
+    bar.className = 'drag-insert-bar';
+    gridEl.appendChild(bar);
+    dragState.insertBar = bar;
+  }
+  const gridRect = gridEl.getBoundingClientRect();
+  dragState.insertBar.style.left = `${x - gridRect.left}px`;
+  dragState.insertBar.style.top  = `${rowTop - gridRect.top}px`;
+  dragState.insertBar.style.height = `${rowBottom - rowTop}px`;
+}
+
+// Given a row, find the best insertion col for the dragged widget.
+// If the row was originally full (no real free space), always use displacement
+// so the widget reorders rather than snapping back to its freed cells.
+function findInsertCol(layout, rowIdx, span, colGuess, widgetId) {
+  const originalRow = layout.rows[rowIdx];
+
+  // Was the row full before drag started (no nulls when dragged widget included)?
+  const rowWasFull = originalRow.every(v => v !== null);
+
+  if (!rowWasFull) {
+    // Row has genuine free space — free the dragged widget's cells and find a free slot
+    const row = originalRow.slice();
+    row.forEach((v, i) => { if (v === widgetId) row[i] = null; });
+    const free = findSlotNear(row, span, colGuess);
+    if (free !== -1) return { col: free, displaced: false };
+  }
+
+  // Row is full (or only free space is from the dragged widget itself) —
+  // use displacement: clamp guess to a valid insertion col
+  const col = Math.max(0, Math.min(12 - span, colGuess));
+  return { col, displaced: true };
+}
+
 function startDrag(e, sectionId, widgetId) {
   if (document.body.dataset.viewmode === 'view') return;
   if (dragState.active) return;
@@ -1028,12 +1096,19 @@ function startDrag(e, sectionId, widgetId) {
   dragState.gridEl = grid;
   dragState.targetRow = layout.placements[widgetId].row;
   dragState.targetCol = layout.placements[widgetId].col;
+  dragState.insertBar = null;
+
+  // Record pointer offset from card top-left so ghost tracks top-left corner
+  const cardRect = card.getBoundingClientRect();
+  dragState.pointerOffsetX = e.clientX - cardRect.left;
+  dragState.pointerOffsetY = e.clientY - cardRect.top;
 
   card.classList.add('dragging');
+
+  // Ghost: cloned card, positioned at top-left relative to pointer
   const ghost = card.cloneNode(true);
   ghost.classList.remove('dragging');
   ghost.classList.add('drag-ghost');
-  // Preserve chart visuals in ghost by swapping canvases with images
   const origCanvases = card.querySelectorAll('canvas');
   const ghostCanvases = ghost.querySelectorAll('canvas');
   origCanvases.forEach((c, i) => {
@@ -1042,21 +1117,18 @@ function startDrag(e, sectionId, widgetId) {
     try {
       const img = document.createElement('img');
       img.src = c.toDataURL('image/png');
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.display = 'block';
+      img.style.cssText = 'width:100%;height:100%;display:block;';
       gc.parentNode.replaceChild(img, gc);
-    } catch (_) {
-      // If canvas is tainted or unavailable, keep the empty canvas
-    }
+    } catch (_) {}
   });
-  ghost.style.width = `${card.getBoundingClientRect().width}px`;
-  ghost.style.height = `${card.getBoundingClientRect().height}px`;
+  ghost.style.width  = `${cardRect.width}px`;
+  ghost.style.height = `${cardRect.height}px`;
+  ghost.style.left   = `${cardRect.left}px`;
+  ghost.style.top    = `${cardRect.top}px`;
   document.body.appendChild(ghost);
   dragState.ghost = ghost;
-  ghost.style.left = `${e.clientX}px`;
-  ghost.style.top = `${e.clientY}px`;
 
+  // Placeholder: solid grey shape at current position
   const placeholder = document.createElement('div');
   placeholder.className = 'drag-placeholder';
   placeholder.dataset.row = dragState.targetRow;
@@ -1072,53 +1144,59 @@ function startDrag(e, sectionId, widgetId) {
 function onDragMove(e) {
   if (!dragState.active) return;
   e.preventDefault();
+
+  // Move ghost anchored at top-left (offset from where pointer grabbed)
   if (dragState.ghost) {
-    dragState.ghost.style.left = `${e.clientX}px`;
-    dragState.ghost.style.top = `${e.clientY}px`;
+    dragState.ghost.style.left = `${e.clientX - dragState.pointerOffsetX}px`;
+    dragState.ghost.style.top  = `${e.clientY - dragState.pointerOffsetY}px`;
   }
+
   const sectionId = dragState.sectionId;
-  const layout = state.sectionLayout[sectionId];
+  const layout    = state.sectionLayout[sectionId];
   if (!layout) return;
-  const gridRect = dragState.gridEl.getBoundingClientRect();
-  const rowRects = buildRowRects(sectionId, dragState.gridEl, layout);
+  const gridRect  = dragState.gridEl.getBoundingClientRect();
+  const rowRects  = buildRowRects(sectionId, dragState.gridEl, layout);
+
+  // Determine which row the cursor is in
   let targetRow = null;
   for (let i = 0; i < rowRects.length; i++) {
     const r = rowRects[i];
     if (!r) continue;
-    if (e.clientY >= r.top && e.clientY <= r.bottom) {
-      targetRow = i;
-      break;
-    }
+    if (e.clientY >= r.top && e.clientY <= r.bottom) { targetRow = i; break; }
   }
   if (targetRow === null) {
-    if (rowRects.length === 0 || e.clientY > (rowRects[rowRects.length - 1]?.bottom || gridRect.bottom)) {
-      targetRow = rowRects.length; // new row at end
-    } else {
-      targetRow = 0;
-    }
+    targetRow = e.clientY > (rowRects[rowRects.length - 1]?.bottom ?? gridRect.bottom)
+      ? rowRects.length : 0;
   }
 
+  const colW     = gridRect.width / 12;
+  const colGuess = Math.max(0, Math.min(11, Math.floor((e.clientX - gridRect.left) / colW)));
+
   let targetCol = 0;
+  let targetDisplaced = false;
   if (targetRow < layout.rows.length) {
-    const row = layout.rows[targetRow].slice();
-    // free dragged widget cells if in this row
-    row.forEach((v, idx) => {
-      if (v === dragState.widgetId) row[idx] = null;
-    });
-    const colW = gridRect.width / 12;
-    const colGuess = Math.max(0, Math.min(11, Math.floor((e.clientX - gridRect.left) / colW)));
-    const col = findSlotNear(row, dragState.span, colGuess);
-    if (col === -1) return;
+    const { col, displaced } = findInsertCol(layout, targetRow, dragState.span, colGuess, dragState.widgetId);
     targetCol = col;
+    targetDisplaced = displaced;
+
+    // Show insert-bar at the left edge of where the placeholder would land.
+    // Use colPixelLeft() to account for grid gaps accurately.
+    const r = rowRects[targetRow];
+    if (r) {
+      const barX = colPixelLeft(dragState.gridEl, gridRect, targetCol);
+      updateInsertBar(dragState.gridEl, barX, r.top, r.bottom);
+    }
   } else {
+    clearInsertBar();
     targetCol = 0;
   }
 
   dragState.targetRow = targetRow;
   dragState.targetCol = targetCol;
+  dragState.targetDisplaced = targetDisplaced;
   if (dragState.placeholder) {
     dragState.placeholder.dataset.row = targetRow;
-    dragState.placeholder.style.gridRow = targetRow + 1;
+    dragState.placeholder.style.gridRow    = targetRow + 1;
     dragState.placeholder.style.gridColumn = `${targetCol + 1} / span ${dragState.span}`;
   }
 }
@@ -1130,27 +1208,94 @@ function onDragEnd() {
   const placement = layout && layout.placements[dragState.widgetId];
 
   if (layout && placement) {
+    const widgetId = dragState.widgetId;
+    const span     = dragState.span;
+    let targetRow  = dragState.targetRow;
+    let targetCol  = dragState.targetCol;
+    const displaced = dragState.targetDisplaced;
+
+    // Remove dragged widget from its old row
     const oldRow = layout.rows[placement.row];
     for (let c = placement.col; c < placement.col + placement.span; c++) {
-      if (oldRow[c] === dragState.widgetId) oldRow[c] = null;
+      if (oldRow[c] === widgetId) oldRow[c] = null;
     }
 
-    let targetRow = dragState.targetRow;
-    let targetCol = dragState.targetCol;
     if (targetRow >= layout.rows.length) {
+      // Drop into a new row at the bottom
       const newRow = Array.from({ length: 12 }, () => null);
-      for (let c = targetCol; c < targetCol + dragState.span; c++) newRow[c] = dragState.widgetId;
+      for (let c = targetCol; c < targetCol + span; c++) newRow[c] = widgetId;
       layout.rows.push(newRow);
-      placement.row = layout.rows.length - 1;
-      placement.col = targetCol;
-    } else {
+    } else if (!displaced) {
+      // Free slot — just place it
       const row = layout.rows[targetRow];
-      for (let c = targetCol; c < targetCol + dragState.span; c++) row[c] = dragState.widgetId;
-      placement.row = targetRow;
-      placement.col = targetCol;
+      for (let c = targetCol; c < targetCol + span; c++) row[c] = widgetId;
+    } else {
+      // Row is full — reorder by inserting dragged widget at targetCol,
+      // shifting other widgets around it, with overflow going to new rows.
+      const row = layout.rows[targetRow];
+      const blankRow = () => Array.from({ length: 12 }, () => null);
+
+      // Collect unique widget IDs in left-to-right order, excluding the dragged one
+      const seen = new Set();
+      const others = [];
+      for (let c = 0; c < 12; c++) {
+        const id = row[c];
+        if (id && id !== widgetId && !seen.has(id)) {
+          seen.add(id);
+          others.push({ id, span: layout.placements[id].span });
+        }
+      }
+
+      // Build final ordered list: insert dragged widget so its left edge lands at targetCol.
+      // Walk through others accumulating column widths; insert dragged widget
+      // when the accumulated width reaches or exceeds targetCol.
+      const ordered = [];
+      let colCursor = 0;
+      let inserted = false;
+      for (const w of others) {
+        // Insert dragged widget here if targetCol falls within or before this widget's start
+        if (!inserted && colCursor >= targetCol) {
+          ordered.push({ id: widgetId, span });
+          inserted = true;
+        }
+        ordered.push(w);
+        colCursor += w.span;
+      }
+      if (!inserted) ordered.push({ id: widgetId, span });
+
+      // Repack left-to-right, overflowing to new rows
+      layout.rows[targetRow] = blankRow();
+      let curRow = targetRow;
+      let cursor = 0;
+      for (const { id: wid, span: wspan } of ordered) {
+        if (cursor + wspan > 12) {
+          curRow++;
+          if (curRow >= layout.rows.length) layout.rows.push(blankRow());
+          else layout.rows[curRow] = blankRow();
+          cursor = 0;
+        }
+        for (let c = cursor; c < cursor + wspan; c++) layout.rows[curRow][c] = wid;
+        layout.placements[wid].row = curRow;
+        layout.placements[wid].col = cursor;
+        cursor += wspan;
+      }
     }
+
+    // Re-sync all placements to actual row positions
+    layout.rows = layout.rows.filter(row => row.some(v => v !== null));
+    Object.keys(layout.placements).forEach(id => {
+      const rIdx = layout.rows.findIndex(row => row.includes(id));
+      if (rIdx !== -1) {
+        layout.placements[id].row = rIdx;
+        // Find leftmost col
+        const row = layout.rows[rIdx];
+        const col = row.indexOf(id);
+        if (col !== -1) layout.placements[id].col = col;
+      }
+    });
   }
 
+  clearInsertBar();
   if (dragState.placeholder) dragState.placeholder.remove();
   if (dragState.ghost) dragState.ghost.remove();
   if (dragState.cardEl) dragState.cardEl.classList.remove('dragging');
@@ -1164,6 +1309,7 @@ function onDragEnd() {
   dragState.ghost = null;
   dragState.targetRow = null;
   dragState.targetCol = null;
+  dragState.targetDisplaced = false;
 
   remountSection(sectionId);
   window.removeEventListener('pointermove', onDragMove);
@@ -1619,11 +1765,18 @@ function renderDoughnutChart(container, w) {
             }
           } },
           tooltip: {
-            backgroundColor: '#18181b',
-            titleFont: { family: 'Inter', size: 12 },
+            backgroundColor: '#ffffff',
+            titleColor: '#18181b',
+            bodyColor: '#52525b',
+            borderColor: '#e4e4e7',
+            borderWidth: 1,
+            titleFont: { family: 'Inter', size: 12, weight: '600' },
             bodyFont: { family: 'Inter', size: 12 },
-            padding: 10,
-            cornerRadius: 6,
+            padding: { top: 10, bottom: 10, left: 14, right: 14 },
+            cornerRadius: 10,
+            boxWidth: 8,
+            boxHeight: 8,
+            boxPadding: 4,
             usePointStyle: true,
             callbacks: {
               labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
@@ -1631,6 +1784,11 @@ function renderDoughnutChart(container, w) {
                 const bg = context.chart.data.datasets[0]?.backgroundColor || [];
                 const colour = Array.isArray(bg) ? bg[context.dataIndex] : bg;
                 return { borderColor: colour, backgroundColor: colour, borderWidth: 0 };
+              },
+              label(context) {
+                const label = context.label || '';
+                const value = context.formattedValue;
+                return `${label}    ${value}`;
               }
             }
           }
@@ -1688,11 +1846,18 @@ function chartOptions(w) {
         }
       },
       tooltip: {
-        backgroundColor: '#18181b',
-        titleFont: { family: 'Inter', size: 12 },
+        backgroundColor: '#ffffff',
+        titleColor: '#18181b',
+        bodyColor: '#52525b',
+        borderColor: '#e4e4e7',
+        borderWidth: 1,
+        titleFont: { family: 'Inter', size: 12, weight: '600' },
         bodyFont: { family: 'Inter', size: 12 },
-        padding: 10,
-        cornerRadius: 6,
+        padding: { top: 10, bottom: 10, left: 14, right: 14 },
+        cornerRadius: 10,
+        boxWidth: 8,
+        boxHeight: 8,
+        boxPadding: 4,
         usePointStyle: true,
         callbacks: {
           labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
@@ -1700,8 +1865,15 @@ function chartOptions(w) {
             const ds = context.chart.data.datasets[context.datasetIndex];
             const colour = ds.borderColor ||
               (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[context.dataIndex] : ds.backgroundColor) ||
-              '#fff';
+              '#18181b';
             return { borderColor: colour, backgroundColor: colour, borderWidth: 0 };
+          },
+          label(context) {
+            const ds = context.dataset;
+            const label = ds.label || '';
+            const value = context.formattedValue;
+            // Right-align value with padding spaces approximation
+            return `${label}    ${value}`;
           }
         }
       }
@@ -1709,11 +1881,13 @@ function chartOptions(w) {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#71717a' }
+        border: { display: false },
+        ticks: { font: { family: 'Inter', size: 11 }, color: '#a1a1aa' }
       },
       y: {
-        grid: { color: '#f3f3f4' },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#71717a' },
+        grid: { color: '#f4f4f5', drawTicks: false },
+        border: { display: false, dash: [3, 3] },
+        ticks: { font: { family: 'Inter', size: 11 }, color: '#a1a1aa', padding: 8 },
         beginAtZero: true
       }
     }
@@ -1748,8 +1922,8 @@ function getMockBarData(id) {
       data = {
         labels: hours,
         datasets: [
-          { label: 'Today', data: hours.map(() => rand(2, 75)), backgroundColor: CHART_COLORS.teal, borderRadius: 3 },
-          { label: 'Average', data: hours.map(() => rand(5, 40)), backgroundColor: CHART_COLORS.gray, borderRadius: 3 }
+          { label: 'Today', data: hours.map(() => rand(2, 75)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: 'Average', data: hours.map(() => rand(5, 40)), backgroundColor: CHART_COLORS.gray, borderRadius: 6 }
         ]
       };
       break;
@@ -1757,51 +1931,51 @@ function getMockBarData(id) {
       data = {
         labels: channels,
         datasets: [
-          { label: 'Tickets', data: channels.map(() => rand(200, 1200)), backgroundColor: CHART_COLORS.teal, borderRadius: 3 },
-          { label: 'Contacts', data: channels.map(() => rand(100, 800)), backgroundColor: CHART_COLORS.blue, borderRadius: 3 }
+          { label: 'Tickets', data: channels.map(() => rand(200, 1200)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: 'Contacts', data: channels.map(() => rand(100, 800)), backgroundColor: CHART_COLORS.blue, borderRadius: 6 }
         ]
       };
       break;
     case 'un-intent-clusters':
       data = {
         labels: intents,
-        datasets: [{ label: 'Tickets', data: intents.map(() => rand(100, 900)), backgroundColor: paletteCycle(intents.length), borderRadius: 3 }]
+        datasets: [{ label: 'Tickets', data: intents.map(() => rand(100, 900)), backgroundColor: paletteCycle(intents.length), borderRadius: 6 }]
       };
       break;
     case 'un-escalations-intent':
       data = {
         labels: intents.slice(0, 5),
-        datasets: [{ label: 'Escalations', data: [rand(50,200), rand(40,150), rand(30,120), rand(20,100), rand(10,80)], backgroundColor: paletteCycle(5), borderRadius: 3 }]
+        datasets: [{ label: 'Escalations', data: [rand(50,200), rand(40,150), rand(30,120), rand(20,100), rand(10,80)], backgroundColor: paletteCycle(5), borderRadius: 6 }]
       };
       break;
     case 'im-surveys':
       data = {
         labels: labels7,
-        datasets: [{ label: 'Surveys received', data: labels7.map(() => rand(2, 12)), backgroundColor: CHART_COLORS.periwinkle, borderRadius: 3 }]
+        datasets: [{ label: 'Surveys received', data: labels7.map(() => rand(2, 12)), backgroundColor: CHART_COLORS.periwinkle, borderRadius: 6 }]
       };
       break;
     case 'im-knowledge-gaps':
       data = {
         labels: intents.slice(0, 5),
-        datasets: [{ label: 'Knowledge gaps', data: [rand(10,50), rand(8,40), rand(5,35), rand(3,25), rand(2,15)], backgroundColor: paletteCycle(5), borderRadius: 3 }]
+        datasets: [{ label: 'Knowledge gaps', data: [rand(10,50), rand(8,40), rand(5,35), rand(3,25), rand(2,15)], backgroundColor: paletteCycle(5), borderRadius: 6 }]
       };
       break;
     case 'op-bottlenecks':
       data = {
         labels: ['New', 'Awaiting reply', 'In progress', 'On hold', 'Pending close'],
-        datasets: [{ label: 'Tickets', data: [rand(200,800), rand(300,1000), rand(100,500), rand(50,300), rand(20,100)], backgroundColor: paletteCycle(5), borderRadius: 3 }]
+        datasets: [{ label: 'Tickets', data: [rand(200,800), rand(300,1000), rand(100,500), rand(50,300), rand(20,100)], backgroundColor: paletteCycle(5), borderRadius: 6 }]
       };
       break;
     case 'au-handoff-reasons':
       data = {
         labels: handoffReasons,
-        datasets: [{ label: 'Count', data: handoffReasons.map(() => rand(30, 400)), backgroundColor: [CHART_COLORS.purple, CHART_COLORS.blue, CHART_COLORS.teal, CHART_COLORS.yellow, CHART_COLORS.periwinkle], borderRadius: 3 }]
+        datasets: [{ label: 'Count', data: handoffReasons.map(() => rand(30, 400)), backgroundColor: [CHART_COLORS.purple, CHART_COLORS.blue, CHART_COLORS.teal, CHART_COLORS.yellow, CHART_COLORS.periwinkle], borderRadius: 6 }]
       };
       break;
     default:
       data = {
         labels: labels7,
-        datasets: [{ label: 'Count', data: labels7.map(() => rand(50, 500)), backgroundColor: CHART_COLORS.teal, borderRadius: 3 }]
+        datasets: [{ label: 'Count', data: labels7.map(() => rand(50, 500)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 }]
       };
   }
   state.mockData.charts[id] = data;
@@ -1888,9 +2062,17 @@ function agentAvatar(name) {
 
 function renderTable(container, w) {
   if (w.id === 'op-workload-agent') {
-    if (!state.mockData.tables[w.id]) {
-      const agents = ['Victor Montala', 'Greg Aquino', 'Isabella Escobar', 'Federico Lai', 'Donovan van der Weerd', 'Deborah Pia', 'Rowan Milwid', 'Dmytro Hachok'];
-      state.mockData.tables[w.id] = agents.map(a => ({
+    // Determine which agents to show — filtered to selected team's members if applicable
+    const teamData = state.teamFilter && state.teamFilter !== 'All teams'
+      ? TEAMS_DATA.find(t => t.name === state.teamFilter)
+      : null;
+    const allAgents = ['Victor Montala', 'Greg Aquino', 'Isabella Escobar', 'Federico Lai', 'Donovan van der Weerd', 'Deborah Pia', 'Rowan Milwid', 'Dmytro Hachok'];
+    const agents = teamData ? teamData.members : allAgents;
+
+    // Cache keyed by widget id + team so switching teams generates fresh mock data
+    const cacheKey = w.id + '::' + (state.teamFilter || 'All teams');
+    if (!state.mockData.tables[cacheKey]) {
+      state.mockData.tables[cacheKey] = agents.map(a => ({
         agent: a,
         assigned: rand(20,200),
         firstResponse: `${rand(5,60)}m ${rand(0,59)}s`,
@@ -1900,7 +2082,7 @@ function renderTable(container, w) {
         comments: rand(5,80),
       }));
     }
-    const rows = state.mockData.tables[w.id];
+    const rows = state.mockData.tables[cacheKey];
     let html = `<div style="overflow-x:auto"><table class="widget-table"><thead><tr>
       <th>Agent</th><th>Assigned tickets</th><th>First response time</th><th>Total resolution time</th><th>Closed tickets</th><th>Messages sent</th><th>Internal comments</th>
     </tr></thead><tbody>`;
@@ -2743,7 +2925,7 @@ const filterConfigs = {
     stateKey: 'channelFilter'
   },
   'filter-team': {
-    options: ['All teams', 'Enterprise West', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'],
+    options: ['All teams', 'Sales team', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'],
     stateKey: 'teamFilter'
   }
 };
@@ -2804,16 +2986,17 @@ document.addEventListener('click', () => {
 
 // ── TEAM DISPLAY SETTINGS ──────────────────────────────────────
 const TEAMS_DATA = [
-  { name: 'Enterprise West', members: ['Victor Montala', 'Isabella Escobar', 'Donovan van der Weerd'] },
-  { name: 'SMB Central',     members: ['Greg Aquino', 'Deborah Pia'] },
-  { name: 'Mid-Market',      members: ['Federico Lai', 'Rowan Milwid'] },
-  { name: 'Expansion',       members: ['Dmytro Hachok', 'Victor Montala'] },
-  { name: 'Retention',       members: ['Isabella Escobar', 'Greg Aquino', 'Deborah Pia'] },
-  { name: 'Core Services',   members: ['Rowan Milwid', 'Federico Lai', 'Donovan van der Weerd'] },
+  { name: 'Sales team',    members: ['Tycho', 'Kat', 'Raymond'] },
+  { name: 'SMB Central',   members: ['Greg Aquino', 'Deborah Pia'] },
+  { name: 'Mid-Market',    members: ['Federico Lai', 'Rowan Milwid'] },
+  { name: 'Expansion',     members: ['Dmytro Hachok', 'Victor Montala'] },
+  { name: 'Retention',     members: ['Isabella Escobar', 'Greg Aquino', 'Deborah Pia'] },
+  { name: 'Core Services', members: ['Rowan Milwid', 'Federico Lai', 'Donovan van der Weerd'] },
 ];
 
 // Persisted usecase assignments: { teamName: 'convert' | 'resolve' | null }
 if (!state.teamUsecases) state.teamUsecases = {};
+if (!state.teamUsecases['Sales team']) state.teamUsecases['Sales team'] = 'convert';
 
 function applyTeamSettingsFlag() {
   const btn = document.getElementById('team-display-settings-btn');
@@ -3261,7 +3444,7 @@ NAVIGATION AND LAYOUT
 FILTERS
 - Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
 - Channel filter: All channels (default), Email, WhatsApp, Live chat, Phone, Instagram, Facebook
-- Team filter: All teams (default), Enterprise West, SMB Central, Mid-Market, Expansion, Retention, Core Services
+- Team filter: All teams (default), Sales team, SMB Central, Mid-Market, Expansion, Retention, Core Services
 - A Label filter chip is visible but not functional.
 - Changing filters re-renders sections. All data in the prototype is randomly generated mock data, so filter changes produce new random values.
 
