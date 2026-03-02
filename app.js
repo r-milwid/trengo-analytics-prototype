@@ -23,7 +23,8 @@ const state = {
   charts: {},
   mockData: { kpi: {}, lists: {}, tables: {}, charts: {} },
   opportunityStates: {}, // id -> 'dismissed' | 'confirmed'
-  chartViewMode: {}      // widgetId -> 'chart' | 'numbers'
+  chartViewMode: {},     // widgetId -> 'chart' | 'numbers'
+  barFilter: { widgetId: null, sectionId: null, selectedIndices: new Set() }
 };
 
 const dragState = {
@@ -136,6 +137,18 @@ const CHART_COLORS = {
 //   the KPI sub-label depending on role.
 // `tooltipByState` — optional object keyed same as `states` to swap tooltip text.
 
+function getSectionForWidget(widgetId) {
+  for (const [sid, ws] of Object.entries(WIDGETS)) {
+    if (ws.some(w => w.id === widgetId)) return sid;
+  }
+  return null;
+}
+function hexToRgba(hex, alpha) {
+  if (!hex || !hex.startsWith('#')) return hex;
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 const WIDGETS = {
   // ─── OVERVIEW ────────────────────
   overview: [
@@ -171,7 +184,7 @@ const WIDGETS = {
       tooltip: 'Percentage of AI-handled tickets escalated to a human agent. Rising rates suggest knowledge or confidence gaps in AI.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
     },
-    { id: 'ov-intent-trends', title: 'Intent trend highlights', vis: 'default', type: 'list',
+    { id: 'ov-intent-trends', title: 'Intent trend highlights', vis: 'default', type: 'list', halfWidth: true,
       tooltip: 'Top rising and declining customer intents. Helps you anticipate demand shifts before they become critical.',
       drill: { label: 'See why \u2192', target: 'understand' },
       states: { support_agent: 'hide', sales_supervisor: 'emphasize', sales_agent: 'hide' }
@@ -181,7 +194,7 @@ const WIDGETS = {
       drill: { label: 'Improve this \u2192', target: 'improve' },
       states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
-    { id: 'ov-exceptions', title: 'Exceptions requiring attention', vis: 'hidden', type: 'list',
+    { id: 'ov-exceptions', title: 'Exceptions requiring attention', vis: 'hidden', type: 'list', halfWidth: true,
       tooltip: 'System-detected anomalies or risks that may need immediate attention.',
       drill: { label: 'Check automation \u2192', target: 'automate' },
       states: { support_agent: 'hide', sales_agent: 'hide' }
@@ -255,10 +268,14 @@ const WIDGETS = {
       scopeLabel: { supervisor: '87% of tickets within SLA', agent: '91% of your tickets within SLA' },
       states: { sales_supervisor: 'hide', sales_agent: 'hide' }
     },
-    { id: 'op-bottlenecks', title: 'Bottlenecks by status or stage', vis: 'always', type: 'bar-chart',
+    { id: 'op-bottlenecks', title: 'Ticket counts per status or stage', vis: 'always', type: 'bar-chart',
       tooltip: 'Where tickets are getting stuck in your workflow.',
       states: { support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' },
       tooltipByState: { sales_supervisor: 'Where contacts are getting stuck in your pipeline stages.' }
+    },
+    { id: 'op-channel-perf', title: 'Performance by channel', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Key metrics broken down by channel. Click a row to filter the entire view by that channel.',
+      states: { support_agent: 'hide', sales_agent: 'hide' }
     },
     { id: 'op-capacity-demand', title: 'Capacity vs demand', vis: 'hidden', type: 'line-chart', halfWidth: true,
       tooltip: 'Volume of incoming work vs available agent capacity. Gaps indicate understaffing.',
@@ -344,6 +361,98 @@ const WIDGETS = {
     { id: 'au-safety', title: 'Safety and guardrail violations', vis: 'hidden', type: 'list',
       tooltip: 'Intentional stops triggered by safety guardrails in automation.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
+    },
+  ],
+
+  // ─── VOICE ───────────────────────────────────────────────────
+  voice: [
+    // Group A — Call Volume (always-visible row)
+    { id: 'vc-total-calls', title: 'Total calls', vis: 'always', type: 'kpi',
+      tooltip: 'Total calls handled across all voice channels in the selected period. Includes inbound and outbound.',
+      scopeLabel: { supervisor: 'Inbound + outbound', agent: 'Your total calls' },
+      states: { support_supervisor: 'emphasize', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
+    },
+    { id: 'vc-missed-calls', title: 'Missed calls', vis: 'always', type: 'kpi',
+      tooltip: 'Total calls that rang without being answered. A rising trend signals understaffing or poor routing.',
+      scopeLabel: { supervisor: 'Calls not answered', agent: 'Your missed calls' },
+      states: { support_supervisor: 'emphasize', support_agent: 'show', sales_supervisor: 'emphasize', sales_agent: 'show' }
+    },
+    { id: 'vc-time-to-answer', title: 'Time to answer', vis: 'always', type: 'kpi',
+      tooltip: 'Average time from a call arriving to an agent answering. Directly impacts caller experience and SLA compliance.',
+      scopeLabel: { supervisor: 'Avg — all agents', agent: 'Your average' },
+      states: { support_supervisor: 'emphasize', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
+    },
+    { id: 'vc-call-duration-kpis', title: 'Call duration', vis: 'always', type: 'kpi-group',
+      tooltip: 'Summary of call duration across the period. Average informs staffing; longest flags potential problem calls.',
+      states: { support_supervisor: 'show', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
+    },
+    { id: 'vc-inbound-outbound', title: 'Inbound vs outbound calls', vis: 'always', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Daily split of inbound calls (connected vs missed) and outbound calls (connected vs not connected). Missed spikes indicate staffing gaps.',
+      states: { support_supervisor: 'show', support_agent: 'deemphasize', sales_supervisor: 'show', sales_agent: 'deemphasize' }
+    },
+    { id: 'vc-calls-by-hour', title: 'Calls by hour of day', vis: 'default', type: 'bar-chart', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Hourly distribution of call volume — today vs 30-day average. Use this to plan staffing and identify peak demand windows.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-calls-by-team', title: 'Calls by team', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Inbound and outbound call volume distributed by team. Helps identify which teams handle the most voice traffic.',
+      hideWhenTeamFiltered: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+
+    // Group B — Wait Times
+    { id: 'vc-avg-wait-by-team', title: 'Average wait time by team', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Average caller wait time per team before an agent answers. Helps identify which teams need more capacity.',
+      hideWhenTeamFiltered: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-longest-wait', title: 'Longest wait time', vis: 'default', type: 'kpi',
+      tooltip: 'The single longest wait time recorded in the selected period. Outliers here indicate routing or capacity failures.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+
+    // Group C — Time in Calls
+    { id: 'vc-duration-by-team', title: 'Call duration by team', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Average call duration per team for inbound and outbound. Long durations may mean complex queries or insufficient agent knowledge.',
+      hideWhenTeamFiltered: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-duration-inbound-outbound', title: 'Duration: inbound vs outbound', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Daily comparison of average call duration for inbound and outbound calls.',
+      states: { support_supervisor: 'show', support_agent: 'deemphasize', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-ivr-queue-time', title: 'Time in IVR / queue', vis: 'default', type: 'kpi',
+      tooltip: 'Average time callers spend navigating IVR menus or waiting in queues before reaching an agent.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+
+    // Group D — Additional metrics
+    { id: 'vc-abandonment-trend', title: 'Call abandonment trend', vis: 'default', type: 'line-chart', halfWidth: true,
+      tooltip: 'Percentage of callers who hung up before being answered, plotted against total call volume. Rising abandon rate signals capacity shortfall.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-fcr-rate', title: 'First call resolution', vis: 'default', type: 'kpi',
+      tooltip: 'Percentage of calls resolved in a single call without a callback or follow-up ticket. The voice equivalent of CSAT.',
+      states: { support_supervisor: 'emphasize', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-callbacks-requested', title: 'Callback requests', vis: 'default', type: 'kpi',
+      tooltip: 'Callers who opted into a callback instead of waiting on hold. High numbers signal demand vs capacity mismatch.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-call-ticket-rate', title: 'Call-to-ticket rate', vis: 'default', type: 'kpi',
+      tooltip: 'Percentage of calls that result in a ticket being created afterward. High rates may mean agents are not fully resolving on the call.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
+    },
+
+    // Group E — Meta / Channel Configuration
+    { id: 'vc-channel-performance', title: 'Voice channel performance', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Per-channel summary of key voice metrics. Compare channel performance and identify underperforming channels.',
+      hideWhenChannelFiltered: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'vc-agent-online-status', title: 'Agent online status', vis: 'default', type: 'list',
+      tooltip: 'Current online status of agents across voice channels. Real-time availability view for supervisors.',
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
     },
   ],
 };
@@ -600,6 +709,14 @@ function getStateOverride(w) {
 }
 
 function getEffectiveVisibility(w) {
+  // Hide "by team" charts when a specific team is selected — they become redundant
+  if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') {
+    return 'hidden';
+  }
+  // Hide "by channel" charts when a specific channel is selected — they become redundant
+  if (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') {
+    return 'hidden';
+  }
   const override = getStateOverride(w);
   if (override === 'hide') return 'hidden';
   if (override === 'show' || override === 'emphasize' || override === 'deemphasize') {
@@ -847,9 +964,14 @@ function ensureLayout(sectionId, widgets) {
   }
 
   // Remove hidden widgets from layout but keep empty slots
+  let removedFilterReactive = false;
   Object.keys(layout.placements).forEach(id => {
     const w = getWidgetById(sectionId, id);
     if (!w || !isWidgetRenderable(w)) {
+      // Track if a filter-reactive widget was removed — those should repack rather than leave holes
+      if (w && (w.hideWhenTeamFiltered || w.hideWhenChannelFiltered)) {
+        removedFilterReactive = true;
+      }
       const placement = layout.placements[id];
       if (placement) {
         for (let c = placement.col; c < placement.col + placement.span; c++) {
@@ -861,6 +983,11 @@ function ensureLayout(sectionId, widgets) {
       delete layout.placements[id];
     }
   });
+  // Filter-reactive removals: recompute from scratch so remaining widgets fill the freed space
+  if (removedFilterReactive) {
+    delete state.sectionLayout[sectionId];
+    return computeLayout(sectionId, widgets);
+  }
 
   // Normalize row length to 12 columns
   layout.rows.forEach((row, idx) => {
@@ -1559,6 +1686,14 @@ function renderKPI(container, w) {
   if (w.scopeLabel && w.scopeLabel[state.role]) {
     subText = w.scopeLabel[state.role];
   }
+  const extrasHtml = (data.extras && data.extras.length)
+    ? `<div class="kpi-extras">${data.extras.map(e =>
+        `<div class="kpi-extra-row">
+          <span class="kpi-extra-label">${e.label}</span>
+          <span class="kpi-extra-value">${e.value}</span>
+        </div>`
+      ).join('')}</div>`
+    : '';
   container.innerHTML = `
     <div class="kpi-value">${data.value}</div>
     <div class="kpi-sub">${subText}</div>
@@ -1566,10 +1701,33 @@ function renderKPI(container, w) {
       ${data.trend.dir === 'up' ? '\u2191' : '\u2193'} ${data.trend.val}%
       <span style="color:var(--gray-400);margin-left:4px">${getPrevPeriodLabel()}</span>
     </div>
+    ${extrasHtml}
   `;
 }
 
 function renderKPIGroup(container, w) {
+  if (w.id === 'vc-call-duration-kpis') {
+    const avg = `${rand(2,6)}m ${rand(0,59)}s`;
+    const longest = `${rand(15,35)}m ${rand(0,59)}s`;
+    const shortest = `0m ${rand(10,59)}s`;
+    container.innerHTML = `
+      <div style="display:flex;gap:24px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Average</div>
+          <div style="font-size:22px;font-weight:700;color:var(--accent-dark)">${avg}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Longest</div>
+          <div style="font-size:22px;font-weight:700;color:var(--yellow)">${longest}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Shortest</div>
+          <div style="font-size:22px;font-weight:700;color:var(--gray-400)">${shortest}</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
   container.innerHTML = `
     <div style="display:flex;gap:24px;flex-wrap:wrap;">
       <div>
@@ -1595,7 +1753,12 @@ function getMockKPIData(id) {
     'ov-assigned-tickets': { value: '1,183', sub: 'Currently assigned', trend: pickTrend() },
     'ov-first-response':   { value: '27m 35s', sub: 'Median', trend: pickTrend() },
     'ov-resolution-time':  { value: '25h 35m', sub: 'Median', trend: pickTrend() },
-    'ov-escalation-rate':  { value: '8.7%', sub: 'AI \u2192 human handoff', trend: pickTrend() },
+    'ov-escalation-rate':  { value: '8.7%', sub: 'AI \u2192 human handoff', trend: pickTrend(),
+      extras: [
+        { label: 'Avg time before escalation', value: '4m 12s' },
+        { label: 'Avg AI replies before escalation', value: '3.2' },
+      ]
+    },
     'ov-knowledge-gaps':   { value: '42', sub: 'Unresolved or fallback cases', trend: { val: 12, dir: 'up' } },
     'op-first-response':   { value: '27m 35s', sub: 'Median first response', trend: pickTrend() },
     'op-resolution-time':  { value: '25h 35m', sub: 'Median resolution', trend: pickTrend() },
@@ -1606,10 +1769,29 @@ function getMockKPIData(id) {
     'im-surveys':          { value: '33', sub: 'Total surveys received', trend: pickTrend() },
     'un-unknown-intents':  { value: '127', sub: 'Unclassified tickets', trend: { val: 8, dir: 'up' } },
     'au-ai-tickets':       { value: '10,419', sub: 'AI-handled tickets', trend: { val: 18.7, dir: 'up' } },
-    'au-resolution-rate':  { value: '30.1%', sub: '4,159 tickets resolved', trend: { val: 8.7, dir: 'up' } },
-    'au-assistance-rate':  { value: '35.9%', sub: '4,964 tickets assisted', trend: { val: 3.8, dir: 'down' } },
+    'au-resolution-rate':  { value: '30.1%', sub: '4,159 tickets resolved', trend: { val: 8.7, dir: 'up' },
+      extras: [
+        { label: 'Avg time to resolution', value: '2m 48s' },
+        { label: 'Avg AI replies to resolve', value: '4.1' },
+      ]
+    },
+    'au-assistance-rate':  { value: '35.9%', sub: '4,964 tickets assisted', trend: { val: 3.8, dir: 'down' },
+      extras: [
+        { label: 'Avg time before handoff', value: '3m 22s' },
+        { label: 'Avg AI replies before handoff', value: '2.8' },
+      ]
+    },
     'au-open-ticket-rate': { value: '48', sub: 'No response yet', trend: { val: 5, dir: 'down' } },
     'au-journeys-escalations': { value: '312', sub: 'Escalated from journeys', trend: pickTrend() },
+    'vc-total-calls':          { value: '1,847', sub: 'Inbound + outbound', trend: pickTrend() },
+    'vc-missed-calls':         { value: '143', sub: 'Calls not answered', trend: { val: 12, dir: 'up' } },
+    'vc-time-to-answer':       { value: '32s', sub: 'Avg — all agents', trend: pickTrend() },
+    'vc-longest-wait':         { value: '8m 47s', sub: 'Single longest this period', trend: pickTrend() },
+    'vc-ivr-queue-time':       { value: '1m 48s', sub: 'Average per call', trend: pickTrend() },
+    'vc-channel-count':        { value: '6', sub: 'Active voice channels', trend: { val: 0, dir: 'up' } },
+    'vc-fcr-rate':             { value: '67%', sub: 'First call resolution', trend: { val: 3, dir: 'up' } },
+    'vc-callbacks-requested':  { value: '89', sub: 'Callback requests this period', trend: pickTrend() },
+    'vc-call-ticket-rate':     { value: '22%', sub: 'Calls resulting in a ticket', trend: pickTrend() },
   };
   const value = map[id] || { value: rand(100,9999).toLocaleString(), sub: '', trend: pickTrend() };
   state.mockData.kpi[id] = value;
@@ -1905,6 +2087,37 @@ function chartOptions(w) {
       title: { display: true, text: 'Surveys', font: { family: 'Inter', size: 11 } }
     };
   }
+  // Dual y-axis for call abandonment trend
+  if (w.id === 'vc-abandonment-trend') {
+    opts.scales.y.title = { display: true, text: 'Abandon %', font: { family: 'Inter', size: 11 } };
+    opts.scales.y1 = {
+      type: 'linear',
+      display: true,
+      position: 'right',
+      grid: { drawOnChartArea: false },
+      ticks: { font: { family: 'Inter', size: 11 }, color: '#71717a' },
+      beginAtZero: true,
+      title: { display: true, text: 'Calls', font: { family: 'Inter', size: 11 } }
+    };
+  }
+  // In-graph bar filtering
+  if (w.type === 'bar-chart') {
+    opts.onClick = (event, elements) => {
+      if (!elements.length) return;
+      const index = elements[0].index;
+      const bf = state.barFilter;
+      if (bf.widgetId && bf.widgetId !== w.id) clearBarFilter();
+      if (bf.selectedIndices.has(index)) bf.selectedIndices.delete(index);
+      else bf.selectedIndices.add(index);
+      if (bf.selectedIndices.size === 0) {
+        clearBarFilter();
+      } else {
+        bf.widgetId = w.id;
+        bf.sectionId = getSectionForWidget(w.id);
+        applyBarFilter(w.id);
+      }
+    };
+  }
   return opts;
 }
 
@@ -1972,6 +2185,75 @@ function getMockBarData(id) {
         datasets: [{ label: 'Count', data: handoffReasons.map(() => rand(30, 400)), backgroundColor: [CHART_COLORS.purple, CHART_COLORS.blue, CHART_COLORS.teal, CHART_COLORS.yellow, CHART_COLORS.periwinkle], borderRadius: 6 }]
       };
       break;
+    case 'vc-inbound-outbound':
+      data = {
+        labels: labels7,
+        datasets: [
+          { label: 'Inbound connected', data: labels7.map(() => rand(80, 250)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: 'Inbound missed', data: labels7.map(() => rand(5, 40)), backgroundColor: CHART_COLORS.yellow, borderRadius: 6 },
+          { label: 'Outbound connected', data: labels7.map(() => rand(40, 150)), backgroundColor: CHART_COLORS.blue, borderRadius: 6 },
+          { label: 'Outbound failed', data: labels7.map(() => rand(3, 20)), backgroundColor: CHART_COLORS.periwinkle, borderRadius: 6 },
+        ]
+      };
+      break;
+    case 'vc-calls-by-hour': {
+      const hrs = hours24();
+      data = {
+        labels: hrs,
+        datasets: [
+          { label: 'Today', data: hrs.map(() => rand(0, 60)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: '30-day avg', data: hrs.map(() => rand(5, 35)), backgroundColor: CHART_COLORS.gray, borderRadius: 6 },
+        ]
+      };
+      break;
+    }
+    case 'vc-calls-by-team': {
+      const teamLabels = ['Sales team', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'];
+      data = {
+        labels: teamLabels,
+        datasets: [
+          { label: 'Inbound', data: teamLabels.map(() => rand(50, 300)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: 'Outbound', data: teamLabels.map(() => rand(20, 150)), backgroundColor: CHART_COLORS.blue, borderRadius: 6 },
+        ]
+      };
+      break;
+    }
+    case 'vc-avg-wait-by-team': {
+      const waitTeams = ['Sales team', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'];
+      data = {
+        labels: waitTeams,
+        datasets: [{ label: 'Avg wait (s)', data: waitTeams.map(() => rand(15, 180)), backgroundColor: paletteCycle(6), borderRadius: 6 }]
+      };
+      break;
+    }
+    case 'vc-duration-by-team': {
+      const durTeams = ['Sales team', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'];
+      data = {
+        labels: durTeams,
+        datasets: [
+          { label: 'Inbound avg (s)', data: durTeams.map(() => rand(60, 480)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: 'Outbound avg (s)', data: durTeams.map(() => rand(45, 360)), backgroundColor: CHART_COLORS.blue, borderRadius: 6 },
+        ]
+      };
+      break;
+    }
+    case 'vc-duration-inbound-outbound':
+      data = {
+        labels: labels7,
+        datasets: [
+          { label: 'Inbound avg (s)', data: labels7.map(() => rand(120, 480)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
+          { label: 'Outbound avg (s)', data: labels7.map(() => rand(90, 360)), backgroundColor: CHART_COLORS.blue, borderRadius: 6 },
+        ]
+      };
+      break;
+    case 'vc-agents-per-channel': {
+      const vcChannels = ['Support EN', 'Support NL', 'Sales', 'Billing', 'Onboarding', 'Tier-2'];
+      data = {
+        labels: vcChannels,
+        datasets: [{ label: 'Agents', data: vcChannels.map(() => rand(2, 15)), backgroundColor: paletteCycle(6), borderRadius: 6 }]
+      };
+      break;
+    }
     default:
       data = {
         labels: labels7,
@@ -2031,6 +2313,15 @@ function getMockLineData(id) {
         datasets: [
           { label: 'Score', data: [92, 80, 95, 88, 85, 78, 90], borderColor: CHART_COLORS.navy, tension: .3, pointRadius: 3, yAxisID: 'y' },
           { label: 'Surveys', data: [5, 8, 3, 4, 2, 6, 10], borderColor: CHART_COLORS.periwinkle, type: 'bar', backgroundColor: 'rgba(178,189,223,.45)', yAxisID: 'y1' },
+        ]
+      };
+      break;
+    case 'vc-abandonment-trend':
+      data = {
+        labels,
+        datasets: [
+          { label: 'Abandonment rate %', data: labels.map(() => randF(3, 18)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 3, yAxisID: 'y' },
+          { label: 'Total calls', data: labels.map(() => rand(150, 350)), borderColor: CHART_COLORS.periwinkle, type: 'bar', backgroundColor: 'rgba(183,194,230,.4)', yAxisID: 'y1' },
         ]
       };
       break;
@@ -2099,6 +2390,85 @@ function renderTable(container, w) {
     });
     html += '</tbody></table></div>';
     container.innerHTML = html;
+  } else if (w.id === 'vc-channel-performance') {
+    const vcChannels = ['Support EN', 'Support NL', 'Sales', 'Billing', 'Onboarding', 'Tier-2'];
+    const cacheKey = w.id + '::' + (state.teamFilter || 'All teams');
+    if (!state.mockData.tables[cacheKey]) {
+      state.mockData.tables[cacheKey] = vcChannels.map(ch => ({
+        channel: ch,
+        totalCalls: rand(80, 500),
+        missedCalls: rand(3, 40),
+        avgWait: `${rand(10, 120)}s`,
+        avgDuration: `${rand(1, 8)}m ${rand(0, 59)}s`,
+        answerRate: `${rand(75, 99)}%`,
+      }));
+    }
+    const rows = state.mockData.tables[cacheKey];
+    let html = `<div style="overflow-x:auto"><table class="widget-table"><thead><tr>
+      <th>Channel</th><th>Total calls</th><th>Missed calls</th><th>Avg wait</th><th>Avg duration</th><th>Answer rate</th>
+    </tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr>
+        <td style="font-weight:500">${r.channel}</td>
+        <td>${r.totalCalls}</td>
+        <td>${r.missedCalls}</td>
+        <td>${r.avgWait}</td>
+        <td>${r.avgDuration}</td>
+        <td>${r.answerRate}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } else if (w.id === 'op-channel-perf') {
+    const channels = ['Email', 'WhatsApp', 'Live chat', 'Phone', 'Instagram', 'Facebook'];
+    const cacheKey = w.id + '::cache';
+    if (!state.mockData.tables[cacheKey]) {
+      state.mockData.tables[cacheKey] = channels.map(ch => ({
+        channel: ch,
+        resolutionTime: `${rand(1,24)}h ${rand(0,59)}m`,
+        firstResponse: `${rand(1,60)}m ${rand(0,59)}s`,
+        slaCompliance: rand(70, 99) + '%',
+        closedTickets: rand(50, 800),
+        openTickets: rand(20, 300),
+      }));
+    }
+    const rows = state.mockData.tables[cacheKey];
+    let html = `<div style="overflow-x:auto"><table class="widget-table"><thead><tr>
+      <th>Channel</th>
+      <th>Resolution time</th>
+      <th>First response time</th>
+      <th>SLA compliance</th>
+      <th>Closed tickets</th>
+      <th>Open tickets</th>
+    </tr></thead><tbody>`;
+    rows.forEach(r => {
+      const isSelected = state.channelFilter === r.channel;
+      const slaNum = parseInt(r.slaCompliance);
+      const slaCls = slaNum >= 90 ? 'sla-good' : slaNum >= 80 ? 'sla-warn' : 'sla-bad';
+      html += `<tr class="channel-row${isSelected ? ' channel-row-selected' : ''}" data-channel="${r.channel}">
+        <td><span class="channel-pill">${getChannelIconHTML(r.channel)}<span>${r.channel}</span></span></td>
+        <td>${r.resolutionTime}</td>
+        <td>${r.firstResponse}</td>
+        <td><span class="sla-value ${slaCls}">${r.slaCompliance}</span></td>
+        <td>${r.closedTickets.toLocaleString()}</td>
+        <td>${r.openTickets.toLocaleString()}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+
+    // Wire row click → channel filter (toggle: click selected row to deselect)
+    container.querySelectorAll('.channel-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const ch = row.dataset.channel;
+        const newVal = state.channelFilter === ch ? 'All channels' : ch;
+        state.channelFilter = newVal;
+        const chip = document.getElementById('filter-channel');
+        if (chip) chip.querySelector('span').textContent = newVal;
+        [...state.loadedSections].forEach(s => remountSection(s));
+        window.sendEvent('Channel filter — "' + newVal + '"');
+      });
+    });
   }
 }
 
@@ -2165,6 +2535,16 @@ function getMockListItems(id) {
         { label: 'PII detection triggered', value: '7 stops', trend: -2 },
         { label: 'Confidence too low', value: '23 stops', trend: 8 },
         { label: 'Harmful content filter', value: '2 stops', trend: -1 },
+      ];
+      break;
+    case 'vc-agent-online-status':
+      items = [
+        { label: 'Victor Montala', value: 'On a call', trend: 0 },
+        { label: 'Greg Aquino', value: 'Online', trend: 0 },
+        { label: 'Isabella Escobar', value: 'Away', trend: 0 },
+        { label: 'Federico Lai', value: 'Online', trend: 0 },
+        { label: 'Donovan van der Weerd', value: 'Offline', trend: 0 },
+        { label: 'Deborah Pia', value: 'On a call', trend: 0 },
       ];
       break;
     default:
@@ -2365,6 +2745,9 @@ function mountSection(sectionId) {
   const hiddenCount = allWidgets.filter(w => {
     if (getStateOverride(w) === 'hide') return false; // not available in this role/lens
     if (w.vis === 'always') return false; // always visible, can't be toggled
+    // Filter-reactive widgets are not user-togglable — don't count them as "available"
+    if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return false;
+    if (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') return false;
     const isVisible = !state.hiddenWidgets.has(w.id) &&
       (getEffectiveVisibility(w) !== 'hidden' || state.addedWidgets.has(w.id));
     return !isVisible;
@@ -2404,6 +2787,8 @@ function mountSection(sectionId) {
 }
 
 function remountSection(sectionId) {
+  // Clear any active bar filter for this section before destroying charts
+  if (state.barFilter && state.barFilter.sectionId === sectionId) clearBarFilter();
   state.loadedSections.delete(sectionId);
   // Destroy charts for this section
   const widgets = WIDGETS[sectionId] || [];
@@ -2415,6 +2800,90 @@ function remountSection(sectionId) {
   });
   mountSection(sectionId);
 }
+
+// ── BAR FILTER ─────────────────────────────────────────────────
+function applyBarFilter(widgetId) {
+  const chart = state.charts[widgetId];
+  if (!chart) return;
+  const bf = state.barFilter;
+  const totalBars = chart.data.labels.length;
+
+  // Dim non-selected bars across all datasets
+  chart.data.datasets.forEach(dataset => {
+    const base = Array.isArray(dataset.backgroundColor)
+      ? dataset.backgroundColor.slice()
+      : Array(totalBars).fill(dataset.backgroundColor);
+    dataset.backgroundColor = base.map((color, i) =>
+      bf.selectedIndices.has(i) ? color : hexToRgba(color, 0.2)
+    );
+  });
+  chart.update('none');
+
+  // Badge on widget card
+  const card = document.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+  if (card) {
+    let badge = card.querySelector('.bar-filter-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'bar-filter-badge';
+      const header = card.querySelector('.widget-header');
+      if (header) header.after(badge);
+    }
+    badge.innerHTML = `Showing ${bf.selectedIndices.size} of ${totalBars} <button class="bar-filter-clear-btn" onclick="clearBarFilter()">×</button>`;
+  }
+
+  // Show "Filtered" badge on KPI cards in this section
+  showKPIFilteredBadge(bf.sectionId);
+}
+
+function clearBarFilter() {
+  const bf = state.barFilter;
+  if (!bf.widgetId) return;
+
+  // Restore original bar colours from cached data
+  const chart = state.charts[bf.widgetId];
+  if (chart) {
+    const cached = state.mockData.charts[bf.widgetId];
+    if (cached) {
+      cached.datasets.forEach((ds, i) => {
+        if (chart.data.datasets[i]) chart.data.datasets[i].backgroundColor = ds.backgroundColor;
+      });
+    }
+    chart.update('none');
+  }
+
+  // Remove chart badge
+  const badge = document.querySelector(`.widget-card[data-widget-id="${bf.widgetId}"] .bar-filter-badge`);
+  if (badge) badge.remove();
+
+  // Remove KPI badges
+  hideKPIFilteredBadge(bf.sectionId);
+
+  bf.widgetId = null;
+  bf.sectionId = null;
+  bf.selectedIndices.clear();
+}
+
+function showKPIFilteredBadge(sectionId) {
+  if (!sectionId) return;
+  document.querySelectorAll(`.section-content[data-section="${sectionId}"] .widget-card`).forEach(card => {
+    if (card.querySelector('.kpi-value') && !card.querySelector('.kpi-filter-badge')) {
+      const badge = document.createElement('span');
+      badge.className = 'kpi-filter-badge';
+      badge.textContent = 'Filtered';
+      const val = card.querySelector('.kpi-value');
+      if (val) val.after(badge);
+    }
+  });
+}
+
+function hideKPIFilteredBadge(sectionId) {
+  if (!sectionId) return;
+  document.querySelectorAll(`.section-content[data-section="${sectionId}"] .kpi-filter-badge`)
+    .forEach(el => el.remove());
+}
+
+window.clearBarFilter = clearBarFilter;
 
 // ── HIDE / ADD WIDGETS ─────────────────────────────────────────
 function hideWidget(id, section) {
@@ -2442,8 +2911,13 @@ window.openWidgetDrawer = function(sectionId) {
       const effVis = getEffectiveVisibility(w);
       const isVisible = !state.hiddenWidgets.has(w.id) && (effVis !== 'hidden' || state.addedWidgets.has(w.id));
       const isStateHidden = getStateOverride(w) === 'hide';
-      const canToggle = w.vis !== 'always' && !isStateHidden;
-      const statusText = isStateHidden ? 'Not available in this view' : (w.vis === 'always' ? 'Always visible' : isVisible ? 'Visible' : 'Hidden');
+      const isFilterHidden = (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
+                             (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels');
+      const canToggle = w.vis !== 'always' && !isStateHidden && !isFilterHidden;
+      const statusText = isFilterHidden ? 'Not available with current filter' :
+                         isStateHidden  ? 'Not available in this view' :
+                         w.vis === 'always' ? 'Always visible' :
+                         isVisible ? 'Visible' : 'Hidden';
       const typeIcon = {
         'kpi':            `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="14" height="8" rx="1.5"/><line x1="5" y1="5" x2="5" y2="3"/><line x1="8" y1="5" x2="8" y2="2"/><line x1="11" y1="5" x2="11" y2="3"/></svg>`,
         'kpi-group':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="4" width="4" height="9" rx="1"/><rect x="11" y="2" width="4" height="11" rx="1"/></svg>`,
@@ -2456,7 +2930,7 @@ window.openWidgetDrawer = function(sectionId) {
         'progress':       `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="6" width="14" height="4" rx="2"/><rect x="1" y="6" width="9" height="4" rx="2" fill="currentColor" stroke="none" opacity=".25"/></svg>`,
         'opportunities':  `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="6" r="3.5"/><path d="M6 9.5 L5 14 L8 12.5 L11 14 L10 9.5"/></svg>`,
       }[w.type] || `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/></svg>`;
-      html += `<div class="drawer-widget-item${canToggle ? ' drawer-widget-item--toggleable' : ''}" ${isStateHidden ? 'style="opacity:.4"' : ''} ${canToggle ? `onclick="this.querySelector('button').click()"` : ''}>
+      html += `<div class="drawer-widget-item${canToggle ? ' drawer-widget-item--toggleable' : ''}" ${(isStateHidden || isFilterHidden) ? 'style="opacity:.4"' : ''} ${canToggle ? `onclick="this.querySelector('button').click()"` : ''}>
         <div class="drawer-widget-icon">${typeIcon}</div>
         <div class="drawer-widget-info">
           <div class="drawer-widget-name">${w.title}</div>
@@ -2473,6 +2947,7 @@ window.openWidgetDrawer = function(sectionId) {
     renderSection('operate', 'Operate');
     renderSection('improve', 'Improve');
     renderSection('automate', 'Automate');
+    renderSection('voice', 'Voice');
   } else {
     renderSection(sectionId, sectionId.charAt(0).toUpperCase() + sectionId.slice(1));
   }
@@ -2915,14 +3390,68 @@ if (flagBtn && flagPopout) {
 
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
+function buildTickSVG() {
+  return `<svg class="filter-option-tick" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6.5 5.5 10 11 3"/></svg>`;
+}
+function buildChevronSVG(expanded) {
+  return `<svg class="filter-option-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--gray-400);transition:transform .15s;transform:rotate(${expanded ? '90deg' : '0deg'})"><path d="M4 3l4 3-4 3"/></svg>`;
+}
+
+function getChannelIconHTML(name) {
+  const n = (name || '').toLowerCase();
+  const emailSVG = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><polyline points="1.5,3.5 8,9 14.5,3.5"/></svg>`;
+  const chatSVG  = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H9l-3 2.5V11H3a1 1 0 01-1-1V3z"/></svg>`;
+  const phoneSVG = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2a1 1 0 011-1h1.5a1 1 0 011 1v2a1 1 0 01-1 1H5A7 7 0 0011 11h-.5a1 1 0 011-1h2a1 1 0 011 1V12.5a1 1 0 01-1 1H13A11 11 0 012 3V2z"/></svg>`;
+  const waSVG    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5a6.5 6.5 0 016.5 6.5c0 1.3-.38 2.5-1.05 3.55L14.5 14.5l-3-.95A6.5 6.5 0 118 1.5z"/><path d="M6 6.5a.5.5 0 01.5-.5h.2c.2 0 .36.14.4.33l.4 1.7a.4.4 0 01-.12.4l-.5.45a4 4 0 002.24 2.24l.45-.5a.4.4 0 01.4-.12l1.7.4c.19.04.33.2.33.4v.2a.5.5 0 01-.5.5C7.6 11.5 6 9.9 6 8v-1.5z"/></svg>`;
+  const igSVG    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="3"/><circle cx="8" cy="8" r="2.8"/><circle cx="11.5" cy="4.5" r=".6" fill="currentColor" stroke="none"/></svg>`;
+  const fbSVG    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 2.5H11V0H9C7.1 0 5.5 1.6 5.5 3.5V6H3.5V8.5H5.5V16H8V8.5H10.5L11 6H8V3.5C8 2.9 8.6 2.5 9.5 2.5Z"/></svg>`;
+  const socialSVG= `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="3" r="1.5"/><circle cx="4" cy="8" r="1.5"/><circle cx="12" cy="13" r="1.5"/><line x1="10.5" y1="3.7" x2="5.5" y2="7.3"/><line x1="5.5" y1="8.7" x2="10.5" y2="12.3"/></svg>`;
+  const allSVG   = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>`;
+  let bg, color, svg;
+  if      (n === 'all channels')                                                            { bg='#f3f4f6'; color='#6b7280'; svg=allSVG; }
+  else if (n.includes('email'))                                                             { bg='#dbeafe'; color='#2563eb'; svg=emailSVG; }
+  else if (n.includes('whatsapp'))                                                          { bg='#dcfce7'; color='#16a34a'; svg=waSVG; }
+  else if (n.includes('instagram'))                                                         { bg='#fce7f3'; color='#db2777'; svg=igSVG; }
+  else if (n.includes('facebook'))                                                          { bg='#dbeafe'; color='#1d4ed8'; svg=fbSVG; }
+  else if (n.includes('chat') || n.includes('website') || n.includes('help'))              { bg='#d1fae5'; color='#059669'; svg=chatSVG; }
+  else if (n === 'phone' || n === 'voice' || n.includes('support') || n === 'billing' || n === 'onboarding' || n === 'sales') { bg='#fef3c7'; color='#d97706'; svg=phoneSVG; }
+  else if (n === 'social')                                                                  { bg='#ede9fe'; color='#7c3aed'; svg=socialSVG; }
+  else                                                                                      { bg='#f3f4f6'; color='#6b7280'; svg=allSVG; }
+  return `<span class="channel-icon" style="background:${bg};color:${color}">${svg}</span>`;
+}
+
+const channelExpandedGroups = new Set();
+
+function buildGroupedDropdownHTML(config) {
+  let html = '';
+  for (const group of config.groups) {
+    const hasChildren = !!(group.children && group.children.length);
+    const isExpanded = channelExpandedGroups.has(group.value);
+    html += `<div class="filter-option filter-option-group ${hasChildren ? 'has-children' : ''} ${isExpanded ? 'expanded' : ''}" data-value="${group.value}" data-group-toggle="${hasChildren}">${getChannelIconHTML(group.value)}<span class="filter-option-label">${group.label}</span>${hasChildren ? buildChevronSVG(isExpanded) : buildTickSVG()}</div>`;
+    if (hasChildren) {
+      for (const child of group.children) {
+        const sel = state[config.stateKey] === child;
+        html += `<div class="filter-option filter-option-sub ${sel ? 'selected' : ''} ${isExpanded ? '' : 'hidden'}" data-value="${child}">${getChannelIconHTML(child)}<span class="filter-option-label">${child}</span>${buildTickSVG()}</div>`;
+      }
+    }
+  }
+  return html;
+}
+
 const filterConfigs = {
   'filter-date': {
     options: ['Today', 'Last 7 days', 'Last 14 days', 'Last 30 days', 'Last 90 days'],
     stateKey: 'dateFilter'
   },
   'filter-channel': {
-    options: ['All channels', 'Email', 'WhatsApp', 'Live chat', 'Phone', 'Instagram', 'Facebook'],
-    stateKey: 'channelFilter'
+    stateKey: 'channelFilter',
+    groups: [
+      { label: 'All channels', value: 'All channels', children: null },
+      { label: 'Email',        value: 'Email',        children: ['Support Email', 'Sales Email'] },
+      { label: 'Live chat',    value: 'Live chat',    children: ['Main website', 'Help center'] },
+      { label: 'Social',       value: 'Social',       children: ['WhatsApp', 'Instagram', 'Facebook'] },
+      { label: 'Voice',        value: 'Voice',        children: ['Support EN', 'Support NL', 'Sales', 'Billing', 'Onboarding'] },
+    ]
   },
   'filter-team': {
     options: ['All teams', 'Sales team', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'],
@@ -2930,6 +3459,7 @@ const filterConfigs = {
   }
 };
 
+// Chip click handlers — open/populate the dropdown only
 Object.keys(filterConfigs).forEach(filterId => {
   const chip = document.getElementById(filterId);
   if (!chip) return;
@@ -2952,36 +3482,61 @@ Object.keys(filterConfigs).forEach(filterId => {
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
     chip.classList.add('active-filter');
 
-    content.innerHTML = config.options.map(opt =>
-      `<div class="filter-option ${state[config.stateKey] === opt ? 'selected' : ''}" data-value="${opt}">${opt}</div>`
-    ).join('');
+    if (config.groups) {
+      content.innerHTML = buildGroupedDropdownHTML(config);
+    } else {
+      content.innerHTML = config.options.map(opt =>
+        `<div class="filter-option ${state[config.stateKey] === opt ? 'selected' : ''}" data-value="${opt}"><span class="filter-option-label">${opt}</span>${buildTickSVG()}</div>`
+      ).join('');
+    }
 
     dropdown.style.top = (rect.bottom + 4) + 'px';
     dropdown.style.left = rect.left + 'px';
     dropdown.style.display = 'block';
     dropdown.dataset.filter = filterId;
-
-    const filterLabels = { 'filter-date': 'Date', 'filter-channel': 'Channel', 'filter-team': 'Team' };
-    content.querySelectorAll('.filter-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        state[config.stateKey] = opt.dataset.value;
-        chip.querySelector('span').textContent = opt.dataset.value;
-        dropdown.style.display = 'none';
-        chip.classList.remove('active-filter');
-        // Snapshot then remount — Set is mutated during remount so we must copy first
-        [...state.loadedSections].forEach(s => remountSection(s));
-        // If team filter changed, sync lens buttons to reflect team usecase override
-        if (filterId === 'filter-team') syncLensButtons();
-        window.sendEvent((filterLabels[filterId] || filterId) + ' filter — "' + opt.dataset.value + '"');
-      });
-    });
   });
 });
 
-// Close dropdown on outside click
-document.addEventListener('click', () => {
+// Single delegated listener on content — wired once, handles all filters
+const _filterLabels = { 'filter-date': 'Date', 'filter-channel': 'Channel', 'filter-team': 'Team' };
+document.getElementById('filter-dropdown-content').addEventListener('click', e => {
+  const item = e.target.closest('.filter-option');
+  if (!item) return;
+  e.stopPropagation();
+
+  const dropdown = document.getElementById('filter-dropdown');
+  const content = document.getElementById('filter-dropdown-content');
+  const filterId = dropdown.dataset.filter;
+  if (!filterId) return;
+  const config = filterConfigs[filterId];
+  const chip = document.getElementById(filterId);
+
+  if (item.dataset.groupToggle === 'true') {
+    // Expand/collapse group — no filter change
+    const val = item.dataset.value;
+    if (channelExpandedGroups.has(val)) channelExpandedGroups.delete(val);
+    else channelExpandedGroups.add(val);
+    content.innerHTML = buildGroupedDropdownHTML(config);
+    return;
+  }
+
+  // Leaf item — apply filter + close
+  state[config.stateKey] = item.dataset.value;
+  chip.querySelector('span').textContent = item.dataset.value;
+  dropdown.style.display = 'none';
+  chip.classList.remove('active-filter');
+  [...state.loadedSections].forEach(s => remountSection(s));
+  if (filterId === 'filter-team') syncLensButtons();
+  window.sendEvent((_filterLabels[filterId] || filterId) + ' filter — "' + item.dataset.value + '"');
+});
+
+// Close dropdown on outside click + clear bar filter when clicking outside a widget card
+document.addEventListener('click', (e) => {
   document.getElementById('filter-dropdown').style.display = 'none';
   document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
+  if (state.barFilter && state.barFilter.widgetId && !e.target.closest('.widget-card')) {
+    clearBarFilter();
+  }
 });
 
 // ── TEAM DISPLAY SETTINGS ──────────────────────────────────────
