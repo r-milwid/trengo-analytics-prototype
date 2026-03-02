@@ -1996,6 +1996,7 @@ function chartOptions(w) {
   const opts = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { top: 8, right: 4 } },
     interaction: { intersect: false, mode: 'index' },
     plugins: {
       legend: {
@@ -2055,8 +2056,7 @@ function chartOptions(w) {
             const ds = context.dataset;
             const label = ds.label || '';
             const value = context.formattedValue;
-            // Right-align value with padding spaces approximation
-            return `${label}    ${value}`;
+            return `  ${label}: ${value}`;
           }
         }
       }
@@ -2068,9 +2068,17 @@ function chartOptions(w) {
         ticks: { font: { family: 'Inter', size: 11 }, color: '#a1a1aa' }
       },
       y: {
-        grid: { color: '#f4f4f5', drawTicks: false },
+        grid: { color: 'rgba(0,0,0,0.045)', drawTicks: false },
         border: { display: false, dash: [3, 3] },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#a1a1aa', padding: 8 },
+        ticks: {
+          font: { family: 'Inter', size: 11 }, color: '#a1a1aa', padding: 8,
+          maxTicksLimit: 5,
+          callback(value) {
+            if (value >= 1000000) return (value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1) + 'M';
+            if (value >= 1000)    return (value / 1000).toFixed(value % 1000 === 0 ? 0 : 1) + 'k';
+            return value;
+          }
+        },
         beginAtZero: true
       }
     }
@@ -2276,7 +2284,7 @@ function getMockLineData(id) {
         datasets: [{
           label: 'Tickets created',
           data: [rand(800,1100), rand(300,500), rand(600,900), rand(800,1000), rand(400,600), rand(100,250), rand(150,300)],
-          borderColor: CHART_COLORS.teal, backgroundColor: 'rgba(31,157,139,.12)', fill: true, tension: .3, pointRadius: 3
+          borderColor: CHART_COLORS.teal, backgroundColor: 'rgba(31,157,139,.10)', fill: true, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2
         }]
       };
       break;
@@ -2284,9 +2292,9 @@ function getMockLineData(id) {
       data = {
         labels,
         datasets: [
-          { label: 'Pricing', data: labels.map(() => rand(80,200)), borderColor: CHART_COLORS.purple, tension: .3, pointRadius: 2 },
-          { label: 'Shipping', data: labels.map(() => rand(60,180)), borderColor: CHART_COLORS.teal, tension: .3, pointRadius: 2 },
-          { label: 'Returns', data: labels.map(() => rand(40,150)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 2 },
+          { label: 'Pricing', data: labels.map(() => rand(80,200)), borderColor: CHART_COLORS.purple, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+          { label: 'Shipping', data: labels.map(() => rand(60,180)), borderColor: CHART_COLORS.teal, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+          { label: 'Returns', data: labels.map(() => rand(40,150)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
         ]
       };
       break;
@@ -2294,8 +2302,8 @@ function getMockLineData(id) {
       data = {
         labels,
         datasets: [
-          { label: 'Created tickets', data: [rand(800,1100), rand(300,500), rand(600,900), rand(800,1000), rand(400,600), rand(100,250), rand(150,300)], borderColor: CHART_COLORS.teal, tension: .3, pointRadius: 3 },
-          { label: 'Closed tickets', data: [rand(700,1000), rand(250,450), rand(500,800), rand(700,950), rand(350,550), rand(80,200), rand(120,280)], borderColor: CHART_COLORS.periwinkle, tension: .3, pointRadius: 3 },
+          { label: 'Created tickets', data: [rand(800,1100), rand(300,500), rand(600,900), rand(800,1000), rand(400,600), rand(100,250), rand(150,300)], borderColor: CHART_COLORS.teal, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+          { label: 'Closed tickets', data: [rand(700,1000), rand(250,450), rand(500,800), rand(700,950), rand(350,550), rand(80,200), rand(120,280)], borderColor: CHART_COLORS.periwinkle, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
         ]
       };
       break;
@@ -2303,8 +2311,8 @@ function getMockLineData(id) {
       data = {
         labels,
         datasets: [
-          { label: 'Demand (tickets)', data: labels.map(() => rand(400,900)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 3 },
-          { label: 'Capacity (agents)', data: labels.map(() => rand(500,700)), borderColor: CHART_COLORS.teal, borderDash: [5,3], tension: .3, pointRadius: 3 },
+          { label: 'Demand (tickets)', data: labels.map(() => rand(400,900)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+          { label: 'Capacity (agents)', data: labels.map(() => rand(500,700)), borderColor: CHART_COLORS.teal, borderDash: [5,3], tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
         ]
       };
       break;
@@ -2312,7 +2320,7 @@ function getMockLineData(id) {
       data = {
         labels,
         datasets: [
-          { label: 'Score', data: [92, 80, 95, 88, 85, 78, 90], borderColor: CHART_COLORS.navy, tension: .3, pointRadius: 3, yAxisID: 'y' },
+          { label: 'Score', data: [92, 80, 95, 88, 85, 78, 90], borderColor: CHART_COLORS.navy, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2, yAxisID: 'y' },
           { label: 'Surveys', data: [5, 8, 3, 4, 2, 6, 10], borderColor: CHART_COLORS.periwinkle, type: 'bar', backgroundColor: 'rgba(178,189,223,.45)', yAxisID: 'y1' },
         ]
       };
@@ -2321,7 +2329,7 @@ function getMockLineData(id) {
       data = {
         labels,
         datasets: [
-          { label: 'Abandonment rate %', data: labels.map(() => randF(3, 18)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 3, yAxisID: 'y' },
+          { label: 'Abandonment rate %', data: labels.map(() => randF(3, 18)), borderColor: CHART_COLORS.yellow, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2, yAxisID: 'y' },
           { label: 'Total calls', data: labels.map(() => rand(150, 350)), borderColor: CHART_COLORS.periwinkle, type: 'bar', backgroundColor: 'rgba(183,194,230,.4)', yAxisID: 'y1' },
         ]
       };
@@ -2329,7 +2337,7 @@ function getMockLineData(id) {
     default:
       data = {
         labels,
-        datasets: [{ label: 'Value', data: labels.map(() => rand(100,800)), borderColor: CHART_COLORS.teal, tension: .3, pointRadius: 3 }]
+        datasets: [{ label: 'Value', data: labels.map(() => rand(100,800)), borderColor: CHART_COLORS.teal, tension: .3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 }]
       };
   }
   state.mockData.charts[id] = data;
