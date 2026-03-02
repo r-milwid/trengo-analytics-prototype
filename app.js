@@ -211,7 +211,8 @@ const WIDGETS = {
       tooltipByState: {
         sales_supervisor: 'Which channels bring in new contacts and pipeline entries.',
         sales_agent: 'Where your contacts are coming from.'
-      }
+      },
+      states: { support_agent: 'hide', sales_agent: 'hide' }
     },
     { id: 'un-new-returning', title: 'New vs returning contacts', vis: 'default', type: 'doughnut-chart',
       tooltip: 'Proportion of first-time vs repeat contacts. High repeat rates may indicate unresolved issues.',
@@ -231,7 +232,7 @@ const WIDGETS = {
     },
     { id: 'un-unknown-intents', title: 'Unknown / unclassified intents', vis: 'default', type: 'kpi',
       tooltip: 'Tickets the AI could not classify. These represent gaps in your intent model.',
-      states: { support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+      states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
     { id: 'un-escalations-intent', title: 'Escalations by intent', vis: 'hidden', type: 'bar-chart',
       tooltip: 'Which intents most frequently result in escalation. Shows where understanding breaks down.',
@@ -270,7 +271,7 @@ const WIDGETS = {
     },
     { id: 'op-bottlenecks', title: 'Ticket counts per status or stage', vis: 'always', type: 'bar-chart',
       tooltip: 'Where tickets are getting stuck in your workflow.',
-      states: { support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' },
+      states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' },
       tooltipByState: { sales_supervisor: 'Where contacts are getting stuck in your pipeline stages.' }
     },
     { id: 'op-channel-perf', title: 'Performance by channel', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
@@ -320,7 +321,7 @@ const WIDGETS = {
     },
     { id: 'im-opportunities', title: 'Opportunities backlog', vis: 'always', type: 'opportunities', fullWidth: true, sizeClass: 'large',
       tooltip: 'Prioritized list of improvement opportunities identified by AI analysis.',
-      states: { support_agent: 'hide', sales_agent: 'hide' }
+      states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
   ],
   // ─── AUTOMATE ────────────────────
@@ -423,7 +424,7 @@ const WIDGETS = {
     },
     { id: 'vc-ivr-queue-time', title: 'Time in IVR / queue', vis: 'default', type: 'kpi',
       tooltip: 'Average time callers spend navigating IVR menus or waiting in queues before reaching an agent.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
 
     // Group D — Additional metrics
@@ -433,7 +434,7 @@ const WIDGETS = {
     },
     { id: 'vc-fcr-rate', title: 'First call resolution', vis: 'default', type: 'kpi',
       tooltip: 'Percentage of calls resolved in a single call without a callback or follow-up ticket. The voice equivalent of CSAT.',
-      states: { support_supervisor: 'emphasize', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+      states: { support_supervisor: 'emphasize', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
     { id: 'vc-callbacks-requested', title: 'Callback requests', vis: 'default', type: 'kpi',
       tooltip: 'Callers who opted into a callback instead of waiting on hold. High numbers signal demand vs capacity mismatch.',
