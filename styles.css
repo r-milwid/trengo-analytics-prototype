@@ -1807,7 +1807,15 @@ body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + v
   font-family: var(--font);
   outline: none;
   transition: border-color .15s;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.chat-input::-webkit-scrollbar { display: none; }
 .chat-input:focus { border-color: var(--orange); }
 .chat-error {
   align-self: flex-start;
@@ -2038,7 +2046,7 @@ body[data-panel="bar"] .ai-panel-inner {
 /* ── Input bar ───────────────────────────────────────────── */
 .ai-panel-input-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--panel-border);

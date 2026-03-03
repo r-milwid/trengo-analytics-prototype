@@ -4345,6 +4345,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       _pendingContextApproval = null;
       if (/^(yes|yeah|yep|y|approve|confirm|ok|okay|sure)\b/i.test(text.trim())) {
         chatInput.value = '';
+        chatInput.style.height = 'auto';
         addBubble(text, 'user');
         messages.push({ role: 'user', content: text });
         storeHelionContext(pending.new);
@@ -4367,6 +4368,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         _pendingFeedback = null;
         savePendingFeedback();
         chatInput.value = '';
+        chatInput.style.height = 'auto';
         addBubble(text, 'user');
         var name = text.trim();
         saveSessionUserName(name);
@@ -4392,6 +4394,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     }
 
     chatInput.value = '';
+    chatInput.style.height = 'auto';
     chatSend.disabled = true;
     if (document.body.dataset.panel === 'bar') setPanelState('chat');
     addBubble(text, 'user');
@@ -4722,6 +4725,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       sendMessage();
     }
   });
+
+  function autoResizeChatInput() {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = chatInput.scrollHeight + 'px';
+  }
+  chatInput.addEventListener('input', autoResizeChatInput);
 
   // Initialise default panel state on page load
   setPanelState('chat');
