@@ -3005,8 +3005,8 @@ function showTooltip(e, text) {
   tooltipEl.textContent = text;
   tooltipEl.classList.add('visible');
   const rect = e.target.getBoundingClientRect();
-  tooltipEl.style.top = (rect.bottom + 8) + 'px';
-  tooltipEl.style.left = (rect.left - 100) + 'px';
+  tooltipEl.style.top  = (rect.bottom + window.scrollY + 8) + 'px';
+  tooltipEl.style.left = (rect.left + window.scrollX - 100) + 'px';
 }
 function hideTooltip() {
   if (tooltipEl) tooltipEl.classList.remove('visible');
@@ -4397,7 +4397,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     chatInput.style.height = 'auto';
     chatSend.disabled = true;
     if (document.body.dataset.panel === 'bar') setPanelState('chat');
-    addBubble(text, 'user');
+    const userBubble = addBubble(text, 'user');
     messages.push({ role: 'user', content: text });
     showTyping();
 
@@ -4423,6 +4423,14 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       if (data.content && data.content[0]) {
         const raw = data.content[0].text;
         const { cleanText, feedback, context, conflict } = parseSentinels(raw);
+        if (/please ask Rowan/i.test(cleanText)) {
+          userBubble.remove();
+          messages.pop();
+          saveChatHistory();
+          chatSend.disabled = false;
+          chatInput.focus();
+          return;
+        }
         messages.push({ role: 'assistant', content: cleanText });
         addBubble(cleanText, 'assistant');
         saveChatHistory();
@@ -4465,6 +4473,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     div.innerHTML = '<span class="chat-bubble-event-icon">ℹ</span><span>' + label + '</span>';
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    return div;
   }
 
   function showEventPopup(text) {
@@ -4484,6 +4493,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     closeBtn.innerHTML = '&times;';
     closeBtn.setAttribute('aria-label', 'Close');
     popup.appendChild(closeBtn);
+
+    // Enforce max 2 popups — remove the oldest if already at the limit
+    const existing = container.querySelectorAll('.chat-popup');
+    if (existing.length >= 2) existing[0].remove();
 
     container.appendChild(popup);
 
@@ -4520,8 +4533,11 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     const eventKey = '[EVENT: ' + label + ']';
     if (messages.some(m => m.role === 'user' && m.content === eventKey)) return;
 
+    // Don't send or show a popup when a widget is hidden
+    if (/widget — hidden$/i.test(label)) return;
+
     const isBarMode = document.body.dataset.panel === 'bar';
-    addEventBubble(label);
+    const eventBubble = addEventBubble(label);
     messages.push({ role: 'user', content: eventKey });
     showTyping();
     try {
@@ -4534,6 +4550,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       removeTyping();
       if (data.content && data.content[0]) {
         const reply = data.content[0].text;
+        if (/please ask Rowan/i.test(reply)) {
+          if (eventBubble) eventBubble.remove();
+          messages.pop();
+          saveChatHistory();
+          return;
+        }
         messages.push({ role: 'assistant', content: reply });
         addBubble(reply, 'assistant');
         if (isBarMode) showEventPopup(reply);
