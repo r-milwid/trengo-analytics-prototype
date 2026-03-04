@@ -397,20 +397,20 @@ const WIDGETS = {
     { id: 'im-reopen-rate', title: 'Reopen rate', vis: 'default', type: 'kpi',
       tooltip: 'Percentage of resolved tickets that get reopened. A quality indicator.',
       scopeLabel: { supervisor: 'Of resolved tickets', agent: 'Of your resolved tickets' },
-      states: { sales_supervisor: 'hide', sales_agent: 'hide' }
+      states: {}
     },
     { id: 'im-knowledge-gaps', title: 'Knowledge gaps by intent', vis: 'hidden', type: 'bar-chart',
       tooltip: 'Which intents have the most knowledge gaps, driving poor outcomes.',
-      states: { support_agent: 'show', sales_supervisor: 'hide', sales_agent: 'hide' },
+      states: { support_agent: 'show', sales_supervisor: 'hide', sales_agent: 'show' },
       tooltipByState: { support_agent: 'Knowledge gaps you encountered most often.' }
     },
     { id: 'im-suggested-knowledge', title: 'Suggested knowledge additions', vis: 'default', type: 'list-actions', halfWidth: true,
       tooltip: 'AI-suggested knowledge base articles to fill gaps. Approve or reject each suggestion.',
-      states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
+      states: { support_agent: 'hide', sales_agent: 'hide' }
     },
     { id: 'im-opportunities', title: 'Opportunities backlog', vis: 'always', type: 'opportunities', fullWidth: true, sizeClass: 'large',
       tooltip: 'Prioritized list of improvement opportunities identified by AI analysis.',
-      states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
+      states: { support_agent: 'hide', sales_agent: 'hide' }
     },
   ],
   // ─── AUTOMATE ────────────────────
