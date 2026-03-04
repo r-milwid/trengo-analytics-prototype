@@ -5103,6 +5103,11 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   const ONBOARDING_KEY = 'trengo_onboarding_done';
   const ONBOARDING_STEPS = [
     {
+      text: 'This prototype explores a new analytics model \u2014 replacing fragmented dashboards with five stable sections, each answering a distinct operational question. Some of the charts and visual details are only illustrative \u2014 the focus is on the overall structure and concepts.',
+      getTargets: () => [],
+      placement: 'center'
+    },
+    {
       text: 'The Guide is not part of the prototype \u2014 it\u2019s internal only. Use it to ask questions and provide feedback.',
       getTargets: () => [document.querySelector('#ai-panel')],
       placement: 'left-of-panel'
@@ -5118,7 +5123,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       placement: 'right-of-cog'
     },
     {
-      text: 'Customise which metrics are visible in each section. Add hidden widgets or remove ones you don\u2019t need.',
+      text: 'When in edit mode, customise which metrics are visible in each section \u2014 add hidden widgets or remove ones you don\u2019t need. Drag to reorder and resize widgets to suit.',
       getTargets: () => [
         document.querySelector('.add-widget-btn[data-section="overview"]'),
         document.querySelector('#section-overview .widget-action-btn')
@@ -5233,6 +5238,15 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       card.style.top = cardTop + 'px';
       // Arrow from card left edge to just right of cog
       drawArrow(cardLeft - 4, cardTop + ch / 2, cr.right + 2, cr.top + cr.height / 2);
+
+    } else if (step.placement === 'center') {
+      const mainLeft = 64;
+      const mainRight = vw;
+      const centerX = (mainLeft + mainRight) / 2;
+      const centerY = vh / 2;
+      card.style.left = (centerX - cw / 2) + 'px';
+      card.style.top = (centerY - ch / 2) + 'px';
+      // No arrows — intro step has no target element
 
     } else if (step.placement === 'center-dual') {
       const mainLeft = 64;
