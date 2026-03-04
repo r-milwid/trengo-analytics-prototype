@@ -604,7 +604,6 @@ function renderWidget(w, section, placement, rows, layout) {
       } else {
         renderChartNumbers(body, w);
       }
-      window.sendEvent('"' + w.title + '" widget — ' + mode + ' view');
     });
   }
 
@@ -648,7 +647,6 @@ function renderWidget(w, section, placement, rows, layout) {
       toggleBtn.classList.toggle('expanded', isExpanded);
       toggleBtn.querySelector('span').textContent = isExpanded ? 'Show less' : 'Show more';
       if (isExpanded) expandedWidgets.add(w.id); else expandedWidgets.delete(w.id);
-      window.sendEvent('"' + w.title + '" widget — ' + (isExpanded ? 'expanded' : 'collapsed'));
     });
     card.appendChild(toggleBtn);
   }
@@ -660,7 +658,6 @@ function renderWidget(w, section, placement, rows, layout) {
     drill.textContent = w.drill.label;
     drill.addEventListener('click', () => {
       scrollToSection(w.drill.target);
-      window.sendEvent('"' + w.drill.label + '" drill link — clicked');
     });
     card.appendChild(drill);
   }
@@ -2511,7 +2508,6 @@ function renderTable(container, w) {
         const chip = document.getElementById('filter-channel');
         if (chip) chip.querySelector('span').textContent = newVal;
         [...state.loadedSections].forEach(s => remountSection(s));
-        window.sendEvent('Channel filter — "' + newVal + '"');
       });
     });
   }
@@ -2701,11 +2697,9 @@ window.dismissOpportunity = function(id) {
   state.opportunityStates[id] = 'dismissed';
   const el = document.querySelector(`[data-opp-id="${id}"]`);
   if (el) el.classList.add('dismissed');
-  window.sendEvent('Opportunity dismissed');
 };
 
 window.actionOpportunity = function(id, source) {
-  window.sendEvent('Opportunity actioned');
   const overlay = document.getElementById('opportunity-modal-overlay');
   const body = document.getElementById('opp-modal-body');
   const confirmBtn = document.getElementById('opp-modal-confirm');
@@ -2736,7 +2730,6 @@ window.actionOpportunity = function(id, source) {
 
   document.getElementById('opp-modal-confirm').addEventListener('click', () => {
     state.opportunityStates[id] = 'confirmed';
-    window.sendEvent('AI recommendation confirmed — draft article created');
     body.innerHTML = `<div class="success-state">
       <div class="check-icon">\u2713</div>
       <p>Knowledge article draft created successfully!</p>
@@ -3229,11 +3222,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.add('active');
       navigate('analytics');
       setTimeout(() => scrollToSection('overview', true), 80);
-      window.sendEvent('Analytics nav — clicked');
     } else {
       // Other items: do nothing (look real but inert)
-      const label = item.querySelector('.nav-tooltip')?.textContent?.trim();
-      if (label) window.sendEvent(label + ' nav — clicked');
     }
   });
 });
@@ -3259,7 +3249,7 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
     syncLensButtons();
-    window.sendEvent(btn.textContent.trim() + ' lens — selected');
+    window.sendEvent('Preview toggle — changed');
   });
 });
 
@@ -3272,7 +3262,7 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
     const roleName = btn.dataset.role.charAt(0).toUpperCase() + btn.dataset.role.slice(1);
-    window.sendEvent(roleName + ' role — selected');
+    window.sendEvent('Preview toggle — changed');
   });
 });
 
@@ -3304,7 +3294,7 @@ document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach
       headerViewEditControl.style.display = 'none';
       delete document.body.dataset.viewmode;
     }
-    window.sendEvent('View/Edit mode — ' + (enabled ? 'enabled' : 'disabled'));
+    window.sendEvent('Preview toggle — changed');
   });
 });
 
@@ -3317,7 +3307,6 @@ if (headerSegmentToggle) {
     const btn = e.target.closest('.header-segment-btn');
     if (!btn) return;
     setViewEditMode(btn.dataset.view);
-    window.sendEvent('View/Edit — ' + btn.dataset.view + ' selected');
   });
 }
 
@@ -3337,7 +3326,6 @@ if (settingsNav && userPopout) {
       userPopout.style.top = rect.top + 'px';
       userPopout.style.display = 'block';
       requestAnimationFrame(() => userPopout.classList.add('open'));
-      window.sendEvent('Settings / Preview options — opened');
     }
 
   });
@@ -3571,7 +3559,6 @@ document.getElementById('filter-dropdown-content').addEventListener('click', e =
   chip.classList.remove('active-filter');
   [...state.loadedSections].forEach(s => remountSection(s));
   if (filterId === 'filter-team') syncLensButtons();
-  window.sendEvent((_filterLabels[filterId] || filterId) + ' filter — "' + item.dataset.value + '"');
 });
 
 // Close dropdown on outside click + clear bar filter when clicking outside a widget card
@@ -3670,7 +3657,6 @@ if (teamSettingsBtn) {
   teamSettingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     openTeamSettingsModal();
-    window.sendEvent('Team display settings — opened');
   });
 }
 
@@ -3683,7 +3669,6 @@ document.getElementById('team-settings-save')?.addEventListener('click', () => {
     [...state.loadedSections].forEach(s => remountSection(s));
     syncLensButtons();
   }
-  window.sendEvent('Team display settings — saved');
 });
 
 // Close on overlay backdrop click
@@ -3707,8 +3692,6 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
     } else {
       openWidgetDrawer(btn.dataset.section);
       setManageWidgetsBtnLabel(true);
-      const sectionName = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
-      window.sendEvent('Manage widgets — ' + sectionName + ' section');
     }
   });
 });
@@ -4140,14 +4123,23 @@ CLICK EVENT COMMENTARY
 ----------------------------------------------------------------------
 Some messages begin with [EVENT: ...]. These are automatic UI notifications, not user questions.
 
-When you receive an [EVENT: ...] message:
-- Do NOT acknowledge or restate the action itself. Never say things like "is now active", "was selected", "has been opened", "you are now viewing", or similar — the user already sees this happen.
-- Start directly with what the element does or contains. For example: "Operate displays..." not "The Operate section is now active, displaying...".
-- Cover both what the element includes and why it is useful to the user. One sentence is fine if it achieves both; two sentences is acceptable if needed for completeness.
-- Do not say "you clicked" or "the user clicked".
+TAB EVENTS (format: "[EVENT: <Name> tab — clicked]"):
+When the user navigates to Overview, Understand, Operate, Improve, or Automate:
+- Explain the concept behind the section — why it exists as a distinct section, what value it provides, and how it differs from the other sections.
+- Do NOT list specific widgets, charts, or metrics contained in the section.
+- Do not restate the click action or say "you clicked", "is now active", "was selected", etc.
 - Do not ask a question back.
 - Do not use the "Sorry, I can't answer that" fallback.
 - Maximum 2 sentences.
+
+TOGGLE EVENTS (format: "[EVENT: Preview toggle — changed]"):
+When the user changes a preview toggle in the settings popout:
+- Explain that these toggles are not part of the end-user product — they exist so stakeholders can preview how the analytics experience adjusts for different user roles, use cases, and permissions.
+- Do not describe what the specific toggle does or what changes in the UI.
+- Do not restate the click action.
+- Do not ask a question back.
+- Do not use the "Sorry, I can't answer that" fallback.
+- Maximum 1 sentence.
 ----------------------------------------------------------------------
 FEEDBACK COLLECTION
 ----------------------------------------------------------------------
@@ -4572,7 +4564,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     if (/widget — hidden$/i.test(label)) return;
 
     const isBarMode = document.body.dataset.panel === 'bar';
-    const eventBubble = addEventBubble(label);
     messages.push({ role: 'user', content: eventKey });
     showTyping();
     try {
@@ -4586,7 +4577,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       if (data.content && data.content[0]) {
         const reply = data.content[0].text;
         if (/please ask Rowan/i.test(reply)) {
-          if (eventBubble) eventBubble.remove();
           messages.pop();
           saveChatHistory();
           return;
