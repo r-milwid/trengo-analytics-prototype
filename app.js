@@ -3249,11 +3249,12 @@ window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
 
 const ICON_PLUS  = `<svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>`;
 const ICON_CLOSE = `<svg width="14" height="14" viewBox="0 0 14 14"><line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>`;
+const ICON_WIDGETS = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>`;
 
 function setManageWidgetsBtnLabel(open) {
-  document.querySelectorAll('.add-widget-btn').forEach(btn => {
-    btn.innerHTML = (open ? ICON_CLOSE : ICON_PLUS) + (open ? ' Close widgets' : ' Manage widgets');
-  });
+  const btn = document.getElementById('manage-widgets-btn');
+  if (!btn) return;
+  btn.innerHTML = (open ? ICON_CLOSE : ICON_WIDGETS) + '<span>' + (open ? 'Close widgets' : 'Manage widgets') + '</span>';
 }
 
 document.getElementById('drawer-close').addEventListener('click', () => {
@@ -3496,6 +3497,7 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
 document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     state.role = btn.dataset.role;
+    document.body.dataset.role = state.role;
     document.querySelectorAll('#role-toggle .role-preview-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     resetViewState();
@@ -3506,19 +3508,30 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
   });
 });
 
+// Set initial role attribute
+document.body.dataset.role = state.role;
+
 
 // ── VIEW / EDIT MODE ────────────────────────────────────────────
-const headerViewEditControl = document.getElementById('header-viewedit-control');
-const headerSegmentToggle   = document.getElementById('header-segment-toggle');
+const viewEditToggleBtn = document.getElementById('viewedit-toggle-btn');
+
+// Eye-open SVG (View mode icon)
+const VIEW_ICON = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/><circle cx="8" cy="8" r="2.5"/></svg>`;
+// Pencil SVG (Edit mode icon)
+const EDIT_ICON = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/></svg>`;
+
+let _currentViewMode = 'edit'; // 'edit' or 'view'
 
 function setViewEditMode(mode) {
-  document.querySelectorAll('#header-segment-toggle .header-segment-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === mode);
-  });
+  _currentViewMode = mode;
   if (mode === 'view') {
     document.body.dataset.viewmode = 'view';
+    // In view mode → show "Edit" action to switch back
+    viewEditToggleBtn.innerHTML = EDIT_ICON + '<span>Edit</span>';
   } else {
     delete document.body.dataset.viewmode;
+    // In edit mode → show "View" action to switch to view
+    viewEditToggleBtn.innerHTML = VIEW_ICON + '<span>View</span>';
   }
 }
 
@@ -3528,10 +3541,10 @@ document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach
     btn.classList.add('active');
     const enabled = btn.dataset.editmode === 'enabled';
     if (enabled) {
-      headerViewEditControl.style.display = '';
+      viewEditToggleBtn.style.display = '';
       setViewEditMode('edit');
     } else {
-      headerViewEditControl.style.display = 'none';
+      viewEditToggleBtn.style.display = 'none';
       delete document.body.dataset.viewmode;
     }
     window.sendEvent('Preview toggle — changed');
@@ -3539,14 +3552,28 @@ document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach
 });
 
 // Default: View/Edit mode enabled on load
-headerViewEditControl.style.display = '';
+viewEditToggleBtn.style.display = '';
 setViewEditMode('edit');
 
-if (headerSegmentToggle) {
-  headerSegmentToggle.addEventListener('click', (e) => {
-    const btn = e.target.closest('.header-segment-btn');
-    if (!btn) return;
-    setViewEditMode(btn.dataset.view);
+if (viewEditToggleBtn) {
+  viewEditToggleBtn.addEventListener('click', () => {
+    setViewEditMode(_currentViewMode === 'edit' ? 'view' : 'edit');
+  });
+}
+
+// ── MANAGE WIDGETS BUTTON (sub-nav) ────────────────────────────
+const manageWidgetsBtn = document.getElementById('manage-widgets-btn');
+if (manageWidgetsBtn) {
+  manageWidgetsBtn.addEventListener('click', () => {
+    const isOpen = document.body.classList.contains('drawer-open');
+    if (isOpen) {
+      document.body.classList.remove('drawer-open');
+      _drawerSection = null;
+      setManageWidgetsBtnLabel(false);
+    } else {
+      openWidgetDrawer(state.activeSection);
+      setManageWidgetsBtnLabel(true);
+    }
   });
 }
 
@@ -4077,7 +4104,7 @@ applyTeamSettingsFlag();
 syncLensButtons();
 
 
-// ── ADD WIDGET BUTTONS ─────────────────────────────────────────
+// ── ADD WIDGET BUTTONS (inline "+ Add widgets" CTA kept working) ────
 document.querySelectorAll('.add-widget-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const isOpen = document.body.classList.contains('drawer-open');
@@ -5294,7 +5321,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     {
       text: 'When in edit mode, customise which metrics are visible in each section \u2014 add hidden widgets or remove ones you don\u2019t need. Drag to reorder and resize widgets to suit.',
       getTargets: () => [
-        document.querySelector('.add-widget-btn[data-section="overview"]'),
+        document.querySelector('#manage-widgets-btn'),
         document.querySelector('#section-overview .widget-action-btn')
       ],
       placement: 'center-dual'

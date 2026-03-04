@@ -563,8 +563,13 @@ body {
 /* Sub-nav */
 .sub-nav {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
   padding: 0 32px;
+}
+.sub-nav-tabs {
+  display: flex;
+  gap: 24px;
 }
 .sub-nav-btn {
   padding: 12px 0;
@@ -582,6 +587,37 @@ body {
 .sub-nav-btn.active {
   color: var(--black);
   border-bottom-color: var(--black);
+}
+
+/* Sub-nav right-side actions */
+.sub-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sub-nav-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sub-nav-action-btn:hover {
+  border-color: var(--gray-400);
+  color: var(--gray-800);
+}
+/* Icon-only variant (no text label) */
+.sub-nav-action-btn:not(:has(span)) {
+  padding: 5px 8px;
 }
 
 /* ============================================================
@@ -2218,45 +2254,16 @@ body[data-panel="bar"] .ai-panel-inner {
 }
 
 /* Header segmented control — absolutely centred */
-.header-viewedit-control {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-.header-segment-toggle {
-  display: inline-flex;
-  background: var(--gray-100);
-  border: 1px solid var(--gray-200);
-  border-radius: 8px;
-  padding: 3px;
-  gap: 2px;
-  pointer-events: auto;
-}
-.header-segment-btn {
-  padding: 5px 18px;
-  border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: var(--font);
-  color: var(--gray-500);
-  cursor: pointer;
-  transition: background .15s, color .15s, box-shadow .15s;
-}
-.header-segment-btn.active {
-  background: var(--white);
-  color: var(--gray-800);
-  box-shadow: 0 1px 3px rgba(0,0,0,.1);
-}
-
 /* View mode — hide all edit-only chrome */
-body[data-viewmode="view"] .add-widget-btn    { display: none !important; }
-body[data-viewmode="view"] .drag-handle       { display: none !important; }
-body[data-viewmode="view"] .resize-handle     { display: none !important; }
-body[data-viewmode="view"] .widget-action-btn { display: none !important; }
-body[data-viewmode="view"] .empty-tile        { display: none !important; }
+body[data-viewmode="view"] .add-widget-btn      { display: none !important; }
+body[data-viewmode="view"] .drag-handle         { display: none !important; }
+body[data-viewmode="view"] .resize-handle       { display: none !important; }
+body[data-viewmode="view"] .widget-action-btn   { display: none !important; }
+body[data-viewmode="view"] .empty-tile          { display: none !important; }
+body[data-viewmode="view"] #manage-widgets-btn  { display: none !important; }
+
+/* Agent role — hide edit/manage actions (supervisor only) */
+body[data-role="agent"] .sub-nav-actions { display: none !important; }
 
 /* ============================================================
    WIDGET CHART / NUMBERS VIEW TOGGLE

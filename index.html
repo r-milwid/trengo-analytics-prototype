@@ -114,13 +114,6 @@
       <div class="analytics-header" id="analytics-header">
         <div class="analytics-header-top">
           <h1>Analytics</h1>
-          <!-- View/Edit segmented control — centred absolutely, hidden until enabled -->
-          <div class="header-viewedit-control" id="header-viewedit-control" style="display:none;">
-            <div class="header-segment-toggle" id="header-segment-toggle">
-              <button class="header-segment-btn" data-view="view">View</button>
-              <button class="header-segment-btn active" data-view="edit">Edit</button>
-            </div>
-          </div>
           <div class="header-controls">
             <!-- Filters -->
             <div class="filter-bar">
@@ -136,24 +129,42 @@
                 <span>All teams</span>
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
               </div>
-              <button class="filter-chip filter-chip-icon" id="team-display-settings-btn" title="Display settings" style="display:none;">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
-                  <circle cx="5" cy="4" r="1.5" fill="var(--white)" stroke="currentColor"/>
-                  <circle cx="10" cy="8" r="1.5" fill="var(--white)" stroke="currentColor"/>
-                  <circle cx="6" cy="12" r="1.5" fill="var(--white)" stroke="currentColor"/>
-                </svg>
-              </button>
             </div>
           </div>
         </div>
         <!-- Sticky sub-nav -->
         <div class="sub-nav" id="sub-nav">
-          <button class="sub-nav-btn active" data-section="overview">Overview</button>
-          <button class="sub-nav-btn" data-section="understand">Understand</button>
-          <button class="sub-nav-btn" data-section="operate">Operate</button>
-          <button class="sub-nav-btn" data-section="improve">Improve</button>
-          <button class="sub-nav-btn" data-section="automate">Automate</button>
+          <div class="sub-nav-tabs">
+            <button class="sub-nav-btn active" data-section="overview">Overview</button>
+            <button class="sub-nav-btn" data-section="understand">Understand</button>
+            <button class="sub-nav-btn" data-section="operate">Operate</button>
+            <button class="sub-nav-btn" data-section="improve">Improve</button>
+            <button class="sub-nav-btn" data-section="automate">Automate</button>
+          </div>
+          <div class="sub-nav-actions" id="sub-nav-actions">
+            <!-- Manage widgets -->
+            <button class="sub-nav-action-btn" id="manage-widgets-btn">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>
+              <span>Manage widgets</span>
+            </button>
+            <!-- Team display settings -->
+            <button class="sub-nav-action-btn" id="team-display-settings-btn" title="Display settings" style="display:none;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+                <circle cx="5" cy="4" r="1.5" fill="var(--white)" stroke="currentColor"/>
+                <circle cx="10" cy="8" r="1.5" fill="var(--white)" stroke="currentColor"/>
+                <circle cx="6" cy="12" r="1.5" fill="var(--white)" stroke="currentColor"/>
+              </svg>
+            </button>
+            <!-- View/Edit toggle button -->
+            <button class="sub-nav-action-btn" id="viewedit-toggle-btn" title="Switch to View mode">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/>
+                <circle cx="8" cy="8" r="2.5"/>
+              </svg>
+              <span>View</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -164,12 +175,6 @@
         <section class="analytics-section" id="section-overview" data-section="overview">
           <div class="section-header">
             <h2>Overview</h2>
-            <div class="section-actions">
-              <button class="add-widget-btn" data-section="overview">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>
-                Manage widgets
-              </button>
-            </div>
           </div>
           <div class="section-sentinel" data-section="overview"></div>
           <div class="section-content" data-section="overview"></div>
@@ -179,12 +184,6 @@
         <section class="analytics-section" id="section-understand" data-section="understand">
           <div class="section-header">
             <h2>Understand</h2>
-            <div class="section-actions">
-              <button class="add-widget-btn" data-section="understand">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>
-                Manage widgets
-              </button>
-            </div>
           </div>
           <div class="section-sentinel" data-section="understand"></div>
           <div class="section-content" data-section="understand"></div>
@@ -194,12 +193,6 @@
         <section class="analytics-section" id="section-operate" data-section="operate">
           <div class="section-header">
             <h2>Operate</h2>
-            <div class="section-actions">
-              <button class="add-widget-btn" data-section="operate">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>
-                Manage widgets
-              </button>
-            </div>
           </div>
           <div class="section-sentinel" data-section="operate"></div>
           <div class="section-content" data-section="operate"></div>
@@ -209,12 +202,6 @@
         <section class="analytics-section" id="section-improve" data-section="improve">
           <div class="section-header">
             <h2>Improve</h2>
-            <div class="section-actions">
-              <button class="add-widget-btn" data-section="improve">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>
-                Manage widgets
-              </button>
-            </div>
           </div>
           <div class="section-sentinel" data-section="improve"></div>
           <div class="section-content" data-section="improve"></div>
@@ -224,12 +211,6 @@
         <section class="analytics-section" id="section-automate" data-section="automate">
           <div class="section-header">
             <h2>Automate</h2>
-            <div class="section-actions">
-              <button class="add-widget-btn" data-section="automate">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="4.5" height="4.5" rx=".8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx=".8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx=".8"/><line x1="11" y1="1.2" x2="11" y2="4.8"/><line x1="9.2" y1="3" x2="12.8" y2="3"/></svg>
-                Manage widgets
-              </button>
-            </div>
           </div>
           <div class="section-sentinel" data-section="automate"></div>
           <div class="section-content" data-section="automate"></div>
