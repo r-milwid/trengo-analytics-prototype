@@ -27,6 +27,9 @@ const state = {
   barFilter: { widgetId: null, sectionId: null, selectedIndices: new Set() }
 };
 
+// Channel values that are considered "voice" — voice widgets hide when any other channel is active
+const VOICE_CHANNELS = new Set(['Voice', 'Support EN', 'Support NL', 'Sales', 'Billing', 'Onboarding']);
+
 const dragState = {
   active: false,
   sectionId: null,
@@ -184,6 +187,16 @@ const WIDGETS = {
       tooltip: 'Percentage of AI-handled tickets escalated to a human agent. Rising rates suggest knowledge or confidence gaps in AI.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
     },
+    { id: 'ov-vc-missed-calls', title: 'Missed calls', vis: 'default', type: 'kpi',
+      tooltip: 'Total calls that rang without being answered. A rising trend signals understaffing or poor routing.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'ov-vc-total-calls', title: 'Total calls', vis: 'default', type: 'kpi',
+      tooltip: 'Total calls handled across all voice channels in the selected period. Includes inbound and outbound.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
     { id: 'ov-intent-trends', title: 'Intent trend highlights', vis: 'default', type: 'list', halfWidth: true,
       tooltip: 'Top rising and declining customer intents. Helps you anticipate demand shifts before they become critical.',
       drill: { label: 'See why \u2192', target: 'understand' },
@@ -199,6 +212,11 @@ const WIDGETS = {
       drill: { label: 'Check automation \u2192', target: 'automate' },
       states: { support_agent: 'hide', sales_agent: 'hide' }
     },
+    { id: 'ov-vc-calls-by-hour', title: 'Calls by hour of day', vis: 'default', type: 'bar-chart', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Hourly distribution of call volume \u2014 today vs 30-day average. Compare with ticket demand peaks to plan staffing across channels.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
   ],
   // ─── UNDERSTAND ──────────────────
   understand: [
@@ -213,6 +231,16 @@ const WIDGETS = {
         sales_agent: 'Where your contacts are coming from.'
       },
       states: { support_agent: 'hide', sales_agent: 'hide' }
+    },
+    { id: 'un-vc-inbound-outbound', title: 'Inbound vs outbound calls', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Daily split of inbound calls (connected vs missed) and outbound calls (connected vs not connected). Complements the entry channels breakdown with voice-specific composition.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'un-vc-duration-inbound-outbound', title: 'Duration: inbound vs outbound', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Daily comparison of average call duration for inbound and outbound calls. Pairs with the inbound/outbound volume split above.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'deemphasize', sales_supervisor: 'show', sales_agent: 'hide' }
     },
     { id: 'un-new-returning', title: 'New vs returning contacts', vis: 'default', type: 'doughnut-chart',
       tooltip: 'Proportion of first-time vs repeat contacts. High repeat rates may indicate unresolved issues.',
@@ -238,6 +266,11 @@ const WIDGETS = {
       tooltip: 'Which intents most frequently result in escalation. Shows where understanding breaks down.',
       states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
+    { id: 'un-vc-channel-performance', title: 'Voice channel performance', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Per-channel summary of key voice metrics. Compare channel performance and identify underperforming channels.',
+      hideWhenChannelFiltered: true, hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
   ],
   // ─── OPERATE ─────────────────────
   operate: [
@@ -245,6 +278,17 @@ const WIDGETS = {
       tooltip: 'Median first response time for the selected period.',
       scopeLabel: { supervisor: 'Median — all agents', agent: 'Your median' },
       states: { sales_supervisor: 'deemphasize', sales_agent: 'deemphasize' }
+    },
+    { id: 'op-vc-time-to-answer', title: 'Time to answer', vis: 'default', type: 'kpi',
+      tooltip: 'Average time from a call arriving to an agent answering. The voice equivalent of first response time.',
+      scopeLabel: { supervisor: 'Avg \u2014 all agents', agent: 'Your average' },
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
+    },
+    { id: 'op-vc-call-duration-kpis', title: 'Call duration', vis: 'default', type: 'kpi-group',
+      tooltip: 'Average, longest and shortest call duration this period. Pairs with time-to-answer as the two key per-call efficiency metrics.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
     },
     { id: 'op-resolution-time', title: 'Resolution time (tickets)', vis: 'always', type: 'kpi',
       tooltip: 'Median resolution time across all closed tickets.',
@@ -264,6 +308,26 @@ const WIDGETS = {
       tooltip: 'Per-agent breakdown of key operational metrics.',
       states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
+    { id: 'op-vc-calls-by-team', title: 'Calls by team', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Inbound and outbound call volume distributed by team. Voice equivalent of workload by agent.',
+      hideWhenTeamFiltered: true, hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'op-vc-avg-wait-by-team', title: 'Average wait time by team', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Average caller wait time per team before an agent answers. Helps identify which teams need more voice capacity.',
+      hideWhenTeamFiltered: true, hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'op-vc-longest-wait', title: 'Longest wait time', vis: 'default', type: 'kpi',
+      tooltip: 'The single longest wait time recorded this period. Outliers indicate routing or capacity failures.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'op-vc-duration-by-team', title: 'Call duration by team', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'Average call duration per team. Long durations may indicate complex queries or insufficient agent knowledge.',
+      hideWhenTeamFiltered: true, hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
     { id: 'op-sla-compliance', title: 'SLA compliance', vis: 'default', type: 'progress',
       tooltip: 'Percentage of tickets meeting SLA targets for response and resolution.',
       scopeLabel: { supervisor: '87% of tickets within SLA', agent: '91% of your tickets within SLA' },
@@ -282,6 +346,21 @@ const WIDGETS = {
       tooltip: 'Volume of incoming work vs available agent capacity. Gaps indicate understaffing.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
     },
+    { id: 'op-vc-abandonment-trend', title: 'Call abandonment trend', vis: 'default', type: 'line-chart', halfWidth: true,
+      tooltip: 'Percentage of callers who hung up before being answered, plotted against total call volume. Rising abandon rate signals capacity shortfall.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'op-vc-callbacks-requested', title: 'Callback requests', vis: 'default', type: 'kpi',
+      tooltip: 'Callers who opted into a callback instead of waiting on hold. High numbers signal demand vs capacity mismatch.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
+    { id: 'op-vc-agent-online-status', title: 'Agent online status', vis: 'default', type: 'list',
+      tooltip: 'Current online status of agents across voice channels. Real-time availability view for supervisors.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
+    },
   ],
   // ─── IMPROVE ─────────────────────
   improve: [
@@ -292,6 +371,16 @@ const WIDGETS = {
     { id: 'im-response-rate', title: 'Response rate', vis: 'always', type: 'kpi',
       tooltip: 'Percentage of delivered surveys that received a response.',
       states: { sales_supervisor: 'hide', sales_agent: 'hide' }
+    },
+    { id: 'im-vc-fcr-rate', title: 'First call resolution', vis: 'default', type: 'kpi',
+      tooltip: 'Percentage of calls resolved in a single call without a callback or follow-up ticket. The voice equivalent of CSAT.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'emphasize', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
+    },
+    { id: 'im-vc-call-ticket-rate', title: 'Call-to-ticket rate', vis: 'default', type: 'kpi',
+      tooltip: 'Percentage of calls that result in a ticket being created afterward. High rates signal agents are not fully resolving on the call \u2014 a coaching or knowledge-base improvement signal.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
     { id: 'im-responses', title: 'Positive responses / Neutral responses / Negative responses', vis: 'default', type: 'kpi-group',
       tooltip: 'Breakdown of survey responses by sentiment.',
@@ -343,6 +432,11 @@ const WIDGETS = {
       tooltip: 'Percentage of AI-assigned tickets still open without a response.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
     },
+    { id: 'au-vc-ivr-queue-time', title: 'Time in IVR / queue', vis: 'default', type: 'kpi',
+      tooltip: 'Average time callers spend navigating IVR menus or waiting in queues before reaching an agent. High values indicate automation underperformance in the pre-agent layer.',
+      hideWhenNonVoiceChannel: true,
+      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
+    },
     { id: 'au-journeys-success', title: 'Journeys success ratio', vis: 'default', type: 'progress',
       tooltip: 'Percentage of automation journeys that complete successfully.',
       states: { support_agent: 'hide', sales_supervisor: 'emphasize', sales_agent: 'hide' }
@@ -365,97 +459,6 @@ const WIDGETS = {
     },
   ],
 
-  // ─── VOICE ───────────────────────────────────────────────────
-  voice: [
-    // Group A — Call Volume (always-visible row)
-    { id: 'vc-total-calls', title: 'Total calls', vis: 'always', type: 'kpi',
-      tooltip: 'Total calls handled across all voice channels in the selected period. Includes inbound and outbound.',
-      scopeLabel: { supervisor: 'Inbound + outbound', agent: 'Your total calls' },
-      states: { support_supervisor: 'emphasize', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
-    },
-    { id: 'vc-missed-calls', title: 'Missed calls', vis: 'always', type: 'kpi',
-      tooltip: 'Total calls that rang without being answered. A rising trend signals understaffing or poor routing.',
-      scopeLabel: { supervisor: 'Calls not answered', agent: 'Your missed calls' },
-      states: { support_supervisor: 'emphasize', support_agent: 'show', sales_supervisor: 'emphasize', sales_agent: 'show' }
-    },
-    { id: 'vc-time-to-answer', title: 'Time to answer', vis: 'always', type: 'kpi',
-      tooltip: 'Average time from a call arriving to an agent answering. Directly impacts caller experience and SLA compliance.',
-      scopeLabel: { supervisor: 'Avg — all agents', agent: 'Your average' },
-      states: { support_supervisor: 'emphasize', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
-    },
-    { id: 'vc-call-duration-kpis', title: 'Call duration', vis: 'always', type: 'kpi-group',
-      tooltip: 'Summary of call duration across the period. Average informs staffing; longest flags potential problem calls.',
-      states: { support_supervisor: 'show', support_agent: 'show', sales_supervisor: 'show', sales_agent: 'show' }
-    },
-    { id: 'vc-inbound-outbound', title: 'Inbound vs outbound calls', vis: 'always', type: 'bar-chart', halfWidth: true,
-      tooltip: 'Daily split of inbound calls (connected vs missed) and outbound calls (connected vs not connected). Missed spikes indicate staffing gaps.',
-      states: { support_supervisor: 'show', support_agent: 'deemphasize', sales_supervisor: 'show', sales_agent: 'deemphasize' }
-    },
-    { id: 'vc-calls-by-hour', title: 'Calls by hour of day', vis: 'default', type: 'bar-chart', fullWidth: true, sizeClass: 'large',
-      tooltip: 'Hourly distribution of call volume — today vs 30-day average. Use this to plan staffing and identify peak demand windows.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-calls-by-team', title: 'Calls by team', vis: 'default', type: 'bar-chart', halfWidth: true,
-      tooltip: 'Inbound and outbound call volume distributed by team. Helps identify which teams handle the most voice traffic.',
-      hideWhenTeamFiltered: true,
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-
-    // Group B — Wait Times
-    { id: 'vc-avg-wait-by-team', title: 'Average wait time by team', vis: 'default', type: 'bar-chart', halfWidth: true,
-      tooltip: 'Average caller wait time per team before an agent answers. Helps identify which teams need more capacity.',
-      hideWhenTeamFiltered: true,
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-longest-wait', title: 'Longest wait time', vis: 'default', type: 'kpi',
-      tooltip: 'The single longest wait time recorded in the selected period. Outliers here indicate routing or capacity failures.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-
-    // Group C — Time in Calls
-    { id: 'vc-duration-by-team', title: 'Call duration by team', vis: 'default', type: 'bar-chart', halfWidth: true,
-      tooltip: 'Average call duration per team for inbound and outbound. Long durations may mean complex queries or insufficient agent knowledge.',
-      hideWhenTeamFiltered: true,
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-duration-inbound-outbound', title: 'Duration: inbound vs outbound', vis: 'default', type: 'bar-chart', halfWidth: true,
-      tooltip: 'Daily comparison of average call duration for inbound and outbound calls.',
-      states: { support_supervisor: 'show', support_agent: 'deemphasize', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-ivr-queue-time', title: 'Time in IVR / queue', vis: 'default', type: 'kpi',
-      tooltip: 'Average time callers spend navigating IVR menus or waiting in queues before reaching an agent.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
-    },
-
-    // Group D — Additional metrics
-    { id: 'vc-abandonment-trend', title: 'Call abandonment trend', vis: 'default', type: 'line-chart', halfWidth: true,
-      tooltip: 'Percentage of callers who hung up before being answered, plotted against total call volume. Rising abandon rate signals capacity shortfall.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-fcr-rate', title: 'First call resolution', vis: 'default', type: 'kpi',
-      tooltip: 'Percentage of calls resolved in a single call without a callback or follow-up ticket. The voice equivalent of CSAT.',
-      states: { support_supervisor: 'emphasize', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
-    },
-    { id: 'vc-callbacks-requested', title: 'Callback requests', vis: 'default', type: 'kpi',
-      tooltip: 'Callers who opted into a callback instead of waiting on hold. High numbers signal demand vs capacity mismatch.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-call-ticket-rate', title: 'Call-to-ticket rate', vis: 'default', type: 'kpi',
-      tooltip: 'Percentage of calls that result in a ticket being created afterward. High rates may mean agents are not fully resolving on the call.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
-    },
-
-    // Group E — Meta / Channel Configuration
-    { id: 'vc-channel-performance', title: 'Voice channel performance', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
-      tooltip: 'Per-channel summary of key voice metrics. Compare channel performance and identify underperforming channels.',
-      hideWhenChannelFiltered: true,
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'vc-agent-online-status', title: 'Agent online status', vis: 'default', type: 'list',
-      tooltip: 'Current online status of agents across voice channels. Real-time availability view for supervisors.',
-      states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-  ],
 };
 
 // ── MOCK DATA HELPERS ──────────────────────────────────────────
@@ -709,6 +712,11 @@ function getStateOverride(w) {
   return w.states[stateKey()] || null;
 }
 
+function isNonVoiceChannelActive() {
+  const ch = state.channelFilter;
+  return ch && ch !== 'All channels' && !VOICE_CHANNELS.has(ch);
+}
+
 function getEffectiveVisibility(w) {
   // Hide "by team" charts when a specific team is selected — they become redundant
   if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') {
@@ -716,6 +724,10 @@ function getEffectiveVisibility(w) {
   }
   // Hide "by channel" charts when a specific channel is selected — they become redundant
   if (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') {
+    return 'hidden';
+  }
+  // Hide voice widgets when a non-voice channel is active — voice data is irrelevant
+  if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) {
     return 'hidden';
   }
   const override = getStateOverride(w);
@@ -970,7 +982,7 @@ function ensureLayout(sectionId, widgets) {
     const w = getWidgetById(sectionId, id);
     if (!w || !isWidgetRenderable(w)) {
       // Track if a filter-reactive widget was removed — those should repack rather than leave holes
-      if (w && (w.hideWhenTeamFiltered || w.hideWhenChannelFiltered)) {
+      if (w && (w.hideWhenTeamFiltered || w.hideWhenChannelFiltered || w.hideWhenNonVoiceChannel)) {
         removedFilterReactive = true;
       }
       const placement = layout.placements[id];
@@ -986,6 +998,22 @@ function ensureLayout(sectionId, widgets) {
   });
   // Filter-reactive removals: recompute from scratch so remaining widgets fill the freed space
   if (removedFilterReactive) {
+    delete state.sectionLayout[sectionId];
+    return computeLayout(sectionId, widgets);
+  }
+
+  // Filter-reactive additions: if a filter-reactive widget just became renderable
+  // but isn't in the cached layout, the filter was cleared — recompute from scratch
+  // so it returns to its original position rather than being appended to the end.
+  let addedFilterReactive = false;
+  widgets.forEach(w => {
+    if (layout.placements[w.id]) return; // already placed
+    if (!isWidgetRenderable(w)) return;  // not renderable, skip
+    if (w.hideWhenTeamFiltered || w.hideWhenChannelFiltered || w.hideWhenNonVoiceChannel) {
+      addedFilterReactive = true;
+    }
+  });
+  if (addedFilterReactive) {
     delete state.sectionLayout[sectionId];
     return computeLayout(sectionId, widgets);
   }
@@ -1707,7 +1735,7 @@ function renderKPI(container, w) {
 }
 
 function renderKPIGroup(container, w) {
-  if (w.id === 'vc-call-duration-kpis') {
+  if (w.id === 'vc-call-duration-kpis' || w.id === 'op-vc-call-duration-kpis') {
     const avg = `${rand(2,6)}m ${rand(0,59)}s`;
     const longest = `${rand(15,35)}m ${rand(0,59)}s`;
     const shortest = `0m ${rand(10,59)}s`;
@@ -1793,6 +1821,15 @@ function getMockKPIData(id) {
     'vc-fcr-rate':             { value: '67%', sub: 'First call resolution', trend: { val: 3, dir: 'up' } },
     'vc-callbacks-requested':  { value: '89', sub: 'Callback requests this period', trend: pickTrend() },
     'vc-call-ticket-rate':     { value: '22%', sub: 'Calls resulting in a ticket', trend: pickTrend() },
+    // Cross-tab voice KPI mirrors
+    'op-vc-longest-wait':        { value: '8m 47s', sub: 'Single longest this period', trend: pickTrend() },
+    'op-vc-callbacks-requested': { value: '89', sub: 'Callback requests this period', trend: pickTrend() },
+    'ov-vc-missed-calls':      { value: '143', sub: 'Calls not answered', trend: { val: 12, dir: 'up' } },
+    'ov-vc-total-calls':       { value: '1,847', sub: 'Inbound + outbound', trend: pickTrend() },
+    'op-vc-time-to-answer':    { value: '32s', sub: 'Avg \u2014 all agents', trend: pickTrend() },
+    'im-vc-fcr-rate':          { value: '67%', sub: 'First call resolution', trend: { val: 3, dir: 'up' } },
+    'im-vc-call-ticket-rate':  { value: '22%', sub: 'Calls resulting in a ticket', trend: pickTrend() },
+    'au-vc-ivr-queue-time':    { value: '1m 48s', sub: 'Average per call', trend: pickTrend() },
   };
   const value = map[id] || { value: rand(100,9999).toLocaleString(), sub: '', trend: pickTrend() };
   state.mockData.kpi[id] = value;
@@ -2757,6 +2794,7 @@ function mountSection(sectionId) {
     // Filter-reactive widgets are not user-togglable — don't count them as "available"
     if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return false;
     if (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') return false;
+    if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) return false;
     const isVisible = !state.hiddenWidgets.has(w.id) &&
       (getEffectiveVisibility(w) !== 'hidden' || state.addedWidgets.has(w.id));
     return !isVisible;
@@ -2921,7 +2959,8 @@ window.openWidgetDrawer = function(sectionId) {
       const isVisible = !state.hiddenWidgets.has(w.id) && (effVis !== 'hidden' || state.addedWidgets.has(w.id));
       const isStateHidden = getStateOverride(w) === 'hide';
       const isFilterHidden = (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
-                             (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels');
+                             (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') ||
+                             (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive());
       const canToggle = w.vis !== 'always' && !isStateHidden && !isFilterHidden;
       const statusText = isFilterHidden ? 'Not available with current filter' :
                          isStateHidden  ? 'Not available in this view' :
