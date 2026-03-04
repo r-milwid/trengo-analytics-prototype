@@ -1,6 +1,6 @@
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, GET, PUT, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, GET, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
@@ -35,6 +35,29 @@ export default {
         const patch = await request.json();
         await env.FEEDBACK_STORE.put(id, JSON.stringify({ ...existing, ...patch }));
         return json({ ok: true });
+      } catch (e) {
+        return json({ error: 'kv error' }, 500);
+      }
+    }
+
+    // ── DELETE /feedback/:id — delete a feedback item ───────────
+    if (path.startsWith('/feedback/') && request.method === 'DELETE') {
+      const id = path.split('/feedback/')[1];
+      if (!id) return json({ error: 'missing id' }, 400);
+      try {
+        await env.FEEDBACK_STORE.delete(id);
+        return json({ ok: true });
+      } catch (e) {
+        return json({ error: 'kv error' }, 500);
+      }
+    }
+
+    // ── DELETE /feedback — delete all feedback items ──────────
+    if (path === '/feedback' && request.method === 'DELETE') {
+      try {
+        const list = await env.FEEDBACK_STORE.list();
+        await Promise.all(list.keys.map(k => env.FEEDBACK_STORE.delete(k.name)));
+        return json({ ok: true, deleted: list.keys.length });
       } catch (e) {
         return json({ error: 'kv error' }, 500);
       }
