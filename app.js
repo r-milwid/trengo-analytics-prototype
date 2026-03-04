@@ -426,7 +426,7 @@ const WIDGETS = {
       hideWhenNonVoiceChannel: true,
       states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
-    { id: 'im-responses', title: 'Positive responses / Neutral responses / Negative responses', vis: 'default', type: 'kpi-group',
+    { id: 'im-responses', title: 'CSAT Breakdown', vis: 'default', type: 'kpi-group',
       tooltip: 'Breakdown of survey responses by sentiment.',
       states: { support_agent: 'show', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
@@ -4466,7 +4466,7 @@ WIDGET DRAWER
 
 CHART TYPES USED
 - KPI cards: Large number with trend indicator (up/down percentage) and sub-label
-- KPI groups: Multiple KPIs side-by-side (e.g., positive/neutral/negative responses)
+- KPI groups: Multiple KPIs side-by-side (e.g., CSAT Breakdown)
 - Bar charts: Horizontal or vertical bars (e.g., tickets by hour, entry channels, intent clusters, bottlenecks, handoff reasons)
 - Line charts: Trend lines over time (e.g., tickets created, intent trends, created vs closed, capacity vs demand, satisfaction score)
 - Doughnut chart: Circular proportion chart (e.g., new vs returning contacts)
@@ -4539,7 +4539,7 @@ OPERATE SECTION WIDGETS
 IMPROVE SECTION WIDGETS
 - CSAT score (KPI, always visible) — Customer satisfaction score. Hidden in sales.
 - Response rate (KPI, always visible) — Survey response percentage. Hidden in sales.
-- Positive/Neutral/Negative responses (KPI group, default) — Sentiment breakdown showing thumbs up 30, neutral face 1, thumbs down 2. Hidden in sales. Shown for support agents.
+- CSAT Breakdown (KPI group, default) — Sentiment breakdown showing thumbs up 30, neutral face 1, thumbs down 2. Hidden in sales. Shown for support agents.
 - Satisfaction score (line chart, default) — CSAT trend over time. Hidden for agents and sales.
 - Surveys received (bar chart, default) — Daily survey count. Hidden for agents and sales.
 - Reopen rate (KPI, default) — Percentage of resolved tickets reopened. Hidden in sales. Supervisor: "Of resolved tickets". Agent: "Of your resolved tickets".
