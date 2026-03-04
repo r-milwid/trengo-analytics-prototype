@@ -4255,6 +4255,21 @@ Expansion only on explicit request.
 ----------------------------------------------------------------------
 PROTOTYPE-SPECIFIC CONTENT
 ----------------------------------------------------------------------
+PROTOTYPE MATURITY — FRAMING RULE:
+This is an early-stage throw-away prototype, not a polished product.
+What IS definitive and should be stated with confidence:
+- The five-section structure (Overview, Understand, Operate, Improve, Automate) and why each exists.
+- The watchtower model and the rationale behind it.
+- The core questions each section answers.
+- The adaptability principles, role-based filtering concept, and lens/use-case approach.
+These are firm design decisions. Answer questions about them clearly and without hedging.
+What is NOT final and should be framed provisionally:
+- Which specific charts, KPIs, or widgets appear in each section — these are a representative sample, not a complete set.
+- Chart types, labels, data points, and wording — some are conceptual or placeholders.
+- UI/UX details — intentionally rough in places; polish is not the goal at this stage.
+When describing prototype specifics (charts, metrics, layout details), use language like "the prototype currently shows" or "as represented here" — not definitive declarations.
+Do NOT volunteer caveats about the prototype being incomplete. Just avoid sounding final about implementation details, so stakeholders focus on the overall model rather than fixating on specifics that are expected to change.
+
 Below is a complete description of everything implemented in the clickable prototype.
 
 NAVIGATION AND LAYOUT
@@ -4302,6 +4317,9 @@ CHART TYPES USED
 - Lists: Label + value + trend rows (e.g., intent highlights, exceptions, emerging intents)
 - Lists with actions: Rows with Approve/Reject buttons (e.g., suggested knowledge additions)
 - Opportunities backlog: Special table with impact badges, owner, status, and Dismiss/Action buttons
+- Funnel charts: Stage-based conversion funnel (e.g., sales pipeline funnel)
+- Agent status: Real-time agent availability display (e.g., agent online status)
+- Stacked bar charts: Bars segmented by category (e.g., leads or deals by channel)
 
 OVERVIEW SECTION WIDGETS
 - Open tickets (KPI, always visible) — Total open tickets. Supervisor: "Across all channels". Agent: "Your open tickets". In sales mode, tooltip changes to reference open contacts and pipeline.
@@ -4313,6 +4331,13 @@ OVERVIEW SECTION WIDGETS
 - Intent trend highlights (list, default) — Top rising/declining intents. Hidden for agents, emphasized for sales supervisors. Has drill link to Understand section.
 - Knowledge gap alerts (KPI, hidden) — Count of unresolved AI fallback cases. Hidden in all states. Has drill link to Improve section.
 - Exceptions requiring attention (list, hidden) — System-detected anomalies. Hidden for agents. Has drill link to Automate section.
+- Pipeline value (KPI, default) — Total value of all open deals. Hidden for support roles.
+- Win rate (KPI, default) — Percentage of opportunities resulting in a closed-won deal. Hidden for support roles.
+- Avg deal size (KPI, default) — Average value per deal. Hidden for support roles.
+- Avg sales cycle (KPI, default) — Average days from lead to close. Hidden for support roles.
+- Missed calls (KPI, default) — Calls that rang without being answered. Voice channel only.
+- Total calls (KPI, default) — Total calls handled across all voice channels. Voice channel only.
+- Calls by hour of day (bar chart, default) — Hourly call volume distribution. Voice channel only.
 
 UNDERSTAND SECTION WIDGETS
 - Tickets created (line chart, always visible) — Trend over time. De-emphasized for sales supervisors, hidden for sales agents.
@@ -4323,6 +4348,14 @@ UNDERSTAND SECTION WIDGETS
 - Emerging intents (list, hidden) — New or growing intent clusters. Hidden for agents.
 - Unknown/unclassified intents (KPI, default) — Tickets AI could not classify. Hidden for agents.
 - Escalations by intent (bar chart, hidden) — Which intents cause most escalations. Hidden in all states.
+- New leads (stacked bar chart, default) — Leads by channel over 7 days. Hidden for support roles.
+- Deals created (stacked bar chart, default) — Deals created by channel over 7 days. Hidden for support roles.
+- Sales pipeline funnel (funnel chart, default) — Five-stage funnel: New → Qualified → Proposal → Negotiation → Closed Won. Hidden for support roles.
+- Deals closed by channel (doughnut chart, default) — Won deals broken down by channel. Hidden for support roles.
+- Deals created by channel (doughnut chart, default) — Deal creation volume by channel. Hidden for support roles.
+- Inbound vs outbound calls (bar chart, default) — Call volume split by direction. Voice channel only.
+- Duration: inbound vs outbound (bar chart, default) — Average call duration by direction. Voice channel only.
+- Voice channel performance (table, default) — Per-channel metrics: total calls, missed calls, avg wait, avg duration, answer rate. Voice channel only.
 
 OPERATE SECTION WIDGETS
 - First response time (KPI, always visible) — Same metric as Overview but in operational context. De-emphasized in sales. Supervisor: "Median — all agents". Agent: "Your median".
@@ -4333,6 +4366,17 @@ OPERATE SECTION WIDGETS
 - SLA compliance (progress bar, default) — Percentage within SLA. Hidden in sales. Supervisor shows 87%, Agent shows 91%.
 - Bottlenecks by status or stage (bar chart, always visible) — Where tickets get stuck. Hidden for agents. Tooltip changes in sales to reference pipeline stages.
 - Capacity vs demand (line chart, hidden) — Incoming work vs agent capacity. Hidden for agents.
+- Sales performance (table, default) — Per-agent table with Leads, Deals, Pipeline value, Revenue, Win rate. Hidden for support roles.
+- Channel × stage matrix (table, default) — Deals by channel across pipeline stages. Hidden for support roles.
+- Time to answer (KPI, default) — Average time before a call is answered. Voice channel only.
+- Call duration (KPI group, default) — Average, longest, and shortest call durations. Voice channel only.
+- Calls by team (bar chart, default) — Call volume split by team. Voice channel only.
+- Avg wait time by team (bar chart, default) — Average caller wait time per team. Voice channel only.
+- Longest wait time (KPI, default) — Peak wait time in the period. Voice channel only.
+- Call duration by team (bar chart, default) — Average call length per team. Voice channel only.
+- Call abandonment trend (line chart, default) — Abandonment rate over time. Voice channel only.
+- Callback requests (KPI, default) — Number of callback requests received. Voice channel only.
+- Agent online status (agent status, default) — Real-time agent availability. Voice channel only.
 
 IMPROVE SECTION WIDGETS
 - CSAT score (KPI, always visible) — Customer satisfaction score. Hidden in sales.
@@ -4344,6 +4388,8 @@ IMPROVE SECTION WIDGETS
 - Knowledge gaps by intent (bar chart, hidden) — Intents with most knowledge gaps. Shown for support agents with tooltip "Knowledge gaps you encountered most often." Hidden in sales.
 - Suggested knowledge additions (list with actions, default) — AI-suggested articles with Approve/Reject buttons. Three sample items: "How to connect API keys" (from 42 fallback tickets), "Pricing plans overview" (from feedback + escalation data), "Mobile app troubleshooting" (from emerging intent detection). Hidden for agents and sales.
 - Opportunities backlog (opportunities widget, always visible) — 15 prioritised improvement opportunities with impact (high/medium/low), owner (AI Analysis, Content Team, Support Lead, Automation Team), and status (new/approved). Users can Dismiss or Action each. Actioning opens a modal with AI recommendation, analysis details, estimated impact, and a Confirm button that creates a draft knowledge article. Hidden for agents.
+- First call resolution (KPI, default) — Percentage of calls resolved without follow-up. Voice channel only.
+- Call-to-ticket rate (KPI, default) — Percentage of calls that generate a ticket. Voice channel only.
 
 AUTOMATE SECTION WIDGETS
 - AI Agent tickets (KPI, always visible) — Total AI-handled tickets. Supervisor: "AI-handled tickets". Agent: "AI-handled on your behalf".
@@ -4355,6 +4401,7 @@ AUTOMATE SECTION WIDGETS
 - Automation handoff reasons (bar chart, default) — Why automation handed off: Missing knowledge, Customer requested, Excess wait time, Excess open time, Safety guardrail. Hidden for agents.
 - Automation conflicts (list, hidden) — Conflicting actions between journeys and AI agents. Hidden for agents.
 - Safety and guardrail violations (list, hidden) — Safety guardrail stops in automation. Hidden for agents.
+- Time in IVR / queue (KPI, default) — Average time callers spend in IVR or queue before reaching an agent. Voice channel only.
 
 MOCK DATA
 All data in the prototype is randomly generated on each page load. KPI values, chart data, trend percentages, and table rows use random numbers within configured ranges. The data is not real and is only meant to illustrate the layout and structure. Changing filters or switching roles produces new random values.
@@ -4533,7 +4580,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     _pendingContextApproval = null;
     clearChatHistory();
     chatMessages.innerHTML = '';
-    addBubble('I\'m here to help. I\'ll provide context as you explore and capture your feedback. Share questions or thoughts anytime.', 'assistant');
+    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it. You\'ll also see occasional context as you navigate.', 'assistant');
     chatInput.focus();
   });
 
@@ -5035,7 +5082,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       addBubble(msg.content, msg.role === 'user' ? 'user' : 'assistant');
     });
   } else {
-    addBubble('I\'m here to help. I\'ll provide context as you explore and capture your feedback. Share questions or thoughts anytime.', 'assistant');
+    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it. You\'ll also see occasional context as you navigate.', 'assistant');
   }
 
   // Nav toast — show "Outside prototype scope." for non-settings nav clicks
