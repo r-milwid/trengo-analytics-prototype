@@ -18,7 +18,7 @@ const state = {
   sectionOrder: {}, // sectionId -> [widgetId...]
   sectionLayout: {}, // sectionId -> { rows, placements }
   dateFilter: 'Last 30 days',
-  channelFilter: 'All channels',
+  channelFilter: new Set(),
   teamFilter: 'All teams',
   charts: {},
   mockData: { kpi: {}, lists: {}, tables: {}, charts: {} },
@@ -755,8 +755,11 @@ function getStateOverride(w) {
 }
 
 function isNonVoiceChannelActive() {
-  const ch = state.channelFilter;
-  return ch && ch !== 'All channels' && !VOICE_CHANNELS.has(ch);
+  if (state.channelFilter.size === 0) return false;
+  for (const ch of state.channelFilter) {
+    if (!VOICE_CHANNELS.has(ch)) return true;
+  }
+  return false;
 }
 
 function getEffectiveVisibility(w) {
@@ -765,7 +768,7 @@ function getEffectiveVisibility(w) {
     return 'hidden';
   }
   // Hide "by channel" charts when a specific channel is selected — they become redundant
-  if (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') {
+  if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) {
     return 'hidden';
   }
   // Hide voice widgets when a non-voice channel is active — voice data is irrelevant
@@ -2592,7 +2595,7 @@ function renderTable(container, w) {
     });
     html += '</tbody></table></div>';
     container.innerHTML = html;
-  } else if (w.id === 'vc-channel-performance') {
+  } else if (w.id === 'un-vc-channel-performance') {
     const vcChannels = ['Support EN', 'Support NL', 'Sales', 'Billing', 'Onboarding', 'Tier-2'];
     const cacheKey = w.id + '::' + (state.teamFilter || 'All teams');
     if (!state.mockData.tables[cacheKey]) {
@@ -2622,7 +2625,7 @@ function renderTable(container, w) {
     html += '</tbody></table></div>';
     container.innerHTML = html;
   } else if (w.id === 'op-channel-perf') {
-    const channels = ['Email', 'WhatsApp', 'Live chat', 'Phone', 'Instagram', 'Facebook'];
+    const channels = filterConfigs['filter-channel'].groups.filter(g => g.children).flatMap(g => g.children);
     const cacheKey = w.id + '::cache';
     if (!state.mockData.tables[cacheKey]) {
       state.mockData.tables[cacheKey] = channels.map(ch => ({
@@ -2644,7 +2647,7 @@ function renderTable(container, w) {
       <th>Open tickets</th>
     </tr></thead><tbody>`;
     rows.forEach(r => {
-      const isSelected = state.channelFilter === r.channel;
+      const isSelected = state.channelFilter.has(r.channel);
       const slaNum = parseInt(r.slaCompliance);
       const slaCls = slaNum >= 90 ? 'sla-good' : slaNum >= 80 ? 'sla-warn' : 'sla-bad';
       html += `<tr class="channel-row${isSelected ? ' channel-row-selected' : ''}" data-channel="${r.channel}">
@@ -2663,10 +2666,9 @@ function renderTable(container, w) {
     container.querySelectorAll('.channel-row').forEach(row => {
       row.addEventListener('click', () => {
         const ch = row.dataset.channel;
-        const newVal = state.channelFilter === ch ? 'All channels' : ch;
-        state.channelFilter = newVal;
-        const chip = document.getElementById('filter-channel');
-        if (chip) chip.querySelector('span').textContent = newVal;
+        if (state.channelFilter.has(ch)) state.channelFilter.delete(ch);
+        else state.channelFilter.add(ch);
+        updateChannelChipLabel();
         [...state.loadedSections].forEach(s => remountSection(s));
       });
     });
@@ -3023,7 +3025,7 @@ function mountSection(sectionId) {
     if (w.vis === 'always') return false; // always visible, can't be toggled
     // Filter-reactive widgets are not user-togglable — don't count them as "available"
     if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return false;
-    if (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') return false;
+    if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) return false;
     if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) return false;
     const isVisible = !state.hiddenWidgets.has(w.id) &&
       (getEffectiveVisibility(w) !== 'hidden' || state.addedWidgets.has(w.id));
@@ -3189,7 +3191,7 @@ window.openWidgetDrawer = function(sectionId) {
       const isVisible = !state.hiddenWidgets.has(w.id) && (effVis !== 'hidden' || state.addedWidgets.has(w.id));
       const isStateHidden = getStateOverride(w) === 'hide';
       const isFilterHidden = (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
-                             (w.hideWhenChannelFiltered && state.channelFilter && state.channelFilter !== 'All channels') ||
+                             (w.hideWhenChannelFiltered && state.channelFilter.size > 0) ||
                              (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive());
       const canToggle = w.vis !== 'always' && !isStateHidden && !isFilterHidden;
       const statusText = isFilterHidden ? 'Not available with current filter' :
@@ -3708,6 +3710,95 @@ function buildGroupedDropdownHTML(config) {
   return html;
 }
 
+// ── CHANNEL TWO-PANEL DROPDOWN ──────────────────────────────
+function checkboxCheckedSVG() {
+  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="0.5" y="0.5" width="15" height="15" rx="3" fill="#1a1a1a" stroke="#1a1a1a"/><polyline points="4.5 8 7 10.5 11.5 5.5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+function checkboxEmptySVG() {
+  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="0.5" y="0.5" width="15" height="15" rx="3" fill="white" stroke="#d1d1d6"/></svg>`;
+}
+
+let _activeChannelType = null;
+
+function openChannelDropdown(chip) {
+  const dropdown = document.getElementById('channel-dropdown');
+  // Toggle off if already open
+  if (dropdown.style.display === 'flex') { closeChannelDropdown(); return; }
+  // Close shared dropdown
+  document.getElementById('filter-dropdown').style.display = 'none';
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
+  chip.classList.add('active-filter');
+  // Position below chip
+  const rect = chip.getBoundingClientRect();
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+  dropdown.style.left = Math.min(rect.left, window.innerWidth - 400) + 'px';
+  dropdown.style.display = 'flex';
+  _activeChannelType = null;
+  renderChannelTypesPanel();
+  document.getElementById('channel-dropdown-children').style.display = 'none';
+}
+
+function closeChannelDropdown() {
+  document.getElementById('channel-dropdown').style.display = 'none';
+  const chip = document.getElementById('filter-channel');
+  if (chip) chip.classList.remove('active-filter');
+  _activeChannelType = null;
+}
+
+function renderChannelTypesPanel() {
+  const config = filterConfigs['filter-channel'];
+  const container = document.getElementById('channel-dropdown-types');
+  let html = '';
+  for (const group of config.groups) {
+    const hasChildren = !!(group.children && group.children.length);
+    const isActive = _activeChannelType === group.value;
+    const total = hasChildren ? group.children.length : 0;
+    const selected = hasChildren ? group.children.filter(c => state.channelFilter.has(c)).length : 0;
+    const hasSel = selected > 0;
+    html += `<div class="channel-type-item ${isActive ? 'active' : ''} ${hasSel ? 'has-selection' : ''}" data-type-value="${group.value}">` +
+      `<span class="channel-type-label">${group.label}</span>` +
+      (hasChildren
+        ? (hasSel ? `<span class="channel-type-selection-count">${selected}/${total}</span>` : `<span class="channel-type-count">${total}</span>`) +
+          `<svg class="channel-type-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l4 3-4 3"/></svg>`
+        : '') +
+      `</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderChannelChildrenPanel(typeValue) {
+  const config = filterConfigs['filter-channel'];
+  const group = config.groups.find(g => g.value === typeValue);
+  if (!group || !group.children) return;
+  const container = document.getElementById('channel-dropdown-children');
+  const allSelected = group.children.every(c => state.channelFilter.has(c));
+  let html = `<div class="channel-child-item channel-child-select-all" data-value="${typeValue}">` +
+    `<span class="channel-checkbox">${allSelected ? checkboxCheckedSVG() : checkboxEmptySVG()}</span>` +
+    `<span class="channel-child-label">Select all</span></div>` +
+    `<div class="channel-children-divider"></div>`;
+  for (const child of group.children) {
+    const isChecked = state.channelFilter.has(child);
+    html += `<div class="channel-child-item ${isChecked ? 'checked' : ''}" data-value="${child}" data-parent-type="${typeValue}">` +
+      `<span class="channel-checkbox">${isChecked ? checkboxCheckedSVG() : checkboxEmptySVG()}</span>` +
+      `<span class="channel-child-label">${child}</span></div>`;
+  }
+  container.innerHTML = html;
+  container.style.display = 'block';
+}
+
+function updateChannelChipLabel() {
+  const chip = document.getElementById('filter-channel');
+  if (!chip) return;
+  const n = state.channelFilter.size;
+  let label;
+  if (n === 0) label = 'All channels';
+  else if (n === 1) label = [...state.channelFilter][0];
+  else label = n + ' channels';
+  chip.querySelector('span').textContent = label;
+  // Toggle active styling on chip when filter is applied
+  chip.classList.toggle('filter-applied', n > 0);
+}
+
 const filterConfigs = {
   'filter-date': {
     options: ['Today', 'Last 7 days', 'Last 14 days', 'Last 30 days', 'Last 90 days'],
@@ -3736,10 +3827,21 @@ Object.keys(filterConfigs).forEach(filterId => {
 
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
+
+    // Channel filter uses its own two-panel dropdown
+    if (filterId === 'filter-channel') {
+      document.getElementById('filter-dropdown').style.display = 'none';
+      openChannelDropdown(chip);
+      return;
+    }
+
     const dropdown = document.getElementById('filter-dropdown');
     const content = document.getElementById('filter-dropdown-content');
     const config = filterConfigs[filterId];
     const rect = chip.getBoundingClientRect();
+
+    // Close channel dropdown if open
+    closeChannelDropdown();
 
     // Toggle
     if (dropdown.style.display === 'block' && dropdown.dataset.filter === filterId) {
@@ -3752,13 +3854,9 @@ Object.keys(filterConfigs).forEach(filterId => {
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
     chip.classList.add('active-filter');
 
-    if (config.groups) {
-      content.innerHTML = buildGroupedDropdownHTML(config);
-    } else {
-      content.innerHTML = config.options.map(opt =>
-        `<div class="filter-option ${state[config.stateKey] === opt ? 'selected' : ''}" data-value="${opt}"><span class="filter-option-label">${opt}</span>${buildTickSVG()}</div>`
-      ).join('');
-    }
+    content.innerHTML = config.options.map(opt =>
+      `<div class="filter-option ${state[config.stateKey] === opt ? 'selected' : ''}" data-value="${opt}"><span class="filter-option-label">${opt}</span>${buildTickSVG()}</div>`
+    ).join('');
 
     dropdown.style.top = (rect.bottom + 4) + 'px';
     dropdown.style.left = rect.left + 'px';
@@ -3799,9 +3897,69 @@ document.getElementById('filter-dropdown-content').addEventListener('click', e =
   if (filterId === 'filter-team') syncLensButtons();
 });
 
+// ── Channel two-panel: types panel click ──────────────────────
+document.getElementById('channel-dropdown-types').addEventListener('click', (e) => {
+  const item = e.target.closest('.channel-type-item');
+  if (!item) return;
+  e.stopPropagation();
+  const typeValue = item.dataset.typeValue;
+  const config = filterConfigs['filter-channel'];
+  const group = config.groups.find(g => g.value === typeValue);
+  if (!group) return;
+
+  // "All channels" — no children, clear filter
+  if (!group.children || !group.children.length) {
+    state.channelFilter = new Set();
+    updateChannelChipLabel();
+    closeChannelDropdown();
+    [...state.loadedSections].forEach(s => remountSection(s));
+    return;
+  }
+
+  // Open children panel for this type
+  _activeChannelType = typeValue;
+  renderChannelTypesPanel();
+  renderChannelChildrenPanel(typeValue);
+});
+
+// ── Channel two-panel: children panel click ───────────────────
+document.getElementById('channel-dropdown-children').addEventListener('click', (e) => {
+  const item = e.target.closest('.channel-child-item');
+  if (!item) return;
+  e.stopPropagation();
+  const value = item.dataset.value;
+
+  if (item.classList.contains('channel-child-select-all')) {
+    // Toggle all children of this type
+    const config = filterConfigs['filter-channel'];
+    const group = config.groups.find(g => g.value === value);
+    if (group && group.children) {
+      const allSelected = group.children.every(c => state.channelFilter.has(c));
+      if (allSelected) {
+        group.children.forEach(c => state.channelFilter.delete(c));
+      } else {
+        group.children.forEach(c => state.channelFilter.add(c));
+      }
+    }
+  } else {
+    // Individual child toggle
+    if (state.channelFilter.has(value)) state.channelFilter.delete(value);
+    else state.channelFilter.add(value);
+  }
+
+  updateChannelChipLabel();
+  renderChannelChildrenPanel(_activeChannelType);
+  renderChannelTypesPanel();
+  [...state.loadedSections].forEach(s => remountSection(s));
+});
+
 // Close dropdown on outside click + clear bar filter when clicking outside a widget card
 document.addEventListener('click', (e) => {
   document.getElementById('filter-dropdown').style.display = 'none';
+  // Close channel two-panel dropdown on outside click
+  if (!e.target.closest('#channel-dropdown') && !e.target.closest('#filter-channel')) {
+    closeChannelDropdown();
+  }
   document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
   if (state.barFilter && state.barFilter.widgetId && !e.target.closest('.widget-card')) {
     clearBarFilter();
@@ -4738,8 +4896,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         const raw = data.content[0].text;
         const { cleanText, feedback, context, conflict } = parseSentinels(raw);
         if (/please ask Rowan/i.test(cleanText)) {
-          userBubble.remove();
-          messages.pop();
+          const fallback = "I'm not sure about that — feel free to ask Rowan for more details.";
+          messages.push({ role: 'assistant', content: fallback });
+          addBubble(fallback, 'assistant');
           saveChatHistory();
           chatSend.disabled = false;
           chatInput.focus();
@@ -4864,7 +5023,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       if (data.content && data.content[0]) {
         const reply = data.content[0].text;
         if (/please ask Rowan/i.test(reply)) {
-          messages.pop();
+          const fallback = "I'm not sure about that — feel free to ask Rowan for more details.";
+          messages.push({ role: 'assistant', content: fallback });
+          addBubble(fallback, 'assistant');
           saveChatHistory();
           return;
         }

@@ -557,6 +557,7 @@ body {
 }
 .filter-chip:hover { border-color: var(--gray-400); }
 .filter-chip.active-filter { border-color: var(--black); background: var(--gray-50); }
+.filter-chip.filter-applied { border-color: var(--accent); color: var(--accent); font-weight: 500; }
 .filter-chip-icon { padding: 5px 8px; }
 
 /* Sub-nav */
@@ -1576,6 +1577,101 @@ body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + v
 .filter-option-group.has-children { cursor: default; color: var(--gray-700); }
 .filter-option-sub { padding-left: 28px; font-size: 12.5px; color: var(--gray-600); }
 .filter-option-sub.hidden { display: none; }
+
+/* ============================================================
+   CHANNEL TWO-PANEL DROPDOWN
+   ============================================================ */
+.channel-dropdown {
+  position: fixed;
+  display: flex;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  z-index: 150;
+  overflow: hidden;
+  padding: 4px;
+}
+
+/* Left panel — channel types */
+.channel-dropdown-types {
+  min-width: 180px;
+  padding: 0 0 0 4px;
+}
+
+.channel-type-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .1s;
+  color: var(--gray-700);
+  border-radius: 8px;
+}
+.channel-type-item:hover { background: var(--gray-50); }
+.channel-type-item.active { background: var(--gray-100); }
+.channel-type-item.has-selection .channel-type-label { color: var(--gray-900); font-weight: 500; }
+
+.channel-type-label {
+  flex: 1;
+  font-weight: 500;
+}
+.channel-type-count {
+  font-size: 12px;
+  color: var(--gray-400);
+  font-weight: 400;
+}
+.channel-type-selection-count {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  background: rgba(111, 205, 191, 0.15);
+  padding: 1px 7px;
+  border-radius: 10px;
+  line-height: 18px;
+}
+.channel-type-chevron {
+  flex-shrink: 0;
+  color: var(--gray-400);
+}
+
+/* Right panel — individual channels */
+.channel-dropdown-children {
+  min-width: 200px;
+  padding: 0 0 0 4px;
+  border-left: 1px solid var(--border);
+}
+
+.channel-child-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .1s;
+  color: var(--gray-700);
+  border-radius: 8px;
+}
+.channel-child-item:hover { background: var(--gray-50); }
+.channel-child-item.checked .channel-child-label { font-weight: 500; color: var(--gray-900); }
+
+.channel-child-label { flex: 1; }
+
+.channel-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.channel-children-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
 
 /* ============================================================
    BAR FILTER
