@@ -4,7 +4,7 @@
     {
       "name": "prototype",
       "runtimeExecutable": "/Users/m.wammes/.nvm/versions/node/v24.14.0/bin/node",
-      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((q,r)=>{let f=p.join('/Users/m.wammes/Documents/GitHub/trengo-analytics-prototype',q.url==='/'?'/index.html':q.url);try{r.writeHead(200);fs.createReadStream(f).pipe(r)}catch(e){r.writeHead(404);r.end()}}).listen(3000,()=>console.log('Server running on port 3000'))"],
+      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),p=require('path'),root='/Users/m.wammes/Documents/GitHub/trengo-analytics-prototype';const mime={'html':'text/html','js':'application/javascript','css':'text/css','json':'application/json','png':'image/png','svg':'image/svg+xml','ico':'image/x-icon'};h.createServer((q,r)=>{const url=q.url.split('?')[0];const f=p.join(root,url==='/'?'index.html':url);fs.stat(f,(err,s)=>{if(err||!s.isFile()){r.writeHead(404);r.end('Not found');return;}const ext=p.extname(f).slice(1);r.writeHead(200,{'Content-Type':mime[ext]||'application/octet-stream'});const st=fs.createReadStream(f);st.on('error',()=>r.end());st.pipe(r);});}).listen(3000,()=>console.log('Server on 3000'));"],
       "port": 3000
     }
   ]

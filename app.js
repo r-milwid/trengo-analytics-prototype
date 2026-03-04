@@ -174,18 +174,34 @@ const WIDGETS = {
       scopeLabel: { supervisor: 'Median — all agents', agent: 'Your median' },
       states: { sales_supervisor: 'deemphasize', sales_agent: 'deemphasize' }
     },
+    { id: 'ov-escalation-rate', title: 'Escalation rate (AI \u2192 human)', vis: 'default', type: 'kpi',
+      tooltip: 'Percentage of AI-handled tickets escalated to a human agent. Rising rates suggest knowledge or confidence gaps in AI.',
+      states: { support_agent: 'hide', sales_agent: 'hide' }
+    },
     { id: 'ov-resolution-time', title: 'Resolution time', vis: 'default', type: 'kpi',
       tooltip: 'Median time from ticket creation to resolution. Long times signal process or knowledge gaps.',
       scopeLabel: { supervisor: 'Median — all agents', agent: 'Your median' },
       states: { sales_supervisor: 'hide', sales_agent: 'hide' }
     },
+    { id: 'ov-pipeline-value', title: 'Pipeline value', vis: 'default', type: 'kpi',
+      tooltip: 'Total value of all open deals in the pipeline.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
+    { id: 'ov-win-rate', title: 'Win rate', vis: 'default', type: 'kpi',
+      tooltip: 'Percentage of opportunities that resulted in a closed-won deal.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
+    { id: 'ov-avg-deal-size', title: 'Avg deal size', vis: 'default', type: 'kpi',
+      tooltip: 'Average revenue per closed-won deal over the selected period.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
+    { id: 'ov-avg-sales-cycle', title: 'Avg sales cycle', vis: 'default', type: 'kpi',
+      tooltip: 'Average number of days from deal creation to close (won or lost).',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
     { id: 'ov-tickets-by-hour', title: 'Tickets created by hour', vis: 'default', type: 'bar-chart', fullWidth: true, sizeClass: 'large',
       tooltip: 'Hourly distribution of new tickets. Use this to plan staffing and identify peak demand windows.',
       states: { support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
-    },
-    { id: 'ov-escalation-rate', title: 'Escalation rate (AI \u2192 human)', vis: 'default', type: 'kpi',
-      tooltip: 'Percentage of AI-handled tickets escalated to a human agent. Rising rates suggest knowledge or confidence gaps in AI.',
-      states: { support_agent: 'hide', sales_agent: 'hide' }
     },
     { id: 'ov-vc-missed-calls', title: 'Missed calls', vis: 'default', type: 'kpi',
       tooltip: 'Total calls that rang without being answered. A rising trend signals understaffing or poor routing.',
@@ -223,6 +239,22 @@ const WIDGETS = {
     { id: 'un-tickets-created', title: 'Tickets created', vis: 'always', type: 'line-chart', halfWidth: true,
       tooltip: 'Trend of new tickets created over the selected period.',
       states: { sales_supervisor: 'deemphasize', sales_agent: 'hide' }
+    },
+    { id: 'un-leads-created', title: 'New leads', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'New contacts (leads) created per day, broken down by channel.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
+    { id: 'un-deals-created', title: 'Deals created', vis: 'default', type: 'bar-chart', halfWidth: true,
+      tooltip: 'New deals created per day, broken down by channel.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
+    { id: 'un-sales-funnel', title: 'Sales pipeline funnel', vis: 'default', type: 'funnel', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Deal count at each pipeline stage. Declining bars show conversion drop-off between stages.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
+    { id: 'un-deals-by-channel', title: 'Deals created by channel', vis: 'default', type: 'doughnut-chart',
+      tooltip: 'Distribution of newly created deals by the contact\'s entry channel.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
     },
     { id: 'un-entry-channels', title: 'Entry channels', vis: 'always', type: 'bar-chart', halfWidth: true,
       tooltip: 'Distribution of tickets and contacts by channel (email, WhatsApp, chat, etc.).',
@@ -308,6 +340,14 @@ const WIDGETS = {
       tooltip: 'Per-agent breakdown of key operational metrics.',
       states: { support_agent: 'hide', sales_supervisor: 'hide', sales_agent: 'hide' }
     },
+    { id: 'op-sales-performance', title: 'Sales performance', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Per-agent sales performance: leads, deals created, pipeline value, revenue, and win rate.',
+      states: { support_supervisor: 'hide', support_agent: 'hide', sales_agent: 'hide' }
+    },
+    { id: 'op-channel-stage-matrix', title: 'Channel \u00d7 stage', vis: 'default', type: 'table', fullWidth: true, sizeClass: 'large',
+      tooltip: 'Deal counts by channel and pipeline stage. Shows which channels drive deals furthest in the funnel.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
     { id: 'op-vc-calls-by-team', title: 'Calls by team', vis: 'default', type: 'bar-chart', halfWidth: true,
       tooltip: 'Inbound and outbound call volume distributed by team. Voice equivalent of workload by agent.',
       hideWhenTeamFiltered: true, hideWhenNonVoiceChannel: true,
@@ -356,7 +396,7 @@ const WIDGETS = {
       hideWhenNonVoiceChannel: true,
       states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
     },
-    { id: 'op-vc-agent-online-status', title: 'Agent online status', vis: 'default', type: 'list',
+    { id: 'op-vc-agent-online-status', title: 'Agent online status', vis: 'default', type: 'agent-status',
       tooltip: 'Current online status of agents across voice channels. Real-time availability view for supervisors.',
       hideWhenNonVoiceChannel: true,
       states: { support_supervisor: 'show', support_agent: 'hide', sales_supervisor: 'show', sales_agent: 'hide' }
@@ -411,6 +451,10 @@ const WIDGETS = {
     { id: 'im-opportunities', title: 'Opportunities backlog', vis: 'always', type: 'opportunities', fullWidth: true, sizeClass: 'large',
       tooltip: 'Prioritized list of improvement opportunities identified by AI analysis.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
+    },
+    { id: 'im-deals-won-by-channel', title: 'Deals closed by channel (Won)', vis: 'default', type: 'doughnut-chart',
+      tooltip: 'Breakdown of closed-won deals by last communication channel. Shows which channels drive successful closes.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
     },
   ],
   // ─── AUTOMATE ────────────────────
@@ -623,8 +667,10 @@ function renderWidget(w, section, placement, rows, layout) {
       if (initialMode === 'numbers') renderChartNumbers(body, w);
       else renderDoughnutChart(body, w);
       break;
+    case 'funnel': renderFunnel(body, w); break;
     case 'table': renderTable(body, w); break;
     case 'list': renderList(body, w); break;
+    case 'agent-status': renderAgentOnlineStatus(body, w); break;
     case 'list-actions': renderListActions(body, w); break;
     case 'progress': renderProgress(body, w); break;
     case 'opportunities': renderOpportunities(body, w); break;
@@ -1731,6 +1777,33 @@ function renderKPI(container, w) {
 }
 
 function renderKPIGroup(container, w) {
+  if (w.id === 'ov-sales-kpis') {
+    const pipeline = `€${(rand(80, 200) * 1000).toLocaleString()}`;
+    const winRate  = `${rand(25, 55)}%`;
+    const avgDeal  = `€${(rand(2, 8) * 1000 + rand(0, 999)).toLocaleString()}`;
+    const cycle    = `${rand(12, 35)} days`;
+    container.innerHTML = `
+      <div style="display:flex;gap:24px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Pipeline value</div>
+          <div style="font-size:22px;font-weight:700;color:var(--accent-dark)">${pipeline}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Win rate</div>
+          <div style="font-size:22px;font-weight:700;color:#82c9ff">${winRate}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Avg deal size</div>
+          <div style="font-size:22px;font-weight:700;color:var(--yellow)">${avgDeal}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--gray-500)">Avg sales cycle</div>
+          <div style="font-size:22px;font-weight:700;color:var(--gray-400)">${cycle}</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
   if (w.id === 'vc-call-duration-kpis' || w.id === 'op-vc-call-duration-kpis') {
     const avg = `${rand(2,6)}m ${rand(0,59)}s`;
     const longest = `${rand(15,35)}m ${rand(0,59)}s`;
@@ -1774,6 +1847,10 @@ function renderKPIGroup(container, w) {
 function getMockKPIData(id) {
   if (state.mockData.kpi[id]) return state.mockData.kpi[id];
   const map = {
+    'ov-pipeline-value':   { value: '€124,500', sub: 'Sum of amounts for open deals', trend: pickTrend() },
+    'ov-win-rate':         { value: '34%', sub: 'Closed-won / total opportunities created', trend: pickTrend() },
+    'ov-avg-deal-size':    { value: '€3,680', sub: 'Total revenue from Closed-Won / # Closed-Won', trend: pickTrend() },
+    'ov-avg-sales-cycle':  { value: '18 days', sub: 'Avg. days from deal created to closed (won or lost)', trend: pickTrend() },
     'ov-open-tickets':     { value: '16,610', sub: 'Across all channels', trend: pickTrend() },
     'ov-assigned-tickets': { value: '1,183', sub: 'Currently assigned', trend: pickTrend() },
     'ov-first-response':   { value: '27m 35s', sub: 'Median', trend: pickTrend() },
@@ -1902,6 +1979,50 @@ function renderChartNumbers(container, w) {
   }
 }
 
+// ── FUNNEL ─────────────────────────────────────────────────────
+function renderFunnel(container, w) {
+  const stages = [
+    { label: 'New',         value: 240 },
+    { label: 'Qualified',   value: 160 },
+    { label: 'Proposal',    value: 95  },
+    { label: 'Negotiation', value: 58  },
+    { label: 'Closed Won',  value: 32  },
+  ];
+  const chartH   = 200;
+  const maxVal    = stages[0].value;
+  const barH      = stages.map(s => Math.max(8, Math.round((s.value / maxVal) * chartH)));
+  const connW     = 52;
+  const parts     = [];
+
+  stages.forEach((s, i) => {
+    parts.push(`
+      <div class="funnel-stage">
+        <div class="funnel-bar-col">
+          <div class="funnel-bar" style="height:${barH[i]}px"><span class="funnel-bar-value">${s.value}</span></div>
+        </div>
+        <span class="funnel-stage-label">${s.label}</span>
+      </div>`);
+    if (i < stages.length - 1) {
+      const pct  = Math.round((stages[i + 1].value / s.value) * 100);
+      const drop = 100 - pct;
+      const y1   = chartH - barH[i];
+      const y2   = chartH - barH[i + 1];
+      const pts  = `0,${y1} 0,${chartH} ${connW},${chartH} ${connW},${y2}`;
+      parts.push(`
+        <div class="funnel-connector">
+          <svg viewBox="0 0 ${connW} ${chartH}" preserveAspectRatio="none">
+            <polygon points="${pts}" fill="rgba(111,205,191,0.18)"/>
+          </svg>
+          <div class="funnel-rate-pill">
+            <span class="funnel-rate-pct">${pct}%</span>
+            <span class="funnel-rate-drop">↓ ${drop}%</span>
+          </div>
+        </div>`);
+    }
+  });
+  container.innerHTML = `<div class="funnel-container">${parts.join('')}</div>`;
+}
+
 // ── CHARTS ─────────────────────────────────────────────────────
 function renderBarChart(container, w) {
   const chartWrap = document.createElement('div');
@@ -2017,10 +2138,25 @@ function renderDoughnutChart(container, w) {
 
 function getMockDoughnutData(id) {
   if (state.mockData.charts[id]) return cloneData(state.mockData.charts[id]);
-  const data = {
-    labels: ['New contacts', 'Returning contacts'],
-    datasets: [{ data: [62, 38], backgroundColor: [CHART_COLORS.teal, CHART_COLORS.periwinkle], borderWidth: 0 }]
-  };
+  const salesChLabels = ['WhatsApp', 'Voice', 'Email', 'Live chat', 'Telegram', 'TikTok'];
+  const salesChColors = [CHART_COLORS.teal, CHART_COLORS.blue, CHART_COLORS.periwinkle, CHART_COLORS.yellow, CHART_COLORS.purple, CHART_COLORS.tealLight];
+  let data;
+  if (id === 'un-deals-by-channel') {
+    data = {
+      labels: salesChLabels,
+      datasets: [{ data: salesChLabels.map((_, i) => rand(i === 0 ? 30 : 5, i === 0 ? 80 : 40)), backgroundColor: salesChColors, borderWidth: 0 }]
+    };
+  } else if (id === 'im-deals-won-by-channel') {
+    data = {
+      labels: salesChLabels,
+      datasets: [{ data: [rand(10,25), rand(5,15), rand(8,20), rand(3,12), rand(2,8), rand(1,5)], backgroundColor: salesChColors, borderWidth: 0 }]
+    };
+  } else {
+    data = {
+      labels: ['New contacts', 'Returning contacts'],
+      datasets: [{ data: [62, 38], backgroundColor: [CHART_COLORS.teal, CHART_COLORS.periwinkle], borderWidth: 0 }]
+    };
+  }
   state.mockData.charts[id] = data;
   return cloneData(data);
 }
@@ -2180,6 +2316,30 @@ function getMockBarData(id) {
           { label: 'Today', data: hours.map(() => rand(2, 75)), backgroundColor: CHART_COLORS.teal, borderRadius: 6 },
           { label: 'Average', data: hours.map(() => rand(5, 40)), backgroundColor: CHART_COLORS.gray, borderRadius: 6 }
         ]
+      };
+      break;
+    case 'un-leads-created': {
+      const sCh = ['WhatsApp', 'Voice', 'Email', 'Live chat', 'Telegram', 'TikTok'];
+      const sCols = [CHART_COLORS.teal, CHART_COLORS.blue, CHART_COLORS.periwinkle, CHART_COLORS.yellow, CHART_COLORS.purple, CHART_COLORS.tealLight];
+      data = {
+        labels: labels7,
+        datasets: sCh.map((ch, i) => ({ label: ch, data: labels7.map(() => rand(5, 60)), backgroundColor: sCols[i], borderRadius: 6 }))
+      };
+      break;
+    }
+    case 'un-deals-created': {
+      const sCh = ['WhatsApp', 'Voice', 'Email', 'Live chat', 'Telegram', 'TikTok'];
+      const sCols = [CHART_COLORS.teal, CHART_COLORS.blue, CHART_COLORS.periwinkle, CHART_COLORS.yellow, CHART_COLORS.purple, CHART_COLORS.tealLight];
+      data = {
+        labels: labels7,
+        datasets: sCh.map((ch, i) => ({ label: ch, data: labels7.map(() => rand(1, 18)), backgroundColor: sCols[i], borderRadius: 6 }))
+      };
+      break;
+    }
+    case 'un-sales-funnel':
+      data = {
+        labels: ['New', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won'],
+        datasets: [{ label: 'Deals', data: [240, 160, 95, 58, 32], backgroundColor: paletteCycle(5), borderRadius: 6 }]
       };
       break;
     case 'un-entry-channels':
@@ -2510,7 +2670,85 @@ function renderTable(container, w) {
         [...state.loadedSections].forEach(s => remountSection(s));
       });
     });
+  } else if (w.id === 'op-sales-performance') {
+    const salesAgents = ['Ava Laurent', 'Noah Müller', 'Mila Santos', 'Youssef El Idrissi', 'Sofia Ivanova', 'Liam O\'Brien'];
+    const cacheKey = w.id + '::cache';
+    if (!state.mockData.tables[cacheKey]) {
+      state.mockData.tables[cacheKey] = salesAgents.map(a => ({
+        agent: a,
+        leads: rand(40, 180),
+        deals: rand(12, 70),
+        pipeline: `€${(rand(8, 60) * 1000).toLocaleString()}`,
+        revenue: `€${(rand(3, 35) * 1000).toLocaleString()}`,
+        winRate: `${rand(20, 65)}%`,
+      }));
+    }
+    const rows = state.mockData.tables[cacheKey];
+    let html = `<div style="overflow-x:auto"><table class="widget-table"><thead><tr>
+      <th>Agent</th><th>Leads</th><th>Deals created</th><th>Pipeline value</th><th>Revenue</th><th>Win rate</th>
+    </tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr>
+        <td><div class="agent-cell">${agentAvatar(r.agent)}<span style="font-weight:500">${r.agent}</span></div></td>
+        <td>${r.leads}</td>
+        <td>${r.deals}</td>
+        <td>${r.pipeline}</td>
+        <td>${r.revenue}</td>
+        <td>${r.winRate}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } else if (w.id === 'op-channel-stage-matrix') {
+    const salesCh = ['WhatsApp', 'Voice', 'Email', 'Live chat', 'Telegram', 'TikTok'];
+    const stages  = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
+    const cacheKey = w.id + '::cache';
+    if (!state.mockData.tables[cacheKey]) {
+      state.mockData.tables[cacheKey] = salesCh.map(ch => {
+        const counts = stages.map((s, i) => rand(Math.max(1, 80 - i * 12), Math.max(5, 220 - i * 35)));
+        return { channel: ch, counts, total: counts.reduce((a, b) => a + b, 0) };
+      });
+    }
+    const rows = state.mockData.tables[cacheKey];
+    let html = `<div style="overflow-x:auto"><table class="widget-table"><thead><tr>
+      <th>Channel</th>${stages.map(s => `<th>${s}</th>`).join('')}<th>Total</th>
+    </tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr>
+        <td style="font-weight:500">${r.channel}</td>
+        ${r.counts.map(c => `<td>${c}</td>`).join('')}
+        <td><strong>${r.total}</strong></td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
   }
+}
+
+// ── AGENT ONLINE STATUS ─────────────────────────────────────────
+function renderAgentOnlineStatus(container, w) {
+  const agents = [
+    { name: 'Victor Montala',        status: 'On a call' },
+    { name: 'Greg Aquino',           status: 'Online'    },
+    { name: 'Isabella Escobar',      status: 'Away'      },
+    { name: 'Federico Lai',          status: 'Online'    },
+    { name: 'Donovan van der Weerd', status: 'Offline'   },
+    { name: 'Deborah Pia',           status: 'On a call' },
+  ];
+  const statusClass = {
+    'Online':    'status-online',
+    'On a call': 'status-oncall',
+    'Away':      'status-away',
+    'Offline':   'status-offline',
+  };
+  container.innerHTML = agents.map(a => `
+    <div class="list-item">
+      <div class="agent-cell">
+        ${agentAvatar(a.name)}
+        <span style="font-weight:500;color:var(--gray-800)">${a.name}</span>
+      </div>
+      <span class="agent-status-badge ${statusClass[a.status] || ''}">${a.status}</span>
+    </div>`).join('');
 }
 
 // ── LIST ───────────────────────────────────────────────────────
