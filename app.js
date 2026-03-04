@@ -575,7 +575,6 @@ function renderWidget(w, section, placement, rows, layout) {
     hideBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>';
     hideBtn.addEventListener('click', () => {
       hideWidget(w.id, section);
-      window.sendEvent('"' + w.title + '" widget — hidden');
     });
     actions.appendChild(hideBtn);
   }
@@ -3013,9 +3012,6 @@ window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
   }
   remountSection(section);
   openWidgetDrawer(section); // Refresh drawer
-  const w = (WIDGETS[section] || []).find(x => x.id === id);
-  const title = w ? w.title : id;
-  window.sendEvent('"' + title + '" widget — ' + (currentlyVisible ? 'hidden' : 'added'));
 };
 
 const ICON_PLUS  = `<svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>`;
