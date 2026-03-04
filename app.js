@@ -252,6 +252,10 @@ const WIDGETS = {
       tooltip: 'Deal count at each pipeline stage. Declining bars show conversion drop-off between stages.',
       states: { support_supervisor: 'hide', support_agent: 'hide' }
     },
+    { id: 'un-deals-won-by-channel', title: 'Deals closed by channel (Won)', vis: 'default', type: 'doughnut-chart',
+      tooltip: 'Breakdown of closed-won deals by last communication channel. Shows which channels drive successful closes.',
+      states: { support_supervisor: 'hide', support_agent: 'hide' }
+    },
     { id: 'un-deals-by-channel', title: 'Deals created by channel', vis: 'default', type: 'doughnut-chart',
       tooltip: 'Distribution of newly created deals by the contact\'s entry channel.',
       states: { support_supervisor: 'hide', support_agent: 'hide' }
@@ -451,10 +455,6 @@ const WIDGETS = {
     { id: 'im-opportunities', title: 'Opportunities backlog', vis: 'always', type: 'opportunities', fullWidth: true, sizeClass: 'large',
       tooltip: 'Prioritized list of improvement opportunities identified by AI analysis.',
       states: { support_agent: 'hide', sales_agent: 'hide' }
-    },
-    { id: 'im-deals-won-by-channel', title: 'Deals closed by channel (Won)', vis: 'default', type: 'doughnut-chart',
-      tooltip: 'Breakdown of closed-won deals by last communication channel. Shows which channels drive successful closes.',
-      states: { support_supervisor: 'hide', support_agent: 'hide' }
     },
   ],
   // ─── AUTOMATE ────────────────────
@@ -2146,7 +2146,7 @@ function getMockDoughnutData(id) {
       labels: salesChLabels,
       datasets: [{ data: salesChLabels.map((_, i) => rand(i === 0 ? 30 : 5, i === 0 ? 80 : 40)), backgroundColor: salesChColors, borderWidth: 0 }]
     };
-  } else if (id === 'im-deals-won-by-channel') {
+  } else if (id === 'un-deals-won-by-channel') {
     data = {
       labels: salesChLabels,
       datasets: [{ data: [rand(10,25), rand(5,15), rand(8,20), rand(3,12), rand(2,8), rand(1,5)], backgroundColor: salesChColors, borderWidth: 0 }]
