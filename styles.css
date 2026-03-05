@@ -2258,7 +2258,7 @@ body[data-panel="bar"] .ai-panel-inner {
 body[data-viewmode="view"] .add-widget-btn      { display: none !important; }
 body[data-viewmode="view"] .drag-handle         { display: none !important; }
 body[data-viewmode="view"] .resize-handle       { display: none !important; }
-body[data-viewmode="view"] .widget-action-btn   { display: none !important; }
+body[data-viewmode="view"] .widget-action-btn:not(.widget-download-btn) { display: none !important; }
 body[data-viewmode="view"] .empty-tile          { display: none !important; }
 body[data-viewmode="view"] #manage-widgets-btn  { display: none !important; }
 
