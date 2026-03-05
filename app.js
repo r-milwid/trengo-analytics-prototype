@@ -612,6 +612,20 @@ function renderWidget(w, section, placement, rows, layout) {
     actions.appendChild(toggle);
   }
 
+  // Download CSV button — for charts and tables
+  const downloadableTypes = ['bar-chart', 'line-chart', 'doughnut-chart', 'table'];
+  if (downloadableTypes.includes(w.type)) {
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'widget-action-btn widget-download-btn';
+    dlBtn.title = 'Download as .csv';
+    dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v7.5"/><path d="M4 7l3 3 3-3"/><path d="M2 11v1h10v-1"/></svg>';
+    dlBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      downloadWidgetCSV(w);
+    });
+    actions.appendChild(dlBtn);
+  }
+
   if (w.vis !== 'always') {
     const hideBtn = document.createElement('button');
     hideBtn.className = 'widget-action-btn';
@@ -2024,6 +2038,72 @@ function renderFunnel(container, w) {
     }
   });
   container.innerHTML = `<div class="funnel-container">${parts.join('')}</div>`;
+}
+
+// ── CSV DOWNLOAD ────────────────────────────────────────────────
+function downloadWidgetCSV(w) {
+  let csvRows = [];
+  const chartTypes = ['bar-chart', 'line-chart', 'doughnut-chart'];
+
+  if (chartTypes.includes(w.type)) {
+    // Get chart data from the same mock functions used for rendering
+    let data;
+    if (w.type === 'bar-chart') data = getMockBarData(w.id);
+    else if (w.type === 'line-chart') data = getMockLineData(w.id);
+    else data = getMockDoughnutData(w.id);
+
+    if (data.datasets.length === 1) {
+      // Single dataset: Label, Value columns
+      csvRows.push(['"Label"', `"${data.datasets[0].label || 'Value'}"`]);
+      data.labels.forEach((label, i) => {
+        const val = data.datasets[0].data[i];
+        csvRows.push([`"${label}"`, typeof val === 'number' ? val : `"${val}"`]);
+      });
+    } else {
+      // Multiple datasets: Label, Dataset1, Dataset2, ...
+      const header = ['"Label"', ...data.datasets.map(ds => `"${ds.label || 'Value'}"`)];
+      csvRows.push(header);
+      data.labels.forEach((label, i) => {
+        const row = [`"${label}"`];
+        data.datasets.forEach(ds => {
+          const val = ds.data[i];
+          row.push(typeof val === 'number' ? val : `"${val || ''}"`);
+        });
+        csvRows.push(row);
+      });
+    }
+  } else if (w.type === 'table') {
+    // Extract from rendered table in the DOM
+    const card = document.querySelector(`[data-widget="${w.id}"]`);
+    if (card) {
+      const table = card.querySelector('table');
+      if (table) {
+        const rows = table.querySelectorAll('tr');
+        rows.forEach(tr => {
+          const cells = tr.querySelectorAll('th, td');
+          const row = [];
+          cells.forEach(cell => {
+            const text = cell.textContent.trim().replace(/"/g, '""');
+            row.push(`"${text}"`);
+          });
+          csvRows.push(row);
+        });
+      }
+    }
+  }
+
+  if (csvRows.length === 0) return;
+
+  const csv = csvRows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${w.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_').toLowerCase()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── CHARTS ─────────────────────────────────────────────────────
