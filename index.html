@@ -143,12 +143,8 @@
         </div>
         <!-- Sticky sub-nav -->
         <div class="sub-nav" id="sub-nav">
-          <div class="sub-nav-tabs">
-            <button class="sub-nav-btn active" data-section="overview">Overview</button>
-            <button class="sub-nav-btn" data-section="understand">Understand</button>
-            <button class="sub-nav-btn" data-section="operate">Operate</button>
-            <button class="sub-nav-btn" data-section="improve">Improve</button>
-            <button class="sub-nav-btn" data-section="automate">Automate</button>
+          <div class="sub-nav-tabs" id="sub-nav-tabs">
+            <!-- Rendered dynamically by renderTabs() -->
           </div>
           <div class="filter-bar">
             <div class="filter-chip" id="filter-date">
@@ -167,56 +163,8 @@
         </div>
       </div>
 
-      <!-- Scrollable sections -->
-      <div class="analytics-sections" id="analytics-sections">
-
-        <!-- ==================== OVERVIEW ==================== -->
-        <section class="analytics-section" id="section-overview" data-section="overview">
-          <div class="section-header">
-            <h2>Overview</h2>
-          </div>
-          <div class="section-sentinel" data-section="overview"></div>
-          <div class="section-content" data-section="overview"></div>
-        </section>
-
-        <!-- ==================== UNDERSTAND ==================== -->
-        <section class="analytics-section" id="section-understand" data-section="understand">
-          <div class="section-header">
-            <h2>Understand</h2>
-          </div>
-          <div class="section-sentinel" data-section="understand"></div>
-          <div class="section-content" data-section="understand"></div>
-        </section>
-
-        <!-- ==================== OPERATE ==================== -->
-        <section class="analytics-section" id="section-operate" data-section="operate">
-          <div class="section-header">
-            <h2>Operate</h2>
-          </div>
-          <div class="section-sentinel" data-section="operate"></div>
-          <div class="section-content" data-section="operate"></div>
-        </section>
-
-        <!-- ==================== IMPROVE ==================== -->
-        <section class="analytics-section" id="section-improve" data-section="improve">
-          <div class="section-header">
-            <h2>Improve</h2>
-          </div>
-          <div class="section-sentinel" data-section="improve"></div>
-          <div class="section-content" data-section="improve"></div>
-        </section>
-
-        <!-- ==================== AUTOMATE ==================== -->
-        <section class="analytics-section" id="section-automate" data-section="automate">
-          <div class="section-header">
-            <h2>Automate</h2>
-          </div>
-          <div class="section-sentinel" data-section="automate"></div>
-          <div class="section-content" data-section="automate"></div>
-        </section>
-
-
-      </div>
+      <!-- Scrollable sections — rendered dynamically by renderSections() -->
+      <div class="analytics-sections" id="analytics-sections"></div>
     </div>
   </main>
 
@@ -304,6 +252,17 @@
       <h3>Manage widgets</h3>
       <button class="drawer-close" id="drawer-close">&times;</button>
     </div>
+    <div class="drawer-toolbar">
+      <div class="drawer-filter-chip" id="drawer-category-chip">
+        <span id="drawer-category-label">All</span>
+        <svg width="10" height="10" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+      </div>
+      <div class="drawer-filter-chip" id="drawer-sort-chip">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M3 8h7M3 12h4"/></svg>
+        <span id="drawer-sort-label">Default</span>
+        <svg width="10" height="10" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+      </div>
+    </div>
     <div class="drawer-body" id="drawer-body"></div>
   </div>
 
@@ -349,6 +308,24 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" id="team-settings-cancel">Cancel</button>
         <button class="btn btn-primary" id="team-settings-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Tab Confirmation Modal -->
+  <div class="modal-overlay" id="delete-tab-modal-overlay" style="display:none;">
+    <div class="opportunity-modal" id="delete-tab-modal">
+      <div class="modal-header">
+        <h3>Remove tab</h3>
+        <button class="drawer-close" id="delete-tab-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="delete-tab-modal-body">
+        <p>Are you sure you want to remove <strong id="delete-tab-name"></strong>?</p>
+        <p style="color:var(--gray-500);font-size:12px;margin-top:8px;">The tab layout will be removed, but all widgets remain available in the Manage Widgets sidebar to set up the same page again.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="delete-tab-cancel">Cancel</button>
+        <button class="btn btn-danger" id="delete-tab-confirm">Remove tab</button>
       </div>
     </div>
   </div>

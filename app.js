@@ -2,6 +2,15 @@
    TRENGO ANALYTICS PROTOTYPE — app.js
    ============================================================ */
 
+// ── DYNAMIC TABS ────────────────────────────────────────────────
+const DEFAULT_TABS = [
+  { id: 'overview',   label: 'Overview',   category: 'overview',   isDefault: true },
+  { id: 'understand', label: 'Understand', category: 'understand', isDefault: true },
+  { id: 'operate',    label: 'Operate',    category: 'operate',    isDefault: true },
+  { id: 'improve',    label: 'Improve',    category: 'improve',    isDefault: true },
+  { id: 'automate',   label: 'Automate',   category: 'automate',   isDefault: true },
+];
+
 // ── STATE ──────────────────────────────────────────────────────
 const state = {
   currentView: 'landing', // 'landing' | 'analytics'
@@ -24,7 +33,9 @@ const state = {
   mockData: { kpi: {}, lists: {}, tables: {}, charts: {} },
   opportunityStates: {}, // id -> 'dismissed' | 'confirmed'
   chartViewMode: {},     // widgetId -> 'chart' | 'numbers'
-  barFilter: { widgetId: null, sectionId: null, selectedIndices: new Set() }
+  barFilter: { widgetId: null, sectionId: null, selectedIndices: new Set() },
+  tabs: JSON.parse(JSON.stringify(DEFAULT_TABS)),
+  tabWidgets: {}, // tabId -> Set of widget IDs assigned to this tab
 };
 
 // Channel values that are considered "voice" — voice widgets hide when any other channel is active
@@ -505,6 +516,28 @@ const WIDGETS = {
 
 };
 
+// Flat lookup: widget ID → widget definition (with _sourceCategory attached)
+const WIDGET_BY_ID = {};
+Object.keys(WIDGETS).forEach(cat => {
+  WIDGETS[cat].forEach(w => {
+    WIDGET_BY_ID[w.id] = { ...w, _sourceCategory: cat };
+  });
+});
+
+// Initialize tabWidgets for default tabs (each gets all widget IDs from its category)
+function initTabWidgets() {
+  state.tabs.forEach(tab => {
+    if (!state.tabWidgets[tab.id]) {
+      if (tab.category && WIDGETS[tab.category]) {
+        state.tabWidgets[tab.id] = new Set(WIDGETS[tab.category].map(w => w.id));
+      } else {
+        state.tabWidgets[tab.id] = new Set();
+      }
+    }
+  });
+}
+initTabWidgets();
+
 // ── MOCK DATA HELPERS ──────────────────────────────────────────
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function randF(min, max, dec=1) { return parseFloat((Math.random() * (max - min) + min).toFixed(dec)); }
@@ -740,7 +773,7 @@ function renderWidget(w, section, placement, rows, layout) {
 // lens from that usecase (resolve → support, convert → sales) instead of
 // using the manually selected lens from Preview options.
 function getEffectiveLens() {
-  if (state.teamFilter && state.teamFilter !== 'All teams') {
+  if (isFeatureEnabled('team-usecases') && state.teamFilter && state.teamFilter !== 'All teams') {
     const usecase = (state.teamUsecases && state.teamUsecases[state.teamFilter]) || 'resolve';
     return usecase === 'convert' ? 'sales' : 'support';
   }
@@ -755,7 +788,7 @@ function stateKey() {
 // When a team overrides the lens the buttons are dimmed to show they're overridden.
 function syncLensButtons() {
   const effectiveLens = getEffectiveLens();
-  const overridden = state.teamFilter && state.teamFilter !== 'All teams';
+  const overridden = isFeatureEnabled('team-usecases') && state.teamFilter && state.teamFilter !== 'All teams';
   document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.lens === effectiveLens);
     b.style.opacity = overridden ? '0.45' : '';
@@ -763,9 +796,20 @@ function syncLensButtons() {
   });
 }
 
+// In edit mode with a team filter overriding the lens, suppress state 'hide'
+// so all widgets stay visible/togglable while the user customises the layout.
+function isEditModeWithTeamOverride() {
+  return document.body.dataset.viewmode !== 'view'
+      && isFeatureEnabled('team-usecases')
+      && state.teamFilter
+      && state.teamFilter !== 'All teams';
+}
+
 function getStateOverride(w) {
   if (!w.states) return null;
-  return w.states[stateKey()] || null;
+  const override = w.states[stateKey()] || null;
+  if (override === 'hide' && isEditModeWithTeamOverride()) return null;
+  return override;
 }
 
 function isNonVoiceChannelActive() {
@@ -843,20 +887,20 @@ function getTooltip(w) {
 function isWidgetRenderable(w) {
   const stateOverride = getStateOverride(w);
   if (stateOverride === 'hide') return false;
-  const effectiveVis = getEffectiveVisibility(w);
-  const isAdded = state.addedWidgets.has(w.id);
-  if (effectiveVis === 'hidden' && !isAdded) return false;
-  if (state.hiddenWidgets.has(w.id)) return false;
+  // Filter-reactive hides (team, channel, voice)
+  if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return false;
+  if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) return false;
+  if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) return false;
   return true;
 }
 
 function getWidgetById(sectionId, id) {
-  return (WIDGETS[sectionId] || []).find(w => w.id === id);
+  return getWidgetsForTab(sectionId).find(w => w.id === id);
 }
 
 function ensureSectionOrder(sectionId) {
   if (!state.sectionOrder[sectionId]) {
-    state.sectionOrder[sectionId] = (WIDGETS[sectionId] || []).map(w => w.id);
+    state.sectionOrder[sectionId] = getWidgetsForTab(sectionId).map(w => w.id);
   }
 }
 
@@ -865,7 +909,11 @@ function resetViewState() {
   state.addedWidgets = new Set();
   state.widgetSpans = {};
   state.sectionLayout = {};
+  state.sectionOrder = {};
   if (state.expandedWidgets) state.expandedWidgets = new Set();
+  // Re-initialize per-tab widget sets
+  state.tabWidgets = {};
+  initTabWidgets();
 }
 
 function getVisibleWidgets(sectionId) {
@@ -2936,7 +2984,7 @@ function renderListActions(container, w) {
       </div>
       <div style="display:flex;gap:6px;">
         <button class="btn btn-sm btn-accent" onclick="this.closest('.list-item').style.opacity='0.4'; this.closest('.list-item').querySelector('.badge-result')?.remove(); this.parentElement.innerHTML='<span class=\\'badge badge-green\\'>Approved</span>'">Approve</button>
-        <button class="btn btn-sm btn-secondary btn-danger" onclick="this.closest('.list-item').style.opacity='0.4'; this.parentElement.innerHTML='<span class=\\'badge badge-red\\'>Rejected</span>'">Reject</button>
+        <button class="btn btn-sm btn-danger-outline" onclick="this.closest('.list-item').style.opacity='0.4'; this.parentElement.innerHTML='<span class=\\'badge badge-red\\'>Rejected</span>'">Reject</button>
       </div>
     </div>`;
   });
@@ -3098,24 +3146,32 @@ function mountSection(sectionId) {
     if (card) grid.appendChild(card);
   });
 
-  // Count widgets that could be added via the drawer (not currently visible on the grid)
-  const allWidgets = WIDGETS[sectionId] || [];
-  const hiddenCount = allWidgets.filter(w => {
-    if (getStateOverride(w) === 'hide') return false; // not available in this role/lens
-    if (w.vis === 'always') return false; // always visible, can't be toggled
-    // Filter-reactive widgets are not user-togglable — don't count them as "available"
-    if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return false;
-    if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) return false;
-    if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) return false;
-    const isVisible = !state.hiddenWidgets.has(w.id) &&
-      (getEffectiveVisibility(w) !== 'hidden' || state.addedWidgets.has(w.id));
-    return !isVisible;
-  }).length;
+  // Count widgets that could be added via the drawer (from all categories, not on this tab)
+  const tabWidgetSet = state.tabWidgets[sectionId] || new Set();
+  let availableNotOnTab = 0;
+  Object.keys(WIDGETS).forEach(cat => {
+    WIDGETS[cat].forEach(w => {
+      if (tabWidgetSet.has(w.id)) return; // already on this tab
+      if (getStateOverride(w) === 'hide') return; // not available in this role/lens
+      if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return;
+      if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) return;
+      if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) return;
+      availableNotOnTab++;
+    });
+  });
+  const hiddenCount = availableNotOnTab;
+  const allWidgets = getWidgetsForTab(sectionId);
+  const isEmptyPage = tabWidgetSet.size === 0;
+  const emptyPageHtml = `<div>Add widgets to build this page</div>
+    <div class="add-cta" onclick="openWidgetDrawer('${sectionId}')">+ Manage widgets</div>`;
+
   if (emptyTiles.length > 0) {
     emptyTiles.forEach(tile => {
       const empty = document.createElement('div');
       empty.className = 'empty-tile';
-      if (hiddenCount > 0) {
+      if (isEmptyPage) {
+        empty.innerHTML = emptyPageHtml;
+      } else if (hiddenCount > 0) {
         empty.innerHTML = `<div>${hiddenCount} more widget${hiddenCount > 1 ? 's' : ''} available</div>
           <div class="add-cta" onclick="openWidgetDrawer('${sectionId}')">+ Add widgets</div>`;
       } else {
@@ -3126,10 +3182,12 @@ function mountSection(sectionId) {
       empty.dataset.row = tile.row;
       grid.appendChild(empty);
     });
-  } else if (hiddenCount >= 0) {
+  } else if (hiddenCount >= 0 || isEmptyPage) {
     const empty = document.createElement('div');
     empty.className = 'empty-tile';
-    if (hiddenCount > 0) {
+    if (isEmptyPage) {
+      empty.innerHTML = emptyPageHtml;
+    } else if (hiddenCount > 0) {
       empty.innerHTML = `<div>${hiddenCount} more widget${hiddenCount > 1 ? 's' : ''} available</div>
         <div class="add-cta" onclick="openWidgetDrawer('${sectionId}')">+ Add widgets</div>`;
     } else {
@@ -3150,7 +3208,7 @@ function remountSection(sectionId) {
   if (state.barFilter && state.barFilter.sectionId === sectionId) clearBarFilter();
   state.loadedSections.delete(sectionId);
   // Destroy charts for this section
-  const widgets = WIDGETS[sectionId] || [];
+  const widgets = getWidgetsForTab(sectionId);
   widgets.forEach(w => {
     if (state.charts[w.id]) {
       state.charts[w.id].destroy();
@@ -3246,85 +3304,283 @@ window.clearBarFilter = clearBarFilter;
 
 // ── HIDE / ADD WIDGETS ─────────────────────────────────────────
 function hideWidget(id, section) {
-  state.hiddenWidgets.add(id);
+  // Remove widget from the current tab's set
+  if (state.tabWidgets[section]) {
+    state.tabWidgets[section].delete(id);
+  }
+  delete state.sectionOrder[section];
+  delete state.sectionLayout[section];
   remountSection(section);
 }
 
 let _drawerSection = null;
 
+let _drawerCategory = 'all';
+let _drawerSearchQuery = '';
+let _drawerSort = 'default'; // 'default' | 'name-asc' | 'name-desc' | 'status'
+
+const WIDGET_TYPE_ICONS = {
+  'kpi':            `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="14" height="8" rx="1.5"/><line x1="5" y1="5" x2="5" y2="3"/><line x1="8" y1="5" x2="8" y2="2"/><line x1="11" y1="5" x2="11" y2="3"/></svg>`,
+  'kpi-group':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="4" width="4" height="9" rx="1"/><rect x="11" y="2" width="4" height="11" rx="1"/></svg>`,
+  'bar-chart':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="3" width="4" height="10" rx="1"/><rect x="11" y="8" width="4" height="5" rx="1"/></svg>`,
+  'line-chart':     `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 9,9 13,4 15,5"/></svg>`,
+  'doughnut-chart': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/></svg>`,
+  'list':           `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="14" y2="8"/><line x1="4" y1="12" x2="14" y2="12"/><circle cx="1.5" cy="4" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r=".8" fill="currentColor" stroke="none"/></svg>`,
+  'list-actions':   `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="4" x2="11" y2="4"/><line x1="4" y1="8" x2="11" y2="8"/><line x1="4" y1="12" x2="11" y2="12"/><circle cx="1.5" cy="4" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r=".8" fill="currentColor" stroke="none"/><polyline points="12,6 14,8 12,10" stroke-linejoin="round"/></svg>`,
+  'table':          `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="1" y1="5" x2="15" y2="5"/><line x1="6" y1="5" x2="6" y2="15"/></svg>`,
+  'progress':       `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="6" width="14" height="4" rx="2"/><rect x="1" y="6" width="9" height="4" rx="2" fill="currentColor" stroke="none" opacity=".25"/></svg>`,
+  'opportunities':  `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="6" r="3.5"/><path d="M6 9.5 L5 14 L8 12.5 L11 14 L10 9.5"/></svg>`,
+};
+const WIDGET_TYPE_ICON_DEFAULT = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/></svg>`;
+
 window.openWidgetDrawer = function(sectionId) {
   _drawerSection = sectionId;
-  const body = document.getElementById('drawer-body');
   document.body.classList.add('drawer-open');
-  // Collapse chat panel to bar when widget drawer opens
   if (window.setPanelState && document.body.dataset.panel !== 'bar') {
     window.setPanelState('bar');
   }
 
-  let html = '';
-  const renderSection = (secId, label) => {
-    const widgets = WIDGETS[secId] || [];
-    if (!widgets.length) return;
-    html += `<div style="margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;">${label}</div>`;
-    widgets.forEach(w => {
-      const effVis = getEffectiveVisibility(w);
-      const isVisible = !state.hiddenWidgets.has(w.id) && (effVis !== 'hidden' || state.addedWidgets.has(w.id));
-      const isStateHidden = getStateOverride(w) === 'hide';
-      const isFilterHidden = (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
-                             (w.hideWhenChannelFiltered && state.channelFilter.size > 0) ||
-                             (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive());
-      const canToggle = w.vis !== 'always' && !isStateHidden && !isFilterHidden;
-      const statusText = isFilterHidden ? 'Not available with current filter' :
-                         isStateHidden  ? 'Not available in this view' :
-                         w.vis === 'always' ? 'Always visible' :
-                         isVisible ? 'Visible' : 'Hidden';
-      const typeIcon = {
-        'kpi':            `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="14" height="8" rx="1.5"/><line x1="5" y1="5" x2="5" y2="3"/><line x1="8" y1="5" x2="8" y2="2"/><line x1="11" y1="5" x2="11" y2="3"/></svg>`,
-        'kpi-group':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="4" width="4" height="9" rx="1"/><rect x="11" y="2" width="4" height="11" rx="1"/></svg>`,
-        'bar-chart':      `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="4" height="7" rx="1"/><rect x="6" y="3" width="4" height="10" rx="1"/><rect x="11" y="8" width="4" height="5" rx="1"/></svg>`,
-        'line-chart':     `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 9,9 13,4 15,5"/></svg>`,
-        'doughnut-chart': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/></svg>`,
-        'list':           `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="14" y2="8"/><line x1="4" y1="12" x2="14" y2="12"/><circle cx="1.5" cy="4" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r=".8" fill="currentColor" stroke="none"/></svg>`,
-        'list-actions':   `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="4" x2="11" y2="4"/><line x1="4" y1="8" x2="11" y2="8"/><line x1="4" y1="12" x2="11" y2="12"/><circle cx="1.5" cy="4" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r=".8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r=".8" fill="currentColor" stroke="none"/><polyline points="12,6 14,8 12,10" stroke-linejoin="round"/></svg>`,
-        'table':          `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="1" y1="5" x2="15" y2="5"/><line x1="6" y1="5" x2="6" y2="15"/></svg>`,
-        'progress':       `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="6" width="14" height="4" rx="2"/><rect x="1" y="6" width="9" height="4" rx="2" fill="currentColor" stroke="none" opacity=".25"/></svg>`,
-        'opportunities':  `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="6" r="3.5"/><path d="M6 9.5 L5 14 L8 12.5 L11 14 L10 9.5"/></svg>`,
-      }[w.type] || `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/></svg>`;
-      html += `<div class="drawer-widget-item${canToggle ? ' drawer-widget-item--toggleable' : ''}" ${(isStateHidden || isFilterHidden) ? 'style="opacity:.4"' : ''} ${canToggle ? `onclick="this.querySelector('button').click()"` : ''}>
-        <div class="drawer-widget-icon">${typeIcon}</div>
-        <div class="drawer-widget-info">
-          <div class="drawer-widget-name">${w.title}</div>
-          <div class="drawer-widget-status">${statusText}</div>
-        </div>
-        ${canToggle ? `<button class="btn btn-sm ${isVisible ? 'btn-secondary' : 'btn-primary'}" onclick="event.stopPropagation();toggleWidgetFromDrawer('${w.id}', '${secId}', ${isVisible})">${isVisible ? 'Hide' : 'Add'}</button>` : ''}
-      </div>`;
-    });
-  };
-
-  if (!sectionId || !WIDGETS[sectionId]) {
-    renderSection('overview', 'Overview');
-    renderSection('understand', 'Understand');
-    renderSection('operate', 'Operate');
-    renderSection('improve', 'Improve');
-    renderSection('automate', 'Automate');
-    renderSection('voice', 'Voice');
+  // Determine pre-selected category
+  const tab = state.tabs.find(t => t.id === sectionId);
+  const CATEGORY_KEYS = Object.keys(WIDGETS);
+  if (tab && tab.category && CATEGORY_KEYS.includes(tab.category)) {
+    _drawerCategory = tab.category;
   } else {
-    renderSection(sectionId, sectionId.charAt(0).toUpperCase() + sectionId.slice(1));
+    _drawerCategory = 'all';
   }
 
-  body.innerHTML = html;
+  _drawerSearchQuery = '';
+  _drawerSort = 'default';
+  updateDrawerCategoryLabel();
+  updateDrawerSortLabel();
+  renderDrawerWidgets();
 };
 
-window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
-  if (currentlyVisible) {
-    state.hiddenWidgets.add(id);
-    state.addedWidgets.delete(id);
-  } else {
-    state.hiddenWidgets.delete(id);
-    state.addedWidgets.add(id);
+const SORT_OPTIONS = [
+  { value: 'default',   label: 'Default' },
+  { value: 'name-asc',  label: 'Name A-Z' },
+  { value: 'name-desc', label: 'Name Z-A' },
+  { value: 'status',    label: 'Visible first' },
+];
+const CATEGORY_OPTIONS = [
+  { value: 'all',        label: 'All' },
+  { value: 'overview',   label: 'Overview' },
+  { value: 'understand', label: 'Understand' },
+  { value: 'operate',    label: 'Operate' },
+  { value: 'improve',    label: 'Improve' },
+  { value: 'automate',   label: 'Automate' },
+];
+
+function updateDrawerCategoryLabel() {
+  const el = document.getElementById('drawer-category-label');
+  if (el) el.textContent = (CATEGORY_OPTIONS.find(o => o.value === _drawerCategory) || CATEGORY_OPTIONS[0]).label;
+}
+function updateDrawerSortLabel() {
+  const el = document.getElementById('drawer-sort-label');
+  if (el) el.textContent = (SORT_OPTIONS.find(o => o.value === _drawerSort) || SORT_OPTIONS[0]).label;
+}
+
+let _drawerDropdownOutsideHandler = null;
+
+function closeDrawerDropdown() {
+  const existing = document.getElementById('drawer-dropdown');
+  if (existing) existing.remove();
+  if (_drawerDropdownOutsideHandler) {
+    document.removeEventListener('click', _drawerDropdownOutsideHandler);
+    _drawerDropdownOutsideHandler = null;
   }
-  remountSection(section);
-  openWidgetDrawer(section); // Refresh drawer
+  document.querySelectorAll('.drawer-filter-chip').forEach(c => c.classList.remove('active'));
+}
+
+function openDrawerDropdown(chipId, type) {
+  const chip = document.getElementById(chipId);
+  if (!chip) return;
+
+  // Toggle off if already open
+  const existing = document.getElementById('drawer-dropdown');
+  if (existing && existing.dataset.type === type) { closeDrawerDropdown(); return; }
+  closeDrawerDropdown();
+
+  chip.classList.add('active');
+
+  const options = type === 'sort' ? SORT_OPTIONS : CATEGORY_OPTIONS;
+  const currentValue = type === 'sort' ? _drawerSort : _drawerCategory;
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'drawer-dropdown';
+  dropdown.id = 'drawer-dropdown';
+  dropdown.dataset.type = type;
+
+  dropdown.innerHTML = options.map(opt => `
+    <div class="filter-option${opt.value === currentValue ? ' selected' : ''}" data-value="${opt.value}">
+      <span class="filter-option-label">${opt.label}</span>
+      <span class="filter-option-tick"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>
+    </div>
+  `).join('');
+
+  // Position below chip, inside the drawer
+  const drawer = document.getElementById('widget-drawer');
+  const chipRect = chip.getBoundingClientRect();
+  const drawerRect = drawer.getBoundingClientRect();
+
+  drawer.appendChild(dropdown);
+
+  // Align dropdown: category (left chip) aligns left, sort (right chip) aligns right
+  dropdown.style.top = (chipRect.bottom - drawerRect.top + 4) + 'px';
+  if (type === 'category') {
+    dropdown.style.left = (chipRect.left - drawerRect.left) + 'px';
+  } else {
+    dropdown.style.right = (drawerRect.right - chipRect.right) + 'px';
+  }
+
+  // Handle option clicks
+  dropdown.querySelectorAll('.filter-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const val = opt.dataset.value;
+      if (type === 'sort') {
+        _drawerSort = val;
+        updateDrawerSortLabel();
+      } else {
+        _drawerCategory = val;
+        updateDrawerCategoryLabel();
+      }
+      closeDrawerDropdown();
+      renderDrawerWidgets();
+    });
+  });
+
+  // Close on outside click (use tracked handler so closeDrawerDropdown can clean it up)
+  setTimeout(() => {
+    _drawerDropdownOutsideHandler = function(e) {
+      if (!dropdown.contains(e.target) && !e.target.closest('.drawer-filter-chip')) {
+        closeDrawerDropdown();
+      }
+    };
+    document.addEventListener('click', _drawerDropdownOutsideHandler);
+  }, 0);
+}
+
+function renderDrawerWidgets() {
+  const body = document.getElementById('drawer-body');
+  let html = `<div class="drawer-search"><input type="text" id="drawer-search-input" placeholder="Search widgets..." value="${_drawerSearchQuery.replace(/"/g, '&quot;')}" /></div>`;
+  const query = _drawerSearchQuery.toLowerCase().trim();
+  const activeTab = state.activeSection;
+  const tabWidgetSet = state.tabWidgets[activeTab] || new Set();
+
+  // Collect widgets with their section info
+  const collectWidgets = (secId) => {
+    const widgets = WIDGETS[secId] || [];
+    return widgets
+      .filter(w => !query || w.title.toLowerCase().includes(query) || (w.tooltip && w.tooltip.toLowerCase().includes(query)))
+      .map(w => ({ ...w, _secId: secId }));
+  };
+
+  let allWidgets = [];
+  if (_drawerCategory === 'all') {
+    Object.keys(WIDGETS).forEach(secId => {
+      allWidgets = allWidgets.concat(collectWidgets(secId));
+    });
+  } else {
+    allWidgets = collectWidgets(_drawerCategory);
+  }
+
+  // Apply sort
+  if (_drawerSort === 'name-asc') {
+    allWidgets.sort((a, b) => a.title.localeCompare(b.title));
+  } else if (_drawerSort === 'name-desc') {
+    allWidgets.sort((a, b) => b.title.localeCompare(a.title));
+  } else if (_drawerSort === 'status') {
+    allWidgets.sort((a, b) => {
+      const aStateHidden = getStateOverride(a) === 'hide';
+      const aFilterHidden = (a.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
+                             (a.hideWhenChannelFiltered && state.channelFilter.size > 0) ||
+                             (a.hideWhenNonVoiceChannel && isNonVoiceChannelActive());
+      const bStateHidden = getStateOverride(b) === 'hide';
+      const bFilterHidden = (b.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
+                             (b.hideWhenChannelFiltered && state.channelFilter.size > 0) ||
+                             (b.hideWhenNonVoiceChannel && isNonVoiceChannelActive());
+      const aVis = tabWidgetSet.has(a.id) && !aStateHidden && !aFilterHidden;
+      const bVis = tabWidgetSet.has(b.id) && !bStateHidden && !bFilterHidden;
+      return (bVis ? 1 : 0) - (aVis ? 1 : 0);
+    });
+  }
+
+  // Group by section for category headers (only in default sort + all category view)
+  const showSectionHeaders = _drawerSort === 'default';
+  let lastSecId = null;
+
+  allWidgets.forEach(w => {
+    const secId = w._secId;
+    if (showSectionHeaders && secId !== lastSecId) {
+      html += `<div style="margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;">${secId.charAt(0).toUpperCase() + secId.slice(1)}</div>`;
+      lastSecId = secId;
+    }
+    // Visibility is now based on whether the widget is in the current tab's set
+    const isOnTab = tabWidgetSet.has(w.id);
+    const isStateHidden = getStateOverride(w) === 'hide';
+    const isFilterHidden = (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') ||
+                           (w.hideWhenChannelFiltered && state.channelFilter.size > 0) ||
+                           (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive());
+    const canToggle = !isStateHidden && !isFilterHidden;
+    const statusText = isFilterHidden ? 'Not available with current filter' :
+                       isStateHidden  ? 'Not available in this view' :
+                       isOnTab ? 'On this page' : 'Not on this page';
+    const typeIcon = WIDGET_TYPE_ICONS[w.type] || WIDGET_TYPE_ICON_DEFAULT;
+    html += `<div class="drawer-widget-item${canToggle ? ' drawer-widget-item--toggleable' : ''}" ${(isStateHidden || isFilterHidden) ? 'style="opacity:.4"' : ''} ${canToggle ? `onclick="this.querySelector('button').click()"` : ''}>
+      <div class="drawer-widget-icon">${typeIcon}</div>
+      <div class="drawer-widget-info">
+        <div class="drawer-widget-name">${w.title}</div>
+        <div class="drawer-widget-status">${statusText}</div>
+      </div>
+      ${canToggle ? `<button class="btn btn-sm ${isOnTab ? 'btn-secondary' : 'btn-primary'}" onclick="event.stopPropagation();toggleWidgetFromDrawer('${w.id}', '${secId}', ${isOnTab})">${isOnTab ? 'Hide' : 'Add'}</button>` : ''}
+    </div>`;
+  });
+
+  if (!allWidgets.length) {
+    html += '<div style="padding:24px 0;color:var(--gray-400);font-size:13px;">No widgets match your search.</div>';
+  }
+  body.innerHTML = html;
+
+  // Re-attach search input listener (since it's inside the scrollable body)
+  const searchInput = document.getElementById('drawer-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      _drawerSearchQuery = e.target.value;
+      renderDrawerWidgets();
+    });
+    // Restore cursor position after re-render
+    searchInput.focus();
+    searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+  }
+}
+
+// Drawer chip click handlers
+document.getElementById('drawer-sort-chip')?.addEventListener('click', () => {
+  openDrawerDropdown('drawer-sort-chip', 'sort');
+});
+document.getElementById('drawer-category-chip')?.addEventListener('click', () => {
+  openDrawerDropdown('drawer-category-chip', 'category');
+});
+
+window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
+  const activeTab = state.activeSection;
+  if (!state.tabWidgets[activeTab]) state.tabWidgets[activeTab] = new Set();
+
+  if (currentlyVisible) {
+    // Remove widget from this tab
+    state.tabWidgets[activeTab].delete(id);
+  } else {
+    // Add widget to this tab
+    state.tabWidgets[activeTab].add(id);
+  }
+
+  // Clear cached section order/layout so it rebuilds with the new widget set
+  delete state.sectionOrder[activeTab];
+  delete state.sectionLayout[activeTab];
+
+  remountSection(activeTab);
+  // Refresh drawer without resetting category/search
+  renderDrawerWidgets();
 };
 
 const ICON_PLUS  = `<svg width="14" height="14" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/></svg>`;
@@ -3340,6 +3596,11 @@ function setManageWidgetsBtnLabel(open) {
 document.getElementById('drawer-close').addEventListener('click', () => {
   document.body.classList.remove('drawer-open');
   _drawerSection = null;
+  _drawerSearchQuery = '';
+  _drawerSort = 'default';
+  closeDrawerDropdown();
+  const searchInput = document.getElementById('drawer-search-input');
+  if (searchInput) searchInput.value = '';
   setManageWidgetsBtnLabel(false);
 });
 
@@ -3434,6 +3695,274 @@ function teardownSectionObserver() {
   if (!sectionObserver) return;
   sectionObserver.disconnect();
 }
+
+// ── DYNAMIC TAB RENDERING ─────────────────────────────────────
+
+function getWidgetsForTab(tabId) {
+  const widgetIds = state.tabWidgets[tabId];
+  if (!widgetIds || widgetIds.size === 0) return [];
+  // Return widget definitions in a stable order: iterate all categories, keep only IDs in this tab's set
+  const result = [];
+  Object.keys(WIDGETS).forEach(cat => {
+    WIDGETS[cat].forEach(w => {
+      if (widgetIds.has(w.id)) result.push(w);
+    });
+  });
+  return result;
+}
+
+function renderTabs() {
+  const nav = document.getElementById('sub-nav-tabs');
+  if (!nav) return;
+  nav.innerHTML = '';
+
+  state.tabs.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = 'sub-nav-btn' + (tab.id === state.activeSection ? ' active' : '');
+    btn.dataset.section = tab.id;
+    btn.textContent = tab.label;
+    btn.addEventListener('click', () => {
+      scrollToSection(tab.id, true);
+      window.sendEvent(tab.label + ' tab — clicked');
+      if (document.body.classList.contains('drawer-open')) {
+        openWidgetDrawer(tab.id);
+      }
+    });
+    nav.appendChild(btn);
+  });
+
+  // Edit-mode only: "+" add tab button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'sub-nav-add-btn edit-only-ui';
+  addBtn.title = 'Add new tab';
+  addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>`;
+  addBtn.addEventListener('click', () => createNewTab());
+  nav.appendChild(addBtn);
+
+}
+
+function renderSections() {
+  const container = document.getElementById('analytics-sections');
+  if (!container) return;
+
+  // Destroy charts and clear loaded state since DOM is being recreated
+  [...state.loadedSections].forEach(secId => {
+    const widgets = getWidgetsForTab(secId);
+    widgets.forEach(w => {
+      if (state.charts[w.id]) {
+        state.charts[w.id].destroy();
+        delete state.charts[w.id];
+      }
+    });
+  });
+  state.loadedSections = new Set();
+
+  container.innerHTML = '';
+
+  state.tabs.forEach(tab => {
+    const section = document.createElement('section');
+    section.className = 'analytics-section';
+    section.id = `section-${tab.id}`;
+    section.dataset.section = tab.id;
+    section.innerHTML = `
+      <div class="section-header">
+        <h2>${tab.label}</h2>
+        <button class="section-edit-btn edit-only-ui" data-tab-id="${tab.id}" title="Rename or remove tab">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/></svg>
+        </button>
+      </div>
+      <div class="section-sentinel" data-section="${tab.id}"></div>
+      <div class="section-content" data-section="${tab.id}"></div>
+    `;
+    container.appendChild(section);
+  });
+
+  // Wire edit button click handlers
+  container.querySelectorAll('.section-edit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => openTabEditMenu(e));
+  });
+
+  // Re-setup observers
+  teardownSentinels();
+  teardownSectionObserver();
+  setupSentinels();
+  setupSectionObserver();
+}
+
+// ── TAB CRUD ──────────────────────────────────────────────────
+
+function createNewTab() {
+  const id = 'custom-' + Date.now();
+  const newTab = { id, label: 'New Tab', category: null, isDefault: false };
+  state.tabs.push(newTab);
+  state.tabWidgets[id] = new Set(); // custom tabs start with no widgets
+  state.loadedSections.delete(id);
+  renderTabs();
+  renderSections();
+  scrollToSection(id, true);
+  // Open rename popover after a tick so DOM is ready
+  setTimeout(() => {
+    const editBtn = document.querySelector('.sub-nav-edit-btn');
+    if (editBtn) openTabEditMenu({ target: editBtn });
+  }, 50);
+  window.sendEvent('New tab — created');
+}
+
+function renameTab(tabId, newLabel) {
+  const tab = state.tabs.find(t => t.id === tabId);
+  if (!tab) return;
+  const trimmed = newLabel.trim();
+  if (!trimmed) return; // revert to old name
+  if (trimmed === tab.label) return;
+  tab.label = trimmed;
+  renderTabs();
+  // Update the section header h2
+  const h2 = document.querySelector(`#section-${tabId} .section-header h2`);
+  if (h2) h2.textContent = tab.label;
+  window.sendEvent('"' + tab.label + '" tab — renamed');
+}
+
+let _pendingDeleteTabId = null;
+
+function requestDeleteTab(tabId) {
+  if (state.tabs.length <= 1) return;
+  const tab = state.tabs.find(t => t.id === tabId);
+  if (!tab) return;
+  _pendingDeleteTabId = tabId;
+  document.getElementById('delete-tab-name').textContent = tab.label;
+  document.getElementById('delete-tab-modal-overlay').style.display = '';
+}
+
+function confirmDeleteTab() {
+  if (!_pendingDeleteTabId) return;
+  const tabId = _pendingDeleteTabId;
+  const deletedLabel = (state.tabs.find(t => t.id === tabId) || {}).label || 'Tab';
+  _pendingDeleteTabId = null;
+
+  // Clean up state
+  const widgets = getWidgetsForTab(tabId);
+  widgets.forEach(w => {
+    if (state.charts[w.id]) {
+      state.charts[w.id].destroy();
+      delete state.charts[w.id];
+    }
+  });
+  state.tabs = state.tabs.filter(t => t.id !== tabId);
+  delete state.sectionLayout[tabId];
+  delete state.sectionOrder[tabId];
+  delete state.tabWidgets[tabId];
+  state.loadedSections.delete(tabId);
+
+  // Switch to first tab if active was deleted
+  if (state.activeSection === tabId) {
+    state.activeSection = state.tabs[0].id;
+  }
+
+  // Close drawer if it was for this tab
+  if (_drawerSection === tabId) {
+    document.body.classList.remove('drawer-open');
+    _drawerSection = null;
+    setManageWidgetsBtnLabel(false);
+  }
+
+  renderTabs();
+  renderSections();
+  scrollToSection(state.activeSection, true);
+  document.getElementById('delete-tab-modal-overlay').style.display = 'none';
+  window.sendEvent('"' + deletedLabel + '" tab — deleted');
+}
+
+function openTabEditMenu(event) {
+  closeTabEditMenu();
+  const btn = event.target.closest('.section-edit-btn');
+  const tabId = btn ? btn.dataset.tabId : state.activeSection;
+  const activeTab = state.tabs.find(t => t.id === tabId);
+  if (!activeTab) return;
+
+  const popover = document.createElement('div');
+  popover.className = 'tab-edit-popover';
+  popover.id = 'tab-edit-popover';
+
+  const prevLabel = activeTab.label;
+  popover.innerHTML = `
+    <div class="tab-edit-field">
+      <label>Tab name</label>
+      <input type="text" id="tab-rename-input" value="${activeTab.label}" maxlength="30" />
+    </div>
+    <div class="tab-edit-actions">
+      ${state.tabs.length > 1 ? `<button class="btn btn-danger" id="tab-delete-btn">Remove tab</button>` : ''}
+      <button class="btn btn-primary" id="tab-save-btn">Save</button>
+    </div>
+  `;
+
+  // Prevent clicks inside the popover from propagating to the edit button or document
+  popover.addEventListener('click', (e) => e.stopPropagation());
+
+  document.body.appendChild(popover);
+
+  // Position below-right of the edit button
+  const rect = event.target.closest('.section-edit-btn')?.getBoundingClientRect() || event.target.getBoundingClientRect();
+  popover.style.top = (rect.bottom + 8) + 'px';
+  popover.style.left = rect.left + 'px';
+
+  const input = document.getElementById('tab-rename-input');
+  input.select();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      renameTab(activeTab.id, input.value);
+      closeTabEditMenu();
+    }
+    if (e.key === 'Escape') closeTabEditMenu();
+  });
+  // Close popover when clicking outside
+  setTimeout(() => {
+    _tabEditOutsideClick = function(e) {
+      if (!popover.contains(e.target) && !e.target.closest('.section-edit-btn')) {
+        closeTabEditMenu();
+      }
+    };
+    document.addEventListener('click', _tabEditOutsideClick);
+  }, 0);
+
+  document.getElementById('tab-delete-btn')?.addEventListener('click', () => {
+    closeTabEditMenu();
+    requestDeleteTab(activeTab.id);
+  });
+
+  document.getElementById('tab-save-btn')?.addEventListener('click', () => {
+    const val = input.value.trim();
+    if (val) renameTab(activeTab.id, val);
+    closeTabEditMenu();
+  });
+}
+
+let _tabEditOutsideClick = null;
+
+function closeTabEditMenu() {
+  if (_tabEditOutsideClick) {
+    document.removeEventListener('click', _tabEditOutsideClick);
+    _tabEditOutsideClick = null;
+  }
+  const existing = document.getElementById('tab-edit-popover');
+  if (existing) existing.remove();
+}
+
+// Delete tab modal event listeners
+document.getElementById('delete-tab-cancel')?.addEventListener('click', () => {
+  document.getElementById('delete-tab-modal-overlay').style.display = 'none';
+  _pendingDeleteTabId = null;
+});
+document.getElementById('delete-tab-modal-close')?.addEventListener('click', () => {
+  document.getElementById('delete-tab-modal-overlay').style.display = 'none';
+  _pendingDeleteTabId = null;
+});
+document.getElementById('delete-tab-confirm')?.addEventListener('click', confirmDeleteTab);
+document.getElementById('delete-tab-modal-overlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('delete-tab-modal-overlay')) {
+    document.getElementById('delete-tab-modal-overlay').style.display = 'none';
+    _pendingDeleteTabId = null;
+  }
+});
 
 function setActiveSubNav(section) {
   state.activeSection = section;
@@ -3549,18 +4078,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
   });
 });
 
-// Sub-nav clicks
-document.querySelectorAll('.sub-nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    scrollToSection(btn.dataset.section, true);
-    const name = btn.dataset.section.charAt(0).toUpperCase() + btn.dataset.section.slice(1);
-    window.sendEvent(name + ' tab — clicked');
-    // Update widget drawer content if it's open
-    if (document.body.classList.contains('drawer-open')) {
-      openWidgetDrawer(btn.dataset.section);
-    }
-  });
-});
+// Sub-nav clicks are now attached dynamically in renderTabs()
 
 // ── LENS & ROLE TOGGLES ───────────────────────────────────────
 document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn => {
@@ -3570,6 +4088,7 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
     syncLensButtons();
+    if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
     window.sendEvent('Preview toggle — changed');
   });
 });
@@ -3583,7 +4102,7 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
-    const roleName = btn.dataset.role.charAt(0).toUpperCase() + btn.dataset.role.slice(1);
+    if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
     window.sendEvent('Preview toggle — changed');
   });
 });
@@ -3612,6 +4131,11 @@ function setViewEditMode(mode) {
     delete document.body.dataset.viewmode;
     // In edit mode → show "View" action to switch to view
     viewEditToggleBtn.innerHTML = VIEW_ICON + '<span>View</span>';
+  }
+  // When a team filter overrides the lens (feature flag on), switching modes
+  // changes which widgets are visible (edit shows all, view hides lens-mismatched).
+  if (isFeatureEnabled('team-usecases') && state.teamFilter && state.teamFilter !== 'All teams') {
+    [...state.loadedSections].forEach(s => remountSection(s));
   }
 }
 
@@ -4002,6 +4526,7 @@ document.getElementById('filter-dropdown-content').addEventListener('click', e =
   chip.classList.remove('active-filter');
   [...state.loadedSections].forEach(s => remountSection(s));
   if (filterId === 'filter-team') syncLensButtons();
+  if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
 });
 
 // ── Channel two-panel: types panel click ──────────────────────
@@ -4020,6 +4545,7 @@ document.getElementById('channel-dropdown-types').addEventListener('click', (e) 
     updateChannelChipLabel();
     closeChannelDropdown();
     [...state.loadedSections].forEach(s => remountSection(s));
+    if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
     return;
   }
 
@@ -4058,6 +4584,7 @@ document.getElementById('channel-dropdown-children').addEventListener('click', (
   renderChannelChildrenPanel(_activeChannelType);
   renderChannelTypesPanel();
   [...state.loadedSections].forEach(s => remountSection(s));
+  if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
 });
 
 // Close dropdown on outside click + clear bar filter when clicking outside a widget card
@@ -4200,6 +4727,8 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
 });
 
 // ── INIT ───────────────────────────────────────────────────────
+renderTabs();
+renderSections();
 handleHash();
 window.addEventListener('hashchange', handleHash);
 updateSectionsVisibility();
@@ -4566,10 +5095,22 @@ WIDGET INTERACTIONS
 - Drill links: Some widgets have links like "See why" or "Improve this" that navigate to related sections.
 - Expand/collapse: List-type widgets have "Show more" / "Show less" buttons.
 
-WIDGET DRAWER
-- Opened by clicking "+ Add widgets" or the empty tile placeholder.
-- Shows all widgets for all sections with their current status: "Always visible", "Visible", "Hidden", or "Not available in this view".
-- Users can add or hide widgets from the drawer.
+WIDGET DRAWER (MANAGE WIDGETS SIDEBAR)
+- Opened by clicking "Manage widgets" in the top bar, "+ Add widgets" on an empty tile, or "+ Manage widgets" on a new empty page.
+- Shows all available widgets from all five sections (Overview, Understand, Operate, Improve, Automate) with their status relative to the current page: "On this page", "Not on this page", "Not available in this view", or "Not available with current filter".
+- Users can add any widget from any section to the current page, or hide widgets already on it. Adding a widget to one page does not affect other pages.
+- Includes a category filter (All, Overview, Understand, Operate, Improve, Automate) and a sort option (Default, Name A-Z, Name Z-A, Visible first).
+- Includes a search field to filter widgets by name.
+
+CUSTOM PAGES AND TAB MANAGEMENT
+- The prototype defaults to five tabs: Overview, Understand, Operate, Improve, Automate. These correspond to the five core sections.
+- In edit mode, users can create new custom pages by clicking the "+" button next to the tab bar.
+- New custom pages start empty with a prompt to add widgets. Users can then add any widget from any of the five sections to build a personalised page.
+- Each page maintains its own independent set of widgets. Adding or removing a widget on one page does not affect any other page.
+- Pages can be renamed by clicking the pencil icon next to the page heading in edit mode, typing a new name, and clicking Save.
+- Pages can be deleted via the same pencil menu, which shows a "Delete page" button. Deleting a page requires confirmation. At least one page must remain.
+- The five default pages cannot be deleted but can be customised by adding or removing widgets.
+- This allows users to create focused views (e.g., a "My Dashboard" page with selected KPIs from across all sections) without disrupting the standard five-section structure.
 
 CHART TYPES USED
 - KPI cards: Large number with trend indicator (up/down percentage) and sub-label
@@ -4683,6 +5224,14 @@ When the user navigates to Overview, Understand, Operate, Improve, or Automate:
 - Do not ask a question back.
 - Do not use the "Sorry, I can't answer that" fallback.
 - Maximum 2 sentences.
+When the user navigates to a custom tab (any name other than the five default sections):
+- Briefly acknowledge this is a user-created custom page where they can assemble widgets from any section into a personalised view.
+- Maximum 1 sentence.
+
+TAB CRUD EVENTS:
+- "[EVENT: New tab — created]": The user created a new custom page. Briefly explain that they can now add widgets from any section to build a personalised view. Maximum 1 sentence.
+- "[EVENT: "<Name>" tab — renamed]": The user renamed a page. No response needed — stay silent or respond with a minimal acknowledgment of 1 sentence maximum.
+- "[EVENT: "<Name>" tab — deleted]": The user deleted a page. No response needed — stay silent or respond with a minimal acknowledgment of 1 sentence maximum.
 
 TOGGLE EVENTS (format: "[EVENT: Preview toggle — changed]"):
 When the user changes a preview toggle in the settings popout:
