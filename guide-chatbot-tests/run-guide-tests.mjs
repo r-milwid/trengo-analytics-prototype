@@ -914,7 +914,7 @@ function assessOverageQuality(sentences) {
     const overlap = overlapRatio(extraTokens, tokens);
     const hasNewConceptCue = /\b(instead|rather than|but|while|whereas|only if|unless|not final|provisional|firm|scope|difference|because|that means)\b/.test(lower);
     const isExampleLike = /\b(for example|e\.g\.|such as|like|for instance)\b/.test(lower);
-    const isRestatementLike = /\bthis means|in other words|the point is|this keeps|this allows|this is why|either way|all of this)\b/.test(lower);
+    const isRestatementLike = /\b(this means|in other words|the point is|this keeps|this allows|this is why|either way|all of this)\b/.test(lower);
 
     if ((overlap < 0.45 && hasNewConceptCue) || (overlap < 0.3 && !isExampleLike && !isRestatementLike)) {
       distinctCount += 1;
