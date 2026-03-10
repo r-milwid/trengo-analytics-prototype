@@ -1,0 +1,1999 @@
+{
+  "startedAt": "2026-03-10T12:47:39.113Z",
+  "completedAt": "2026-03-10T12:51:18.891Z",
+  "proxyUrl": "https://trengo-chatbot-proxy.analytics-chatbot.workers.dev",
+  "corpusSnapshot": {
+    "singleQuestions": 271,
+    "sequences": 21
+  },
+  "singleTests": [
+    {
+      "id": "Q001",
+      "category": "Concept foundations",
+      "prompt": "Why does this analytics model start from questions instead of dashboards?",
+      "assistant": "The previous model organized around channels and tickets — it was retrospective and fragmented. As AI handles more work, adding more dashboards creates complexity without clarity. Starting from stable operational questions ensures the structure remains coherent regardless of whether work is handled by humans or AI, or whether goals shift. The five sections anchor reporting to *decisions that need to happen*, not to what was easy to measure historically.",
+      "rawAssistant": "The previous model organized around channels and tickets — it was retrospective and fragmented. As AI handles more work, adding more dashboards creates complexity without clarity. Starting from stable operational questions ensures the structure remains coherent regardless of whether work is handled by humans or AI, or whether goals shift. The five sections anchor reporting to *decisions that need to happen*, not to what was easy to measure historically.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 4
+      }
+    },
+    {
+      "id": "Q006",
+      "category": "Concept foundations",
+      "prompt": "What makes this model more future-proof than a ticket-based structure?",
+      "assistant": "A ticket-centric structure locks reporting to a specific unit of work. As AI and automation increasingly handle conversations, and as use cases expand beyond ticket resolution, that structure breaks.\n\nThis model organizes around five stable operational questions—Overview, Understand, Operate, Improve, Automate—that remain meaningful regardless of whether work is handled by humans or AI, whether the goal is resolving or converting, or whether new units of work emerge. The questions endure. The metrics and scope adapt beneath them.",
+      "rawAssistant": "A ticket-centric structure locks reporting to a specific unit of work. As AI and automation increasingly handle conversations, and as use cases expand beyond ticket resolution, that structure breaks.\n\nThis model organizes around five stable operational questions—Overview, Understand, Operate, Improve, Automate—that remain meaningful regardless of whether work is handled by humans or AI, whether the goal is resolving or converting, or whether new units of work emerge. The questions endure. The metrics and scope adapt beneath them.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 5
+      }
+    },
+    {
+      "id": "Q018",
+      "category": "Concept foundations",
+      "prompt": "What stays the same from traditional reporting, and what changes?",
+      "assistant": "What stays the same: core operational metrics like response times, resolution rates, escalation rates, CSAT, and conversion rates remain important and are retained.\n\nWhat changes: how those metrics are organised and interpreted. Instead of scattered, channel-centric, ticket-centric dashboards designed for retrospective review, they are now grouped under five stable operational questions (Overview, Understand, Operate, Improve, Automate) and reframed as forward-looking signals within a watchtower model—one that surfaces risks, highlights opportunities, and guides prioritised action rather than just documenting what happened.",
+      "rawAssistant": "What stays the same: core operational metrics like response times, resolution rates, escalation rates, CSAT, and conversion rates remain important and are retained.\n\nWhat changes: how those metrics are organised and interpreted. Instead of scattered, channel-centric, ticket-centric dashboards designed for retrospective review, they are now grouped under five stable operational questions (Overview, Understand, Operate, Improve, Automate) and reframed as forward-looking signals within a watchtower model—one that surfaces risks, highlights opportunities, and guides prioritised action rather than just documenting what happened.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q037",
+      "category": "Section purposes and boundaries",
+      "prompt": "How should stakeholders describe Overview in one sentence?",
+      "assistant": "Overview surfaces directional signals and risks to show teams where to focus attention right now, rather than providing deep analysis or optimization decisions.",
+      "rawAssistant": "Overview surfaces directional signals and risks to show teams where to focus attention right now, rather than providing deep analysis or optimization decisions.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 1
+      }
+    },
+    {
+      "id": "Q052",
+      "category": "Section purposes and boundaries",
+      "prompt": "What decision context defines Operate?",
+      "assistant": "Operate answers: Is work flowing toward its goal at this moment?\n\nIt surfaces execution and flow signals—load, backlog, capacity, progression, and immediate friction—so teams can spot bottlenecks and keep work moving right now. It does not diagnose root causes or drive long-term improvement decisions; that is Improve's role.",
+      "rawAssistant": "Operate answers: Is work flowing toward its goal at this moment?\n\nIt surfaces execution and flow signals—load, backlog, capacity, progression, and immediate friction—so teams can spot bottlenecks and keep work moving right now. It does not diagnose root causes or drive long-term improvement decisions; that is Improve's role.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": true,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q078",
+      "category": "Section purposes and boundaries",
+      "prompt": "How should stakeholders explain the difference between Operate and Improve?",
+      "assistant": "Operate answers \"Is work flowing toward its goal right now?\" — it surfaces immediate friction, bottlenecks, and current load.\n\nImprove answers \"What changes would lead to better outcomes?\" — it surfaces aggregated trends, opportunities, and prioritised decisions for change.",
+      "rawAssistant": "Operate answers \"Is work flowing toward its goal right now?\" — it surfaces immediate friction, bottlenecks, and current load.\n\nImprove answers \"What changes would lead to better outcomes?\" — it surfaces aggregated trends, opportunities, and prioritised decisions for change.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": true,
+        "sentenceCount": 4
+      }
+    },
+    {
+      "id": "Q094",
+      "category": "Widget-specific questions",
+      "prompt": "What decision is \"Intent trend highlights\" meant to support?",
+      "assistant": "Intent trend highlights surfaces which customer intents are rising or declining, so supervisors can spot emerging issues or shifting demand patterns and decide whether to update knowledge, adjust routing, or reframe automation.",
+      "rawAssistant": "Intent trend highlights surfaces which customer intents are rising or declining, so supervisors can spot emerging issues or shifting demand patterns and decide whether to update knowledge, adjust routing, or reframe automation.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 1
+      }
+    },
+    {
+      "id": "Q118",
+      "category": "Widget-specific questions",
+      "prompt": "What decision is \"Bottlenecks\" meant to support?",
+      "assistant": "Bottlenecks identifies where work is accumulating or getting stuck in the flow right now, so teams can spot immediate friction in execution and unblock it immediately.",
+      "rawAssistant": "Bottlenecks identifies where work is accumulating or getting stuck in the flow right now, so teams can spot immediate friction in execution and unblock it immediately.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 1
+      }
+    },
+    {
+      "id": "Q141",
+      "category": "Widget-specific questions",
+      "prompt": "If \"Resolution rate AI Agents\" changes suddenly, what kind of follow-up question should it trigger?",
+      "assistant": "The most important follow-up is: Why did escalations or handoffs increase?\n\nA sudden drop in AI resolution rate usually signals either a shift in ticket complexity, a change in what the AI is trained to handle, or a spike in safety guardrail triggers. Understanding which one tells teams whether they need to improve AI knowledge, adjust routing logic, or review automation rules.",
+      "rawAssistant": "The most important follow-up is: Why did escalations or handoffs increase?\n\nA sudden drop in AI resolution rate usually signals either a shift in ticket complexity, a change in what the AI is trained to handle, or a spike in safety guardrail triggers. Understanding which one tells teams whether they need to improve AI knowledge, adjust routing logic, or review automation rules.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": true,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q155",
+      "category": "Widget-specific questions",
+      "prompt": "Why is \"Sales pipeline funnel\" shown in Understand instead of another section?",
+      "assistant": "It belongs in Understand because it explains the composition and flow of incoming work—how contacts move through stages from New to Closed Won. This clarifies *why* work is entering and changing state in the sales process, which is Understand's core purpose. It's not an operational execution metric (Operate) or a trend-based improvement signal (Improve).",
+      "rawAssistant": "It belongs in Understand because it explains the composition and flow of incoming work—how contacts move through stages from New to Closed Won. This clarifies *why* work is entering and changing state in the sales process, which is Understand's core purpose. It's not an operational execution metric (Operate) or a trend-based improvement signal (Improve).",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q167",
+      "category": "Filters, role, lens, and settings",
+      "prompt": "What does the channel filter help users understand in this concept?",
+      "assistant": "The channel filter lets users scope all signals across the five sections to a specific communication channel—or view all channels together. This keeps the watchtower model intact while allowing teams to see whether system behaviour, composition, and automation performance differ by channel.",
+      "rawAssistant": "The channel filter lets users scope all signals across the five sections to a specific communication channel—or view all channels together. This keeps the watchtower model intact while allowing teams to see whether system behaviour, composition, and automation performance differ by channel.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 2
+      }
+    },
+    {
+      "id": "Q182",
+      "category": "Filters, role, lens, and settings",
+      "prompt": "How do filters differ from structural lenses in this model?",
+      "assistant": "Filters change which data is displayed within the same structure. Lenses (Role and Use Case) change how content is emphasized, hidden, or labelled within that structure — allowing the same five-section model to serve multiple perspectives and goals without creating separate systems.",
+      "rawAssistant": "Filters change which data is displayed within the same structure. Lenses (Role and Use Case) change how content is emphasized, hidden, or labelled within that structure — allowing the same five-section model to serve multiple perspectives and goals without creating separate systems.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 2
+      }
+    },
+    {
+      "id": "Q191",
+      "category": "Customisation and interaction model",
+      "prompt": "Why do some widgets include drill links to other sections?",
+      "assistant": "Drill links connect operational signals to the decisions and analyses they inform. A widget in Overview might surface a problem (e.g., rising escalations); the drill link takes users directly to the Automate section where they can diagnose why automation is failing. This reduces navigation friction and keeps decision-making anchored to the relevant section rather than requiring users to manually hunt for context.",
+      "rawAssistant": "Drill links connect operational signals to the decisions and analyses they inform. A widget in Overview might surface a problem (e.g., rising escalations); the drill link takes users directly to the Automate section where they can diagnose why automation is failing. This reduces navigation friction and keeps decision-making anchored to the relevant section rather than requiring users to manually hunt for context.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 5
+      }
+    },
+    {
+      "id": "Q200",
+      "category": "Customisation and interaction model",
+      "prompt": "Why are users allowed to rename custom pages but not the five core sections?",
+      "assistant": "The five core sections are structural anchors—they embody the five stable operational questions that remain constant regardless of use case, role, or how the system evolves. Allowing them to be renamed would blur the shared language teams use to navigate the analytics model.\n\nCustom pages, by contrast, exist for personalisation—users can assemble widgets from any section into focused views. Renaming them doesn't disrupt the underlying model; it just reflects how individual teams choose to work.",
+      "rawAssistant": "The five core sections are structural anchors—they embody the five stable operational questions that remain constant regardless of use case, role, or how the system evolves. Allowing them to be renamed would blur the shared language teams use to navigate the analytics model.\n\nCustom pages, by contrast, exist for personalisation—users can assemble widgets from any section into focused views. Renaming them doesn't disrupt the underlying model; it just reflects how individual teams choose to work.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 4
+      }
+    },
+    {
+      "id": "Q227",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "How should the guide handle a message that includes both a question and feedback?",
+      "assistant": "Answer the in-scope question briefly first, then handle the feedback workflow. Keep the whole reply compact.",
+      "rawAssistant": "Answer the in-scope question briefly first, then handle the feedback workflow. Keep the whole reply compact.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 2
+      }
+    },
+    {
+      "id": "Q228",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "What should the guide do if feedback is about spacing or button polish rather than the model itself?",
+      "assistant": "When feedback is about visual details like spacing, button polish, fonts, or colours, nudge first before logging.\n\nExplain that these details aren't final in the prototype, then ask what underlying problem sits behind the request — readability, clarity, hierarchy, or something else. Only log it if the user confirms they still want the detail captured, or if they clarify a structural concern worth recording instead.\n\nThis keeps the focus on the model and core decisions rather than cosmetic fixes that will change anyway.",
+      "rawAssistant": "When feedback is about visual details like spacing, button polish, fonts, or colours, nudge first before logging.\n\nExplain that these details aren't final in the prototype, then ask what underlying problem sits behind the request — readability, clarity, hierarchy, or something else. Only log it if the user confirms they still want the detail captured, or if they clarify a structural concern worth recording instead.\n\nThis keeps the focus on the model and core decisions rather than cosmetic fixes that will change anyway.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 4
+      }
+    },
+    {
+      "id": "Q229",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "If a stakeholder says \"make this a bar chart\", what should the guide try to understand before logging it?",
+      "assistant": "Before logging, clarify whether the underlying concern is readability, clarity, hierarchy, or something else — not just the chart type preference itself.\n\nThe detail (bar chart vs. line chart) is less actionable than the problem it's meant to solve. If the user confirms the real issue is \"it's hard to compare values quickly\" or \"the trend is hard to see,\" that becomes more useful feedback for design decisions.",
+      "rawAssistant": "Before logging, clarify whether the underlying concern is readability, clarity, hierarchy, or something else — not just the chart type preference itself.\n\nThe detail (bar chart vs. line chart) is less actionable than the problem it's meant to solve. If the user confirms the real issue is \"it's hard to compare values quickly\" or \"the trend is hard to see,\" that becomes more useful feedback for design decisions.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 4
+      }
+    },
+    {
+      "id": "Q230",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "What makes feedback clear enough to log without asking a clarifying question first?",
+      "assistant": "Feedback is clear enough to log immediately only if it identifies both the object being discussed (section, widget, interaction, concept, or flow) and the issue, concern, or desired change.\n\nIf either is missing or ambiguous, ask one focused clarifying question first.",
+      "rawAssistant": "Feedback is clear enough to log immediately only if it identifies both the object being discussed (section, widget, interaction, concept, or flow) and the issue, concern, or desired change.\n\nIf either is missing or ambiguous, ask one focused clarifying question first.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 2
+      }
+    },
+    {
+      "id": "Q231",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "If a user says only \"this feels off\", what should the guide do next?",
+      "assistant": "Ask one focused clarifying question to identify what object they're referring to (section, widget, interaction, etc.) and what the concern is.",
+      "rawAssistant": "Ask one focused clarifying question to identify what object they're referring to (section, widget, interaction, etc.) and what the concern is.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 2
+      }
+    },
+    {
+      "id": "Q232",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "How should the guide answer a question about a non-final UI detail in the prototype?",
+      "assistant": "When a user asks about a non-final UI detail (like a chart type, label, widget placement, or interaction pattern), answer provisionally using language like \"the prototype currently shows\", \"in this version\", or \"as represented here\" — not definitive declarations.\n\nDo not volunteer caveats about the prototype being incomplete. Just avoid sounding final about implementation details, so stakeholders focus on the overall model rather than fixating on specifics that are expected to change.",
+      "rawAssistant": "When a user asks about a non-final UI detail (like a chart type, label, widget placement, or interaction pattern), answer provisionally using language like \"the prototype currently shows\", \"in this version\", or \"as represented here\" — not definitive declarations.\n\nDo not volunteer caveats about the prototype being incomplete. Just avoid sounding final about implementation details, so stakeholders focus on the overall model rather than fixating on specifics that are expected to change.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q233",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "If someone asks whether a chart type in the prototype is final, how should the guide frame the answer?",
+      "assistant": "Chart types are not final — they're implementation details of this prototype version. Frame the answer provisionally: \"the prototype currently shows [chart type]\" rather than \"this will be a [chart type].\"\n\nThe five-section structure and concept are definitive. The specific visualization choices are not.",
+      "rawAssistant": "Chart types are not final — they're implementation details of this prototype version. Frame the answer provisionally: \"the prototype currently shows [chart type]\" rather than \"this will be a [chart type].\"\n\nThe five-section structure and concept are definitive. The specific visualization choices are not.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 4
+      }
+    },
+    {
+      "id": "Q234",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "How should the guide respond if someone asks about Trengo's roadmap for this analytics model?",
+      "assistant": "\"Sorry, I can't answer that — please ask Rowan.\"\n\nRoadmap questions are outside scope. This guide is limited to explaining the prototype structure, rationale, and model as currently described — not future plans or development direction.",
+      "rawAssistant": "\"Sorry, I can't answer that — please ask Rowan.\"\n\nRoadmap questions are outside scope. This guide is limited to explaining the prototype structure, rationale, and model as currently described — not future plans or development direction.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q235",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "How should the guide respond if someone asks what feedback has been collected without using the word Helion?",
+      "assistant": "If someone asks to view, retrieve, list, or access stored feedback without using the word \"Helion\", the response is:\n\n\"Sorry, I can't answer that — please ask Rowan.\"\n\nThat sentence is the complete response. Nothing else is added.",
+      "rawAssistant": "If someone asks to view, retrieve, list, or access stored feedback without using the word \"Helion\", the response is:\n\n\"Sorry, I can't answer that — please ask Rowan.\"\n\nThat sentence is the complete response. Nothing else is added.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": false,
+        "sentenceCount": 3
+      }
+    },
+    {
+      "id": "Q236",
+      "category": "Prompt behavior and edge cases",
+      "prompt": "Why should the guide prefer logging the underlying concern instead of only the proposed cosmetic fix?",
+      "assistant": "Because the underlying concern tells a product team what problem to solve, whereas a cosmetic fix describes only one possible solution.\n\nIf a user says \"make this chart a bar chart,\" logging only that leaves the team guessing: Do they want faster comparison? Better mobile fit? Clearer labeling? A different underlying concern might have a better solution than the proposed fix.\n\nCapturing \"the chart is hard to compare quickly\" lets the team choose the right fix—whether that's a bar chart, better interactivity, clearer legends, or something else entirely.",
+      "rawAssistant": "Because the underlying concern tells a product team what problem to solve, whereas a cosmetic fix describes only one possible solution.\n\nIf a user says \"make this chart a bar chart,\" logging only that leaves the team guessing: Do they want faster comparison? Better mobile fit? Clearer labeling? A different underlying concern might have a better solution than the proposed fix.\n\nCapturing \"the chart is hard to compare quickly\" lets the team choose the right fix—whether that's a bar chart, better interactivity, clearer legends, or something else entirely.",
+      "sentinelCounts": {
+        "feedback": 0,
+        "context": 0,
+        "conflict": 0
+      },
+      "evaluation": {
+        "empty": false,
+        "fallback": false,
+        "tooLong": false,
+        "hasQuestionBack": true,
+        "sentenceCount": 6
+      }
+    }
+  ],
+  "sequenceTests": [
+    {
+      "id": "S01",
+      "title": "Five-section rationale thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why is the model organised around five sections instead of dashboards by team?",
+          "assistant": "The five-section structure is organised around stable operational questions, not team structure, so the model remains coherent as AI and automation reshape how work gets distributed.\n\nTeam-based dashboards fragment reporting because teams change, roles blur, and work units expand beyond tickets. The five sections—Overview, Understand, Operate, Improve, Automate—answer the same decision questions regardless of whether a team is support, sales, voice, or something new. This keeps the system unified and future-proof.",
+          "rawAssistant": "The five-section structure is organised around stable operational questions, not team structure, so the model remains coherent as AI and automation reshape how work gets distributed.\n\nTeam-based dashboards fragment reporting because teams change, roles blur, and work units expand beyond tickets. The five sections—Overview, Understand, Operate, Improve, Automate—answer the same decision questions regardless of whether a team is support, sales, voice, or something new. This keeps the system unified and future-proof.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 4
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "What kinds of change is that stability meant to survive?",
+          "assistant": "The structure is designed to endure:\n\n- **AI and automation handling more work** — as machines resolve tickets, progress deals, and qualify leads, the reporting logic doesn't break; it just shifts what \"operated\" and \"automated\" means.\n- **New use cases emerging** — a voice channel, a conversion goal, or an entirely new unit of work can fit into the same five questions without requiring separate dashboards.\n- **Goals evolving** — moving from resolve to progress to convert changes terminology and emphasis, not the underlying section logic.\n- **Expanding beyond tickets** — contacts, deals, journeys, and future work types all map to the same five questions.\n\nThe alternative—separate dashboards per team or per goal—would require architectural changes every time the business adds a new dimension. Five stable questions let you adapt through scope, filters, and terminology instead.",
+          "rawAssistant": "The structure is designed to endure:\n\n- **AI and automation handling more work** — as machines resolve tickets, progress deals, and qualify leads, the reporting logic doesn't break; it just shifts what \"operated\" and \"automated\" means.\n- **New use cases emerging** — a voice channel, a conversion goal, or an entirely new unit of work can fit into the same five questions without requiring separate dashboards.\n- **Goals evolving** — moving from resolve to progress to convert changes terminology and emphasis, not the underlying section logic.\n- **Expanding beyond tickets** — contacts, deals, journeys, and future work types all map to the same five questions.\n\nThe alternative—separate dashboards per team or per goal—would require architectural changes every time the business adds a new dimension. Five stable questions let you adapt through scope, filters, and terminology instead.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": true,
+            "hasQuestionBack": false,
+            "sentenceCount": 6
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "How does that help once AI handles more of the work?",
+          "assistant": "As AI handles more work, the five-section structure keeps reporting honest and system-level.\n\n**Overview** surfaces AI escalations and performance alongside human metrics, so supervisors see where attention is actually needed—not just human load.\n\n**Operate** shows current execution flow including what AI completed without handoff, so bottlenecks and capacity are visible across human and machine work together.\n\n**Automate** becomes a real decision surface—not an add-on metric. Teams can see AI coverage, reliability, failure modes, and handoff reasons, then decide what to improve next.\n\n**Improve** aggregates signals across human and AI performance to prioritise changes, so you're not optimising for humans alone while automation silently fails elsewhere.\n\nWithout this structure, adding AI metrics to old dashboards creates fragmentation: separate AI dashboards, separate automation reports, separate handoff tables. You lose visibility into system-level behaviour. The five sections keep everything in one frame so you can reason about the whole system—human, AI, and process together.",
+          "rawAssistant": "As AI handles more work, the five-section structure keeps reporting honest and system-level.\n\n**Overview** surfaces AI escalations and performance alongside human metrics, so supervisors see where attention is actually needed—not just human load.\n\n**Operate** shows current execution flow including what AI completed without handoff, so bottlenecks and capacity are visible across human and machine work together.\n\n**Automate** becomes a real decision surface—not an add-on metric. Teams can see AI coverage, reliability, failure modes, and handoff reasons, then decide what to improve next.\n\n**Improve** aggregates signals across human and AI performance to prioritise changes, so you're not optimising for humans alone while automation silently fails elsewhere.\n\nWithout this structure, adding AI metrics to old dashboards creates fragmentation: separate AI dashboards, separate automation reports, separate handoff tables. You lose visibility into system-level behaviour. The five sections keep everything in one frame so you can reason about the whole system—human, AI, and process together.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": true,
+            "hasQuestionBack": false,
+            "sentenceCount": 9
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Does that mean support and sales are expected to share one structure even if their goals differ?",
+          "assistant": "Yes. Support resolves tickets; sales progresses deals toward close. The goals differ, but the operational questions are the same: What's happening? Why is work entering? Is it flowing? What should improve? What runs without humans?\n\nThe structure adapts through scope, filters, and emphasis—not separate architectures.\n\n**Understand** changes what \"entry\" means: support sees ticket topics; sales sees lead sources. **Operate** changes what \"progression\" means: support tracks resolution; sales tracks pipeline stage. **Improve** changes what \"success\" means: support optimizes resolution rate; sales optimizes win rate.\n\nBut the five questions remain constant, so one unified system surfaces signals for both without fragmentation. A sales supervisor and a support supervisor use the same five sections; they just interpret metrics differently because their goals differ.\n\nThis is why the model is future-proof: new use cases, new units of work, new goals—they all fit the same frame.",
+          "rawAssistant": "Yes. Support resolves tickets; sales progresses deals toward close. The goals differ, but the operational questions are the same: What's happening? Why is work entering? Is it flowing? What should improve? What runs without humans?\n\nThe structure adapts through scope, filters, and emphasis—not separate architectures.\n\n**Understand** changes what \"entry\" means: support sees ticket topics; sales sees lead sources. **Operate** changes what \"progression\" means: support tracks resolution; sales tracks pipeline stage. **Improve** changes what \"success\" means: support optimizes resolution rate; sales optimizes win rate.\n\nBut the five questions remain constant, so one unified system surfaces signals for both without fragmentation. A sales supervisor and a support supervisor use the same five sections; they just interpret metrics differently because their goals differ.\n\nThis is why the model is future-proof: new use cases, new units of work, new goals—they all fit the same frame.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": true,
+            "hasQuestionBack": true,
+            "sentenceCount": 14
+          }
+        }
+      ]
+    },
+    {
+      "id": "S02",
+      "title": "Overview versus Understand thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is the difference between Overview and Understand?",
+          "assistant": "Overview surfaces directional signals and risks to guide where attention should be focused right now. Understand explains why work is entering the system and how it's changing—the composition and patterns of incoming work.",
+          "rawAssistant": "Overview surfaces directional signals and risks to guide where attention should be focused right now. Understand explains why work is entering the system and how it's changing—the composition and patterns of incoming work.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Which one is about prioritisation, and which one is about explanation?",
+          "assistant": "Overview is about prioritisation. Understand is about explanation.",
+          "rawAssistant": "Overview is about prioritisation. Understand is about explanation.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Where would intent trend highlights fit in that distinction?",
+          "assistant": "Intent trend highlights belong in Overview because they surface which intents are rising or declining—directional signals that help teams prioritise where to focus attention next.",
+          "rawAssistant": "Intent trend highlights belong in Overview because they surface which intents are rising or declining—directional signals that help teams prioritise where to focus attention next.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Why would the prototype show some directional intent signal in Overview before a deeper analysis in Understand?",
+          "assistant": "Overview needs directional signals to answer \"where should we look?\" so teams can prioritise immediately. Understand then provides the deeper composition and pattern analysis to answer \"why is this happening?\" Once a team spots a rising intent in Overview, they can dig into intent clusters and trends in Understand to understand what's driving it.",
+          "rawAssistant": "Overview needs directional signals to answer \"where should we look?\" so teams can prioritise immediately. Understand then provides the deeper composition and pattern analysis to answer \"why is this happening?\" Once a team spots a rising intent in Overview, they can dig into intent clusters and trends in Understand to understand what's driving it.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 4
+          }
+        }
+      ]
+    },
+    {
+      "id": "S03",
+      "title": "Operate versus Improve thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is the difference between Operate and Improve?",
+          "assistant": "Operate focuses on execution and current flow—load, capacity, bottlenecks, and whether work is moving toward its goal right now. Improve focuses on aggregated trends and opportunities over time—what changes would lead to better outcomes, and where should effort be directed for long-term gains.",
+          "rawAssistant": "Operate focuses on execution and current flow—load, capacity, bottlenecks, and whether work is moving toward its goal right now. Improve focuses on aggregated trends and opportunities over time—what changes would lead to better outcomes, and where should effort be directed for long-term gains.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Does that mean Operate is about current flow while Improve is about what should change next?",
+          "assistant": "Yes. Operate answers \"Is work flowing toward its goal at this moment?\" Improve answers \"What changes would lead to better outcomes?\"",
+          "rawAssistant": "Yes. Operate answers \"Is work flowing toward its goal at this moment?\" Improve answers \"What changes would lead to better outcomes?\"",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 4
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "If response time is bad today, why would that show up differently in Operate than in Improve?",
+          "assistant": "In Operate, response time appears as a live execution metric—showing the current state of load and flow so teams spot immediate friction right now. In Improve, the same metric appears as a trend over time, surfacing whether response time is a systemic pattern worth prioritizing as a change initiative.",
+          "rawAssistant": "In Operate, response time appears as a live execution metric—showing the current state of load and flow so teams spot immediate friction right now. In Improve, the same metric appears as a trend over time, surfacing whether response time is a systemic pattern worth prioritizing as a change initiative.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "What would make a metric feel misplaced between those two sections?",
+          "assistant": "A metric would feel misplaced if it appeared in Operate without supporting an immediate execution decision, or in Improve without aggregating a trend or identifying a prioritized change opportunity. Repetition is intentional only when the decision context or aggregation level differs meaningfully.",
+          "rawAssistant": "A metric would feel misplaced if it appeared in Operate without supporting an immediate execution decision, or in Improve without aggregating a trend or identifying a prioritized change opportunity. Repetition is intentional only when the decision context or aggregation level differs meaningfully.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "S04",
+      "title": "Automate boundary thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why does Automate exist as its own section?",
+          "assistant": "Automate exists as its own section because AI and automation are now core parts of the system—not layered additions. As AI handles more work, teams need dedicated visibility into what's running without humans, how well it's performing, and where it's failing. This lets humans oversee system-level automation behaviour rather than only individual tasks.",
+          "rawAssistant": "Automate exists as its own section because AI and automation are now core parts of the system—not layered additions. As AI handles more work, teams need dedicated visibility into what's running without humans, how well it's performing, and where it's failing. This lets humans oversee system-level automation behaviour rather than only individual tasks.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "So is the main question there what runs without humans and how well it runs?",
+          "assistant": "Yes, exactly. The core question for Automate is: What runs without humans, and how well does it run?",
+          "rawAssistant": "Yes, exactly. The core question for Automate is: What runs without humans, and how well does it run?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Why is deciding what to automate next not the core job of Automate?",
+          "assistant": "Because Automate evaluates what already exists, not what should be built next. Deciding what to automate is a prioritisation and strategy decision—that belongs in Improve, where improvement opportunities are aggregated and prioritised for action. Automate stays focused on observing and measuring the health of automation that is already live.",
+          "rawAssistant": "Because Automate evaluates what already exists, not what should be built next. Deciding what to automate is a prioritisation and strategy decision—that belongs in Improve, where improvement opportunities are aggregated and prioritised for action. Automate stays focused on observing and measuring the health of automation that is already live.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Where should automation opportunities live if they are not primarily an Automate decision?",
+          "assistant": "In Improve. That section aggregates trend signals and opportunity candidates—including which processes or intents would benefit most from automation. Improve is where change decisions are prioritised, including automation improvement candidates.",
+          "rawAssistant": "In Improve. That section aggregates trend signals and opportunity candidates—including which processes or intents would benefit most from automation. Improve is where change decisions are prioritised, including automation improvement candidates.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S05",
+      "title": "Widget rationale thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What decision is \"Opportunities backlog\" meant to support?",
+          "assistant": "Opportunities backlog helps users decide which improvements to prioritise and work on next. It surfaces AI-identified improvement candidates aggregated by impact, assigns ownership, and tracks status so teams can action the highest-value changes systematically.",
+          "rawAssistant": "Opportunities backlog helps users decide which improvements to prioritise and work on next. It surfaces AI-identified improvement candidates aggregated by impact, assigns ownership, and tracks status so teams can action the highest-value changes systematically.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Why does that make it an Improve widget instead of an Operate widget?",
+          "assistant": "Operate handles immediate execution and flow — where work is stuck right now. Improve handles aggregated trends and prioritised change decisions — what should be worked on next. Opportunities backlog is a decision surface for *what to change*, not a measure of *current execution*, so it belongs in Improve.",
+          "rawAssistant": "Operate handles immediate execution and flow — where work is stuck right now. Improve handles aggregated trends and prioritised change decisions — what should be worked on next. Opportunities backlog is a decision surface for *what to change*, not a measure of *current execution*, so it belongs in Improve.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "How is that different from simply showing a list of current problems?",
+          "assistant": "A list of current problems describes what is broken now (Operate concern). Opportunities backlog recommends what to fix based on aggregated impact analysis and assigns ownership so teams can plan and action improvements systematically (Improve concern). One is diagnosis; the other is prioritised decision-making.",
+          "rawAssistant": "A list of current problems describes what is broken now (Operate concern). Opportunities backlog recommends what to fix based on aggregated impact analysis and assigns ownership so teams can plan and action improvements systematically (Improve concern). One is diagnosis; the other is prioritised decision-making.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Would it be fair to say this widget turns analytics into an action-prioritisation surface?",
+          "assistant": "Yes. The watchtower model shifts analytics from historical evidence toward system oversight and directed action. Opportunities backlog is one concrete example — it surfaces prioritised changes with impact estimates and ownership, enabling teams to act on insights rather than just observe them.",
+          "rawAssistant": "Yes. The watchtower model shifts analytics from historical evidence toward system oversight and directed action. Opportunities backlog is one concrete example — it surfaces prioritised changes with impact estimates and ownership, enabling teams to act on insights rather than just observe them.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S06",
+      "title": "AI coverage and performance thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is the conceptual difference between \"AI Agent tickets\" and \"Resolution rate AI Agents\"?",
+          "assistant": "\"AI Agent tickets\" counts the total volume of tickets the AI handled. \"Resolution rate AI Agents\" measures what percentage of those tickets the AI fully resolved without human intervention.",
+          "rawAssistant": "\"AI Agent tickets\" counts the total volume of tickets the AI handled. \"Resolution rate AI Agents\" measures what percentage of those tickets the AI fully resolved without human intervention.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Is one measuring volume while the other measures quality of automation outcomes?",
+          "assistant": "Yes. \"AI Agent tickets\" is a volume metric — it tells you how much work automation is handling. \"Resolution rate AI Agents\" is an outcome quality metric — it tells you how effectively that automation completes work end-to-end.",
+          "rawAssistant": "Yes. \"AI Agent tickets\" is a volume metric — it tells you how much work automation is handling. \"Resolution rate AI Agents\" is an outcome quality metric — it tells you how effectively that automation completes work end-to-end.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Why are both still in Automate instead of splitting them across sections?",
+          "assistant": "Both belong in Automate because the decision context is the same: evaluating what automation already runs and how well it performs. Volume and resolution rate are two sides of the same oversight question — \"what runs without humans, and how reliably does it run?\" — not separate concerns that belong in different sections.",
+          "rawAssistant": "Both belong in Automate because the decision context is the same: evaluating what automation already runs and how well it performs. Volume and resolution rate are two sides of the same oversight question — \"what runs without humans, and how reliably does it run?\" — not separate concerns that belong in different sections.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "What kind of follow-up question should \"Automation handoff reasons\" answer after those two?",
+          "assistant": "Why is the AI not resolving more tickets — what barriers or constraints are causing handoffs to humans?",
+          "rawAssistant": "Why is the AI not resolving more tickets — what barriers or constraints are causing handoffs to humans?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "S07",
+      "title": "Role and use case thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why does the settings popout use Role and Use Case toggles instead of separate support and sales dashboards?",
+          "assistant": "The five-section structure (Overview, Understand, Operate, Improve, Automate) remains stable regardless of role or use case. Role and Use Case toggles adapt the emphasis, visibility, and terminology within those sections—changing which metrics are highlighted or hidden—rather than creating separate fragmented systems.\n\nThis keeps one unified analytics model that scales. As new use cases or goals emerge, teams don't need new dashboards; the structure simply adapts through filters and state overrides.",
+          "rawAssistant": "The five-section structure (Overview, Understand, Operate, Improve, Automate) remains stable regardless of role or use case. Role and Use Case toggles adapt the emphasis, visibility, and terminology within those sections—changing which metrics are highlighted or hidden—rather than creating separate fragmented systems.\n\nThis keeps one unified analytics model that scales. As new use cases or goals emerge, teams don't need new dashboards; the structure simply adapts through filters and state overrides.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 4
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Is the key idea that the structure stays stable while the emphasis shifts?",
+          "assistant": "Yes. The five core questions and section order never change. Role and Use Case toggles control what's emphasized, hidden, or relabeled within that fixed structure—not the structure itself.",
+          "rawAssistant": "Yes. The five core questions and section order never change. Role and Use Case toggles control what's emphasized, hidden, or relabeled within that fixed structure—not the structure itself.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "What changes conceptually when a stakeholder switches from Resolve to Convert?",
+          "assistant": "The unit of work shifts from ticket to contact, and the goal shifts from resolution to progression or conversion. The five sections remain the same, but which metrics appear, how they're labeled, and what they measure adapt to that new goal—so a supervisor sees pipeline value instead of resolution time, for example.",
+          "rawAssistant": "The unit of work shifts from ticket to contact, and the goal shifts from resolution to progression or conversion. The five sections remain the same, but which metrics appear, how they're labeled, and what they measure adapt to that new goal—so a supervisor sees pipeline value instead of resolution time, for example.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Why is that treated as adaptation rather than a new information architecture?",
+          "assistant": "Because the underlying decision context stays the same. A supervisor in either mode still needs to know what's happening now (Overview), why work is entering (Understand), whether it's flowing (Operate), what would improve it (Improve), and how automation performs (Automate). The questions don't change—only what \"work\" and \"success\" mean within them.",
+          "rawAssistant": "Because the underlying decision context stays the same. A supervisor in either mode still needs to know what's happening now (Overview), why work is entering (Understand), whether it's flowing (Operate), what would improve it (Improve), and how automation performs (Automate). The questions don't change—only what \"work\" and \"success\" mean within them.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S08",
+      "title": "Custom page thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why does the prototype allow custom pages if the five-section structure is supposed to stay stable?",
+          "assistant": "Custom pages don't change the five-section structure — they layer on top of it.\n\nUsers can create personalised views by assembling widgets from any section into a single page (e.g., \"My Dashboard\"), but the five core sections themselves remain unchanged and always available. This lets teams build focused dashboards for specific workflows without fragmenting the underlying model or forcing everyone into the same view.",
+          "rawAssistant": "Custom pages don't change the five-section structure — they layer on top of it.\n\nUsers can create personalised views by assembling widgets from any section into a single page (e.g., \"My Dashboard\"), but the five core sections themselves remain unchanged and always available. This lets teams build focused dashboards for specific workflows without fragmenting the underlying model or forcing everyone into the same view.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 5
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "So the custom page is a personal assembly layer, not a replacement for the core model?",
+          "assistant": "Exactly. Custom pages are optional personalizations — users can build them to suit their immediate needs, but the five core sections stay intact and structured the same way for everyone. The model itself doesn't change; only the view does.",
+          "rawAssistant": "Exactly. Custom pages are optional personalizations — users can build them to suit their immediate needs, but the five core sections stay intact and structured the same way for everyone. The model itself doesn't change; only the view does.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Why can widgets from any section be mixed onto a custom page?",
+          "assistant": "Because the decision context matters more than the section it comes from.\n\nA user focused on a specific workflow (e.g., onboarding new contacts) might need a signal from Overview, a metric from Operate, and a trend from Improve all in one place. Allowing cross-section assembly lets teams build views that match their actual decision-making needs without forcing them to jump between tabs or rebuild the five-section logic itself.",
+          "rawAssistant": "Because the decision context matters more than the section it comes from.\n\nA user focused on a specific workflow (e.g., onboarding new contacts) might need a signal from Overview, a metric from Operate, and a trend from Improve all in one place. Allowing cross-section assembly lets teams build views that match their actual decision-making needs without forcing them to jump between tabs or rebuild the five-section logic itself.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 5
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "What keeps that flexibility from undermining the five-section logic?",
+          "assistant": "The five sections remain the default structure and the reference model for all users. Custom pages are opt-in additions — they don't replace or reorganize the core sections, and they don't change how signals are classified or grouped in the main tabs.\n\nThis means the model stays coherent at the system level while still allowing teams to assemble focused views for their own workflows.",
+          "rawAssistant": "The five sections remain the default structure and the reference model for all users. Custom pages are opt-in additions — they don't replace or reorganize the core sections, and they don't change how signals are classified or grouped in the main tabs.\n\nThis means the model stays coherent at the system level while still allowing teams to assemble focused views for their own workflows.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S09",
+      "title": "Guide and walkthrough thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is the Prototype Guide meant to do for stakeholders?",
+          "assistant": "The Prototype Guide explains the five-section model, the rationale behind the new reporting structure, and how to evaluate the prototype — so stakeholders can assess whether the concept addresses fragmentation, supports AI-native design, and remains stable as use cases evolve.",
+          "rawAssistant": "The Prototype Guide explains the five-section model, the rationale behind the new reporting structure, and how to evaluate the prototype — so stakeholders can assess whether the concept addresses fragmentation, supports AI-native design, and remains stable as use cases evolve.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Why is it framed for stakeholders rather than end users?",
+          "assistant": "This prototype is an evaluation tool, not a finished product. Stakeholders need to understand the structural design decisions and rationale to judge whether the model works. End users would need task-focused help with how to *use* the product once it's built; that's a different purpose.",
+          "rawAssistant": "This prototype is an evaluation tool, not a finished product. Stakeholders need to understand the structural design decisions and rationale to judge whether the model works. End users would need task-focused help with how to *use* the product once it's built; that's a different purpose.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "What does the walkthrough cover that the guide does not guarantee proactively?",
+          "assistant": "The walkthrough is a UI-focused introduction—it shows users how to interact with the prototype (drag widgets, customize pages, access settings). The guide focuses on the conceptual model and design rationale. The walkthrough ensures first-time visitors understand the UI mechanics without requiring them to read documentation.",
+          "rawAssistant": "The walkthrough is a UI-focused introduction—it shows users how to interact with the prototype (drag widgets, customize pages, access settings). The guide focuses on the conceptual model and design rationale. The walkthrough ensures first-time visitors understand the UI mechanics without requiring them to read documentation.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Why does the guide avoid speculating beyond the prototype?",
+          "assistant": "Speculation introduces uncertainty into evaluation. Stakeholders need to assess what the model *actually is*, not what it might become. Staying within the prototype and principles lets them make clear decisions about the core concept without chasing possibilities.",
+          "rawAssistant": "Speculation introduces uncertainty into evaluation. Stakeholders need to assess what the model *actually is*, not what it might become. Staying within the prototype and principles lets them make clear decisions about the core concept without chasing possibilities.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "title": "Feedback logging thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "If I give feedback about the prototype, what is the guide supposed to do?",
+          "assistant": "When you give feedback, I capture it and log it for the product team to review — I don't make changes to the prototype itself. I'll ask clarifying questions if needed to make sure the feedback is clear enough to act on, then confirm what was understood and store it.",
+          "rawAssistant": "When you give feedback, I capture it and log it for the product team to review — I don't make changes to the prototype itself. I'll ask clarifying questions if needed to make sure the feedback is clear enough to act on, then confirm what was understood and store it.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "How does it decide whether feedback is structural or just detail-level polish?",
+          "assistant": "Structural feedback is about the model itself — section purposes, which metrics belong where, major functional gaps, or workflow concerns. Detail feedback is about visual polish — fonts, colours, spacing, labels, chart types, or similar presentation choices.\n\nIf feedback is detail-level, I'll gently note that those specifics aren't final in this prototype, then ask what underlying problem it solves — readability, clarity, hierarchy — so the real concern gets logged rather than just the cosmetic fix.",
+          "rawAssistant": "Structural feedback is about the model itself — section purposes, which metrics belong where, major functional gaps, or workflow concerns. Detail feedback is about visual polish — fonts, colours, spacing, labels, chart types, or similar presentation choices.\n\nIf feedback is detail-level, I'll gently note that those specifics aren't final in this prototype, then ask what underlying problem it solves — readability, clarity, hierarchy — so the real concern gets logged rather than just the cosmetic fix.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Why would the guide sometimes ask a clarifying question before logging feedback?",
+          "assistant": "Because feedback needs to be clear enough for a product manager or designer to act on. If you mention a concern but don't identify what you're talking about or what the problem is, I ask a focused question first — usually about which widget or section, or what feels wrong — so the logged feedback is specific and actionable rather than vague.",
+          "rawAssistant": "Because feedback needs to be clear enough for a product manager or designer to act on. If you mention a concern but don't identify what you're talking about or what the problem is, I ask a focused question first — usually about which widget or section, or what feels wrong — so the logged feedback is specific and actionable rather than vague.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Why is logging feedback treated differently from normal Q&A?",
+          "assistant": "Feedback is a distinct input type with its own workflow because it requires validation and structured capture, not just an answer. Normal questions get answered directly. Feedback gets classified, may need clarification, gets confirmed back to you for accuracy, and then gets formally logged with a timestamp and sentinel marker so the product team can retrieve and act on it later.",
+          "rawAssistant": "Feedback is a distinct input type with its own workflow because it requires validation and structured capture, not just an answer. Normal questions get answered directly. Feedback gets classified, may need clarification, gets confirmed back to you for accuracy, and then gets formally logged with a timestamp and sentinel marker so the product team can retrieve and act on it later.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S11",
+      "title": "External reporting continuity thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "How is this concept different from the current Trengo Live Dashboard idea?",
+          "assistant": "Sorry, I can't answer that — please ask Rowan.",
+          "rawAssistant": "Sorry, I can't answer that — please ask Rowan.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": true,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Can you answer that using only the prototype concept and section logic?",
+          "assistant": "The prototype is structured around five stable operational questions (Overview, Understand, Operate, Improve, Automate) designed to remain meaningful regardless of whether work is handled by humans or AI, and to avoid fragmentation across multiple dashboards.\n\nWithout access to details about the current Trengo Live Dashboard, I can't compare them directly. If you'd like to discuss how this five-section model solves specific problems you've seen with dashboard fragmentation or reporting clarity, I can explain that.",
+          "rawAssistant": "The prototype is structured around five stable operational questions (Overview, Understand, Operate, Improve, Automate) designed to remain meaningful regardless of whether work is handled by humans or AI, and to avoid fragmentation across multiple dashboards.\n\nWithout access to details about the current Trengo Live Dashboard, I can't compare them directly. If you'd like to discuss how this five-section model solves specific problems you've seen with dashboard fragmentation or reporting clarity, I can explain that.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Would ticket-detail deep dives still have a role in this model?",
+          "assistant": "Sorry, I can't answer that — please ask Rowan.",
+          "rawAssistant": "Sorry, I can't answer that — please ask Rowan.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": true,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Can you answer that using only the prototype concept and section logic?",
+          "assistant": "The prototype organizes analytics around system-level signals and trends rather than individual ticket examination. Ticket-detail work would likely remain in operational systems (like the inbox or ticket view), but this analytics model is designed to surface directional signals, risks, and improvement opportunities at an aggregated level — not to replace ticket-level investigation.",
+          "rawAssistant": "The prototype organizes analytics around system-level signals and trends rather than individual ticket examination. Ticket-detail work would likely remain in operational systems (like the inbox or ticket view), but this analytics model is designed to surface directional signals, risks, and improvement opportunities at an aggregated level — not to replace ticket-level investigation.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "S12",
+      "title": "Voice signal thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why are voice-specific widgets hidden unless the channel context makes them relevant?",
+          "assistant": "Voice widgets are hidden by default because they only apply when users filter to the Phone channel. Showing them when users are viewing all channels or non-voice channels creates visual clutter and distraction from relevant metrics.\n\nWhen the Phone channel is explicitly selected, voice-specific widgets become visible so teams can assess call performance in its own operational context — separate from ticket-based support or sales work.",
+          "rawAssistant": "Voice widgets are hidden by default because they only apply when users filter to the Phone channel. Showing them when users are viewing all channels or non-voice channels creates visual clutter and distraction from relevant metrics.\n\nWhen the Phone channel is explicitly selected, voice-specific widgets become visible so teams can assess call performance in its own operational context — separate from ticket-based support or sales work.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "So the idea is to avoid polluting the shared structure with irrelevant noise?",
+          "assistant": "Exactly. The five-section structure is intentionally stable and shared across all use cases and channels. Voice widgets are one example of how scope—in this case, channel selection—adapts what surfaces without fragmenting the underlying model.\n\nThe same principle applies to role and use case: a supervisor sees different emphasis and visibility than an agent, and a sales goal filters differently than a resolve goal. All of this happens within the same five questions, not through separate dashboards.",
+          "rawAssistant": "Exactly. The five-section structure is intentionally stable and shared across all use cases and channels. Voice widgets are one example of how scope—in this case, channel selection—adapts what surfaces without fragmenting the underlying model.\n\nThe same principle applies to role and use case: a supervisor sees different emphasis and visibility than an agent, and a sales goal filters differently than a resolve goal. All of this happens within the same five questions, not through separate dashboards.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 5
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Why is \"Voice channel performance\" in Understand instead of Operate?",
+          "assistant": "\"Voice channel performance\" belongs in Understand because it explains the composition and characteristics of incoming voice work—call volume, answer rates, average duration, and missed calls by channel.\n\nOperate focuses on execution and flow right now: whether work is progressing toward its goal, where bottlenecks exist, and whether capacity matches demand. The table in Operate (\"Performance by channel\") shows operational metrics like SLA compliance and resolution metrics per channel; the voice table in Understand shows the structural shape of voice work itself.",
+          "rawAssistant": "\"Voice channel performance\" belongs in Understand because it explains the composition and characteristics of incoming voice work—call volume, answer rates, average duration, and missed calls by channel.\n\nOperate focuses on execution and flow right now: whether work is progressing toward its goal, where bottlenecks exist, and whether capacity matches demand. The table in Operate (\"Performance by channel\") shows operational metrics like SLA compliance and resolution metrics per channel; the voice table in Understand shows the structural shape of voice work itself.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "What makes a voice signal about composition versus immediate flow?",
+          "assistant": "Composition signals answer: \"What is the shape and nature of the work entering or within the system?\"\n\nFlow signals answer: \"Is work moving toward its goal right now, and where is friction?\"\n\n\"Voice channel performance\" (Understand) shows structural facts: total calls, missed calls, average wait, average duration, answer rate — these describe what voice work looks like as a category.\n\n\"Avg wait time by team\" or \"Call duration by team\" (Operate) show whether teams are handling that work efficiently in this moment and where immediate friction exists — a long wait time right now is an operational problem to act on today.",
+          "rawAssistant": "Composition signals answer: \"What is the shape and nature of the work entering or within the system?\"\n\nFlow signals answer: \"Is work moving toward its goal right now, and where is friction?\"\n\n\"Voice channel performance\" (Understand) shows structural facts: total calls, missed calls, average wait, average duration, answer rate — these describe what voice work looks like as a category.\n\n\"Avg wait time by team\" or \"Call duration by team\" (Operate) show whether teams are handling that work efficiently in this moment and where immediate friction exists — a long wait time right now is an operational problem to act on today.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 4
+          }
+        }
+      ]
+    },
+    {
+      "id": "S13",
+      "title": "Intent and knowledge thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why are intent clusters and unknown intents both important in this model?",
+          "assistant": "Intent clusters show what customers are asking about; unknown intents show where AI classification is breaking down. Together they reveal both the shape of incoming demand and where the system needs better knowledge to handle it effectively.",
+          "rawAssistant": "Intent clusters show what customers are asking about; unknown intents show where AI classification is breaking down. Together they reveal both the shape of incoming demand and where the system needs better knowledge to handle it effectively.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Does that mean one explains incoming demand while the other exposes gaps in classification?",
+          "assistant": "Yes. Intent clusters surface the *pattern* of what's coming in; unknown intents expose the *failure points* where the system can't classify at all. One is descriptive, the other diagnostic.",
+          "rawAssistant": "Yes. Intent clusters surface the *pattern* of what's coming in; unknown intents expose the *failure points* where the system can't classify at all. One is descriptive, the other diagnostic.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "How do those signals connect to knowledge gaps by intent in Improve?",
+          "assistant": "Intent clusters and unknown intents identify *what* needs attention; knowledge gaps by intent in Improve shows *which intents* cause the most fallbacks and should be prioritized for knowledge work. It's the same problem viewed at different stages — detection in Understand, prioritization in Improve.",
+          "rawAssistant": "Intent clusters and unknown intents identify *what* needs attention; knowledge gaps by intent in Improve shows *which intents* cause the most fallbacks and should be prioritized for knowledge work. It's the same problem viewed at different stages — detection in Understand, prioritization in Improve.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Why is that chain useful for an AI-native analytics concept?",
+          "assistant": "As AI handles more work, visibility into where it fails becomes critical. This chain—detection → diagnosis → prioritization—lets teams see automation breakdown in real time and decide what knowledge to add next, rather than waiting for retrospective ticket analysis. It turns classification failures into actionable improvement signals.",
+          "rawAssistant": "As AI handles more work, visibility into where it fails becomes critical. This chain—detection → diagnosis → prioritization—lets teams see automation breakdown in real time and decide what knowledge to add next, rather than waiting for retrospective ticket analysis. It turns classification failures into actionable improvement signals.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S14",
+      "title": "Reset and defaults thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is Reset All supposed to restore in the prototype?",
+          "assistant": "Reset All restores the prototype to its default state: all tabs, widgets, filters, role, and use case settings are returned to their initial configuration.",
+          "rawAssistant": "Reset All restores the prototype to its default state: all tabs, widgets, filters, role, and use case settings are returned to their initial configuration.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Why is restoring the baseline useful during stakeholder review sessions?",
+          "assistant": "Sorry, I can't answer that — please ask Rowan.",
+          "rawAssistant": "Sorry, I can't answer that — please ask Rowan.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": true,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Can you answer that using only the prototype concept and section logic?",
+          "assistant": "Resetting to baseline allows stakeholders to return to the standard five-section structure and default widget configuration quickly, so they can compare customized views against the foundational model without manually undoing changes.",
+          "rawAssistant": "Resetting to baseline allows stakeholders to return to the standard five-section structure and default widget configuration quickly, so they can compare customized views against the foundational model without manually undoing changes.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "S15",
+      "title": "Misplaced metric thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is the cleanest rule for deciding where a metric belongs?",
+          "assistant": "A metric belongs in a section if it directly supports that section's core decision context.\n\nIf a metric doesn't clearly help answer the section's question or inform the decision that section makes, it doesn't belong there—even if it seems related.",
+          "rawAssistant": "A metric belongs in a section if it directly supports that section's core decision context.\n\nIf a metric doesn't clearly help answer the section's question or inform the decision that section makes, it doesn't belong there—even if it seems related.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "So the first test is the decision context rather than the metric type?",
+          "assistant": "Yes. Decision context comes first.\n\nThe same metric can appear in multiple sections if the decision context differs—even if it's the exact same number. What matters is why a team would look at it in that moment.",
+          "rawAssistant": "Yes. Decision context comes first.\n\nThe same metric can appear in multiple sections if the decision context differs—even if it's the exact same number. What matters is why a team would look at it in that moment.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 4
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Can the same metric legitimately appear in two sections if the decision context changes?",
+          "assistant": "Yes. The prompt explicitly states this is intentional.\n\nExample: A metric may appear in Operate as a live issue (execution friction right now) and in Improve as a trend over time (what to prioritize changing). Same metric, different decision purpose.\n\nRepetition without distinct decision purpose should be avoided.",
+          "rawAssistant": "Yes. The prompt explicitly states this is intentional.\n\nExample: A metric may appear in Operate as a live issue (execution friction right now) and in Improve as a trend over time (what to prioritize changing). Same metric, different decision purpose.\n\nRepetition without distinct decision purpose should be avoided.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 5
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "What would make that repetition feel unjustified?",
+          "assistant": "If the metric appears in both sections but serves the same decision purpose in each.\n\nFor example, if \"reopened tickets\" showed the same aggregation level and timeframe in both Operate and Improve with no difference in how teams would act on it, that's redundant. But if Operate shows it as a current friction point and Improve shows it as a trend to decide whether to invest in a fix, the repetition is justified.",
+          "rawAssistant": "If the metric appears in both sections but serves the same decision purpose in each.\n\nFor example, if \"reopened tickets\" showed the same aggregation level and timeframe in both Operate and Improve with no difference in how teams would act on it, that's redundant. But if Operate shows it as a current friction point and Improve shows it as a trend to decide whether to invest in a fix, the repetition is justified.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S16",
+      "title": "Migration and parity thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why does the concept insist on continuity with existing metrics before migration?",
+          "assistant": "Existing metrics like response time, resolution rate, and CSAT remain operationally critical—they're how teams currently measure success. The model doesn't remove them; it reorganises them under the five stable questions so they can be interpreted alongside AI and automation signals.\n\nContinuity before migration means parity must be proven first. If a metric disappears or behaves differently during the transition, teams lose confidence in the system. Building the new structure around proven, familiar signals ensures adoption is about structural clarity, not metric replacement.",
+          "rawAssistant": "Existing metrics like response time, resolution rate, and CSAT remain operationally critical—they're how teams currently measure success. The model doesn't remove them; it reorganises them under the five stable questions so they can be interpreted alongside AI and automation signals.\n\nContinuity before migration means parity must be proven first. If a metric disappears or behaves differently during the transition, teams lose confidence in the system. Building the new structure around proven, familiar signals ensures adoption is about structural clarity, not metric replacement.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 5
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "So stakeholders should not read this as permission to drop core operational metrics?",
+          "assistant": "Correct. This model retains continuity with existing metrics while restructuring how they're interpreted. Stakeholders should read this as: the five-section framework is built around metrics teams already trust, not as a redesign that removes them.",
+          "rawAssistant": "Correct. This model retains continuity with existing metrics while restructuring how they're interpreted. Stakeholders should read this as: the five-section framework is built around metrics teams already trust, not as a redesign that removes them.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "How does that reduce risk when moving away from the current reporting model?",
+          "assistant": "It reduces risk in two ways:\n\nFirst, teams can validate the new structure works before fully committing — they see familiar metrics in new decision contexts and can confirm the reorganisation makes sense operationally.\n\nSecond, if the migration stalls, teams still have their core metrics. There's no cliff edge where critical signals disappear; continuity means the old and new can coexist during transition.",
+          "rawAssistant": "It reduces risk in two ways:\n\nFirst, teams can validate the new structure works before fully committing — they see familiar metrics in new decision contexts and can confirm the reorganisation makes sense operationally.\n\nSecond, if the migration stalls, teams still have their core metrics. There's no cliff edge where critical signals disappear; continuity means the old and new can coexist during transition.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "What changes first in a migration like this: the metrics, or the organising logic?",
+          "assistant": "The organising logic changes first. The same metrics move into the five-section framework and get reinterpreted through stable operational questions. Only after that reorganisation proves sound would any metric itself evolve or be replaced.",
+          "rawAssistant": "The organising logic changes first. The same metrics move into the five-section framework and get reinterpreted through stable operational questions. Only after that reorganisation proves sound would any metric itself evolve or be replaced.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S17",
+      "title": "Detail feedback nudge thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "The spacing in the settings popout feels off.",
+          "assistant": "That's a fair point — many of those details aren't final in this prototype. Is the main concern readability, or does the spacing create confusion about which toggle belongs to which section?",
+          "rawAssistant": "That's a fair point — many of those details aren't final in this prototype. Is the main concern readability, or does the spacing create confusion about which toggle belongs to which section?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "The real problem is readability. The controls do not scan clearly enough.",
+          "assistant": "Thanks — I've noted your feedback that the spacing in the settings popout needs adjustment to improve readability and scannability of the controls.\n\nCould I get your name to log alongside it?",
+          "rawAssistant": "Thanks — I've noted your feedback that the spacing in the settings popout needs adjustment to improve readability and scannability of the controls.\n\nCould I get your name to log alongside it?\n\n<<FEEDBACK:{\"text\":\"The spacing in the settings popout needs adjustment to improve readability and scannability of the controls.\",\"section\":\"Settings popout\",\"timestamp\":\"2025-01-16T00:00:00Z\"}>>",
+          "sentinelCounts": {
+            "feedback": 1,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Yes, please log that concern.",
+          "assistant": "I appreciate the clarification, but I need your name to attach to the feedback. Could you share that?",
+          "rawAssistant": "I appreciate the clarification, but I need your name to attach to the feedback. Could you share that?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "S18",
+      "title": "Mixed question and feedback thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why is Overview separate from Understand? Also, the tab labels feel a bit too abstract.",
+          "assistant": "Overview and Understand serve different decision contexts. Overview surfaces where attention is needed right now—directional signals and risks. Understand explains why work is entering the system and changing—patterns of incoming work, topics, and intents. They're separate because knowing *what's happening* (Overview) is distinct from knowing *why it's happening* (Understand).\n\nOn the tab labels—that's a fair observation. These names are intentionally conceptual to reflect stable operational questions rather than tying reporting to specific features or workflows, which helps the structure remain adaptable as use cases change. Is the concern that the labels are hard to learn, or that they don't clearly signal what value each section provides?",
+          "rawAssistant": "Overview and Understand serve different decision contexts. Overview surfaces where attention is needed right now—directional signals and risks. Understand explains why work is entering the system and changing—patterns of incoming work, topics, and intents. They're separate because knowing *what's happening* (Overview) is distinct from knowing *why it's happening* (Understand).\n\nOn the tab labels—that's a fair observation. These names are intentionally conceptual to reflect stable operational questions rather than tying reporting to specific features or workflows, which helps the structure remain adaptable as use cases change. Is the concern that the labels are hard to learn, or that they don't clearly signal what value each section provides?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 7
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "The concern is that a new stakeholder may not know where to click first.",
+          "assistant": "That's a valid concern. The five-section structure is stable and intentional, but the labels alone don't guide first-time users toward the most relevant entry point.\n\nThis is something worth exploring in onboarding design—whether that's a guided walkthrough (which the prototype includes), contextual help, or clearer sub-labels under each tab that signal the decision each section supports. The underlying model is sound; the communication of it to new stakeholders is a separate design problem.",
+          "rawAssistant": "That's a valid concern. The five-section structure is stable and intentional, but the labels alone don't guide first-time users toward the most relevant entry point.\n\nThis is something worth exploring in onboarding design—whether that's a guided walkthrough (which the prototype includes), contextual help, or clearer sub-labels under each tab that signal the decision each section supports. The underlying model is sound; the communication of it to new stakeholders is a separate design problem.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 4
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "Yes, log that.",
+          "assistant": "Thanks — I've noted your feedback that the tab labels feel too abstract for new stakeholders and that clearer guidance or sub-labels could help users know where to start.\n\nCould I get your name to log alongside it?",
+          "rawAssistant": "Thanks — I've noted your feedback that the tab labels feel too abstract for new stakeholders and that clearer guidance or sub-labels could help users know where to start.\n\nCould I get your name to log alongside it?\n\n<<FEEDBACK:{\"text\":\"Tab labels (Overview, Understand, Operate, Improve, Automate) feel too abstract for new stakeholders. Clearer guidance, sub-labels, or onboarding could help users know where to click first.\",\"section\":\"General\",\"timestamp\":\"2025-04-14T00:00:00Z\"}>>",
+          "sentinelCounts": {
+            "feedback": 1,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "S19",
+      "title": "Provisional detail question thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Why does the prototype currently show a funnel chart for sales pipeline?",
+          "assistant": "The funnel chart visually represents progression through sequential stages — a natural fit for a sales pipeline that moves deals from New → Qualified → Proposal → Negotiation → Closed Won. It makes the conversion drop-off at each stage immediately visible, which helps teams spot where deals stall.",
+          "rawAssistant": "The funnel chart visually represents progression through sequential stages — a natural fit for a sales pipeline that moves deals from New → Qualified → Proposal → Negotiation → Closed Won. It makes the conversion drop-off at each stage immediately visible, which helps teams spot where deals stall.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Is that chart type meant to be final?",
+          "assistant": "No. The chart type is one of the implementation choices in this prototype version — not a locked design decision. The underlying concept (visualising pipeline stage progression) is firm; how it's displayed can change.",
+          "rawAssistant": "No. The chart type is one of the implementation choices in this prototype version — not a locked design decision. The underlying concept (visualising pipeline stage progression) is firm; how it's displayed can change.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "So should stakeholders focus more on the structural point than the exact visual treatment?",
+          "assistant": "Yes. The structural point is that sales pipeline progression belongs in the Understand section because it explains composition and inflow of work entering the system. Whether that's shown as a funnel, a waterfall, a bar chart, or another format is a detail to refine later.",
+          "rawAssistant": "Yes. The structural point is that sales pipeline progression belongs in the Understand section because it explains composition and inflow of work entering the system. Whether that's shown as a funnel, a waterfall, a bar chart, or another format is a detail to refine later.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S20",
+      "title": "Out-of-scope fallback and recovery thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is Trengo's roadmap for shipping this analytics model?",
+          "assistant": "Sorry, I can't answer that — please ask Rowan.",
+          "rawAssistant": "Sorry, I can't answer that — please ask Rowan.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": true,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "Can you answer that using only the prototype concept and section logic?",
+          "assistant": "No. Roadmap and shipping timelines are outside the scope of this prototype evaluation guide. I'm limited to explaining the model structure, section purposes, and how the prototype demonstrates those concepts.",
+          "rawAssistant": "No. Roadmap and shipping timelines are outside the scope of this prototype evaluation guide. I'm limited to explaining the model structure, section purposes, and how the prototype demonstrates those concepts.",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": false,
+            "sentenceCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "S21",
+      "title": "Unclear structural feedback clarification thread",
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "I don't think this works.",
+          "assistant": "I'd like to help clarify what isn't working. Could you tell me which section, widget, or interaction you're referring to?",
+          "rawAssistant": "I'd like to help clarify what isn't working. Could you tell me which section, widget, or interaction you're referring to?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        },
+        {
+          "turn": 2,
+          "prompt": "I mean the View / Edit mode control in the settings popout.",
+          "assistant": "What happens when you try to toggle it, or what would you expect it to do instead?",
+          "rawAssistant": "What happens when you try to toggle it, or what would you expect it to do instead?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 1
+          }
+        },
+        {
+          "turn": 3,
+          "prompt": "The issue is that it makes the prototype feel more like a sandbox than a stakeholder review.",
+          "assistant": "That's structural feedback about the prototype's framing. You're saying the Edit mode capability shifts the evaluation focus away from reviewing the analytics model itself and toward building/customizing as if it's a finished product — which isn't the intent for stakeholder review.\n\nIs the concern that Edit mode should be hidden or disabled for this evaluation, or that the prototype should emphasize View mode as the default stakeholder perspective?",
+          "rawAssistant": "That's structural feedback about the prototype's framing. You're saying the Edit mode capability shifts the evaluation focus away from reviewing the analytics model itself and toward building/customizing as if it's a finished product — which isn't the intent for stakeholder review.\n\nIs the concern that Edit mode should be hidden or disabled for this evaluation, or that the prototype should emphasize View mode as the default stakeholder perspective?",
+          "sentinelCounts": {
+            "feedback": 0,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 3
+          }
+        },
+        {
+          "turn": 4,
+          "prompt": "Yes, please log that.",
+          "assistant": "Thanks — I've noted your feedback that Edit mode shifts the prototype's framing away from stakeholder review toward product sandbox behavior, and that View mode should be the default or emphasized perspective for evaluation.\n\nCould I get your name to log alongside it?",
+          "rawAssistant": "Thanks — I've noted your feedback that Edit mode shifts the prototype's framing away from stakeholder review toward product sandbox behavior, and that View mode should be the default or emphasized perspective for evaluation.\n\nCould I get your name to log alongside it?\n\n<<FEEDBACK:{\"text\":\"Edit mode shifts the prototype's framing away from stakeholder review toward product sandbox behavior. View mode should be the default or emphasized perspective for evaluation.\",\"section\":\"General\",\"timestamp\":\"2025-01-09T00:00:00Z\"}>>",
+          "sentinelCounts": {
+            "feedback": 1,
+            "context": 0,
+            "conflict": 0
+          },
+          "evaluation": {
+            "empty": false,
+            "fallback": false,
+            "tooLong": false,
+            "hasQuestionBack": true,
+            "sentenceCount": 2
+          }
+        }
+      ]
+    }
+  ]
+}
