@@ -4949,36 +4949,6 @@ AUTOMATE SECTION WIDGETS
 MOCK DATA
 All data in the prototype is randomly generated on each page load. KPI values, chart data, trend percentages, and table rows use random numbers within configured ranges. The data is not real and is only meant to illustrate the layout and structure. Changing filters or switching roles produces new random values.
 ----------------------------------------------------------------------
-CLICK EVENT COMMENTARY
-----------------------------------------------------------------------
-Some messages begin with [EVENT: ...]. These are automatic UI notifications, not user questions.
-
-TAB EVENTS (format: "[EVENT: <Name> tab — clicked]"):
-When the user navigates to Overview, Understand, Operate, Improve, or Automate:
-- Explain the concept behind the section — why it exists as a distinct section, what value it provides, and how it differs from the other sections.
-- Do NOT list specific widgets, charts, or metrics contained in the section.
-- Do not restate the click action or say "you clicked", "is now active", "was selected", etc.
-- Do not ask a question back.
-- Do not use the "Sorry, I can't answer that" fallback.
-- Maximum 2 sentences.
-When the user navigates to a custom tab (any name other than the five default sections):
-- Briefly acknowledge this is a user-created custom page where they can assemble widgets from any section into a personalised view.
-- Maximum 1 sentence.
-
-TAB CRUD EVENTS:
-- "[EVENT: New tab — created]": The user created a new custom page. Briefly explain that they can now add widgets from any section to build a personalised view. Maximum 1 sentence.
-- "[EVENT: "<Name>" tab — renamed]": The user renamed a page. No response needed — stay silent or respond with a minimal acknowledgment of 1 sentence maximum.
-- "[EVENT: "<Name>" tab — deleted]": The user deleted a page. No response needed — stay silent or respond with a minimal acknowledgment of 1 sentence maximum.
-
-TOGGLE EVENTS (format: "[EVENT: Preview toggle — changed]"):
-When the user changes a preview toggle in the settings popout:
-- Explain that these toggles are not part of the end-user product — they exist so stakeholders can preview how the analytics experience adjusts for different user roles, use cases, and permissions.
-- Do not describe what the specific toggle does or what changes in the UI.
-- Do not restate the click action.
-- Do not ask a question back.
-- Do not use the "Sorry, I can't answer that" fallback.
-- Maximum 1 sentence.
-----------------------------------------------------------------------
 FEEDBACK COLLECTION
 ----------------------------------------------------------------------
 OVERRIDE: This section takes full priority over the OUTPUT CONTRACT fallback.
@@ -5409,44 +5379,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     startTimer();
   }
 
-  async function _sendEvent(label) {
-    // Skip if this exact event has already been recorded in the conversation
-    const eventKey = '[EVENT: ' + label + ']';
-    if (messages.some(m => m.role === 'user' && m.content === eventKey)) return;
-
-    // Don't send or show a popup when a widget is hidden
-    if (/widget — hidden$/i.test(label)) return;
-
-    const isBarMode = document.body.dataset.panel === 'bar';
-    messages.push({ role: 'user', content: eventKey });
-    showTyping();
-    try {
-      const res = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system: buildSystemPrompt(), messages }),
-      });
-      const data = await res.json();
-      removeTyping();
-      if (data.content && data.content[0]) {
-        const reply = data.content[0].text;
-        if (/please ask Rowan/i.test(reply)) {
-          const fallback = "I'm not sure about that — feel free to ask Rowan for more details.";
-          messages.push({ role: 'assistant', content: fallback });
-          addBubble(fallback, 'assistant');
-          saveChatHistory();
-          return;
-        }
-        messages.push({ role: 'assistant', content: reply });
-        addBubble(reply, 'assistant');
-        if (isBarMode) showEventPopup(reply);
-        saveChatHistory();
-      }
-    } catch (err) {
-      removeTyping(); // fail silently — no error bubble for background events
-    }
-  }
-
   let _eventTimer = null;
   let _pendingContextApproval = null; // holds {new, original} awaiting user yes/no after a conflict
   let _pendingFeedback = null;        // holds feedback object awaiting name before storing
@@ -5454,7 +5386,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   function sendEvent(label) {
     clearTimeout(_eventTimer);
-    _eventTimer = setTimeout(() => _sendEvent(label), 300);
   }
 
   // ── Feedback & context storage ────────────────────────────
@@ -5651,7 +5582,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       addBubble(msg.content, msg.role === 'user' ? 'user' : 'assistant');
     });
   } else {
-    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it. You\'ll also see occasional context as you navigate.', 'assistant');
+    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it.', 'assistant');
   }
 
   // Nav toast — show "Outside prototype scope." for non-settings nav clicks
