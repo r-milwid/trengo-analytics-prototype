@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-03-10T14:12:31.739Z",
+  "generatedAt": "2026-03-10T14:58:54.368Z",
   "counts": {
-    "singleQuestions": 559,
+    "singleQuestions": 558,
     "sequences": 21,
     "sequenceTurns": 78,
-    "totalPromptsRepresented": 637
+    "totalPromptsRepresented": 636
   },
   "externalReferences": [
     {
@@ -1706,2271 +1706,2264 @@
       "groupId": "prompt-behavior",
       "groupTitle": "Prompt behavior and edge cases",
       "source": "repo",
-      "text": "How should the guide respond if someone asks what feedback has been collected without using the word Helion?"
-    },
-    {
-      "id": "Q236",
-      "groupId": "prompt-behavior",
-      "groupTitle": "Prompt behavior and edge cases",
-      "source": "repo",
       "text": "Why should the guide prefer logging the underlying concern instead of only the proposed cosmetic fix?"
     },
     {
-      "id": "Q237",
+      "id": "Q236",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q238",
+      "id": "Q237",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q239",
+      "id": "Q238",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q240",
+      "id": "Q239",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q241",
+      "id": "Q240",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q242",
+      "id": "Q241",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q243",
+      "id": "Q242",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q244",
+      "id": "Q243",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q245",
+      "id": "Q244",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q246",
+      "id": "Q245",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q247",
+      "id": "Q246",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q248",
+      "id": "Q247",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the model uses five sections instead of team dashboards?"
     },
     {
-      "id": "Q249",
+      "id": "Q248",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q250",
+      "id": "Q249",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q251",
+      "id": "Q250",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q252",
+      "id": "Q251",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q253",
+      "id": "Q252",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q254",
+      "id": "Q253",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q255",
+      "id": "Q254",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q256",
+      "id": "Q255",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q257",
+      "id": "Q256",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q258",
+      "id": "Q257",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q259",
+      "id": "Q258",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q260",
+      "id": "Q259",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the structure is question-led instead of ticket-led?"
     },
     {
-      "id": "Q261",
+      "id": "Q260",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the watchtower framing matters?"
     },
     {
-      "id": "Q262",
+      "id": "Q261",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the watchtower framing matters?"
     },
     {
-      "id": "Q263",
+      "id": "Q262",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the watchtower framing matters?"
     },
     {
-      "id": "Q264",
+      "id": "Q263",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the watchtower framing matters?"
     },
     {
-      "id": "Q265",
+      "id": "Q264",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the watchtower framing matters?"
     },
     {
-      "id": "Q266",
+      "id": "Q265",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the watchtower framing matters?"
     },
     {
-      "id": "Q267",
+      "id": "Q266",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the watchtower framing matters?"
     },
     {
-      "id": "Q268",
+      "id": "Q267",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the watchtower framing matters?"
     },
     {
-      "id": "Q269",
+      "id": "Q268",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the watchtower framing matters?"
     },
     {
-      "id": "Q270",
+      "id": "Q269",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the watchtower framing matters?"
     },
     {
-      "id": "Q271",
+      "id": "Q270",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the watchtower framing matters?"
     },
     {
-      "id": "Q272",
+      "id": "Q271",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the watchtower framing matters?"
     },
     {
-      "id": "Q273",
+      "id": "Q272",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does Overview is separate from Understand?"
     },
     {
-      "id": "Q274",
+      "id": "Q273",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does Overview is separate from Understand?"
     },
     {
-      "id": "Q275",
+      "id": "Q274",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does Overview is separate from Understand?"
     },
     {
-      "id": "Q276",
+      "id": "Q275",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does Overview is separate from Understand?"
     },
     {
-      "id": "Q277",
+      "id": "Q276",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason Overview is separate from Understand?"
     },
     {
-      "id": "Q278",
+      "id": "Q277",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does Overview is separate from Understand?"
     },
     {
-      "id": "Q279",
+      "id": "Q278",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does Overview is separate from Understand?"
     },
     {
-      "id": "Q280",
+      "id": "Q279",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why Overview is separate from Understand?"
     },
     {
-      "id": "Q281",
+      "id": "Q280",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why Overview is separate from Understand?"
     },
     {
-      "id": "Q282",
+      "id": "Q281",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does Overview is separate from Understand?"
     },
     {
-      "id": "Q283",
+      "id": "Q282",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why Overview is separate from Understand?"
     },
     {
-      "id": "Q284",
+      "id": "Q283",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does Overview is separate from Understand?"
     },
     {
-      "id": "Q285",
+      "id": "Q284",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does Operate is separate from Improve?"
     },
     {
-      "id": "Q286",
+      "id": "Q285",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does Operate is separate from Improve?"
     },
     {
-      "id": "Q287",
+      "id": "Q286",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does Operate is separate from Improve?"
     },
     {
-      "id": "Q288",
+      "id": "Q287",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does Operate is separate from Improve?"
     },
     {
-      "id": "Q289",
+      "id": "Q288",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason Operate is separate from Improve?"
     },
     {
-      "id": "Q290",
+      "id": "Q289",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does Operate is separate from Improve?"
     },
     {
-      "id": "Q291",
+      "id": "Q290",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does Operate is separate from Improve?"
     },
     {
-      "id": "Q292",
+      "id": "Q291",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why Operate is separate from Improve?"
     },
     {
-      "id": "Q293",
+      "id": "Q292",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why Operate is separate from Improve?"
     },
     {
-      "id": "Q294",
+      "id": "Q293",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does Operate is separate from Improve?"
     },
     {
-      "id": "Q295",
+      "id": "Q294",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why Operate is separate from Improve?"
     },
     {
-      "id": "Q296",
+      "id": "Q295",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does Operate is separate from Improve?"
     },
     {
-      "id": "Q297",
+      "id": "Q296",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does Automate exists as its own section?"
     },
     {
-      "id": "Q298",
+      "id": "Q297",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does Automate exists as its own section?"
     },
     {
-      "id": "Q299",
+      "id": "Q298",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does Automate exists as its own section?"
     },
     {
-      "id": "Q300",
+      "id": "Q299",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does Automate exists as its own section?"
     },
     {
-      "id": "Q301",
+      "id": "Q300",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason Automate exists as its own section?"
     },
     {
-      "id": "Q302",
+      "id": "Q301",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does Automate exists as its own section?"
     },
     {
-      "id": "Q303",
+      "id": "Q302",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does Automate exists as its own section?"
     },
     {
-      "id": "Q304",
+      "id": "Q303",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why Automate exists as its own section?"
     },
     {
-      "id": "Q305",
+      "id": "Q304",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why Automate exists as its own section?"
     },
     {
-      "id": "Q306",
+      "id": "Q305",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does Automate exists as its own section?"
     },
     {
-      "id": "Q307",
+      "id": "Q306",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why Automate exists as its own section?"
     },
     {
-      "id": "Q308",
+      "id": "Q307",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does Automate exists as its own section?"
     },
     {
-      "id": "Q309",
+      "id": "Q308",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does support and sales share one structure?"
     },
     {
-      "id": "Q310",
+      "id": "Q309",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does support and sales share one structure?"
     },
     {
-      "id": "Q311",
+      "id": "Q310",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does support and sales share one structure?"
     },
     {
-      "id": "Q312",
+      "id": "Q311",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does support and sales share one structure?"
     },
     {
-      "id": "Q313",
+      "id": "Q312",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason support and sales share one structure?"
     },
     {
-      "id": "Q314",
+      "id": "Q313",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does support and sales share one structure?"
     },
     {
-      "id": "Q315",
+      "id": "Q314",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does support and sales share one structure?"
     },
     {
-      "id": "Q316",
+      "id": "Q315",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why support and sales share one structure?"
     },
     {
-      "id": "Q317",
+      "id": "Q316",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why support and sales share one structure?"
     },
     {
-      "id": "Q318",
+      "id": "Q317",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does support and sales share one structure?"
     },
     {
-      "id": "Q319",
+      "id": "Q318",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why support and sales share one structure?"
     },
     {
-      "id": "Q320",
+      "id": "Q319",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does support and sales share one structure?"
     },
     {
-      "id": "Q321",
+      "id": "Q320",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q322",
+      "id": "Q321",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q323",
+      "id": "Q322",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q324",
+      "id": "Q323",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q325",
+      "id": "Q324",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q326",
+      "id": "Q325",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q327",
+      "id": "Q326",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q328",
+      "id": "Q327",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q329",
+      "id": "Q328",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q330",
+      "id": "Q329",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q331",
+      "id": "Q330",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q332",
+      "id": "Q331",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the prototype keeps continuity with existing metrics?"
     },
     {
-      "id": "Q333",
+      "id": "Q332",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q334",
+      "id": "Q333",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q335",
+      "id": "Q334",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q336",
+      "id": "Q335",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q337",
+      "id": "Q336",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q338",
+      "id": "Q337",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q339",
+      "id": "Q338",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q340",
+      "id": "Q339",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q341",
+      "id": "Q340",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q342",
+      "id": "Q341",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q343",
+      "id": "Q342",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q344",
+      "id": "Q343",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the settings popout uses role and use case toggles instead of separate dashboards?"
     },
     {
-      "id": "Q345",
+      "id": "Q344",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q346",
+      "id": "Q345",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q347",
+      "id": "Q346",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q348",
+      "id": "Q347",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q349",
+      "id": "Q348",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason custom pages do not undermine the core model?"
     },
     {
-      "id": "Q350",
+      "id": "Q349",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q351",
+      "id": "Q350",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q352",
+      "id": "Q351",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why custom pages do not undermine the core model?"
     },
     {
-      "id": "Q353",
+      "id": "Q352",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why custom pages do not undermine the core model?"
     },
     {
-      "id": "Q354",
+      "id": "Q353",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q355",
+      "id": "Q354",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why custom pages do not undermine the core model?"
     },
     {
-      "id": "Q356",
+      "id": "Q355",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does custom pages do not undermine the core model?"
     },
     {
-      "id": "Q357",
+      "id": "Q356",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does drill links exist between sections?"
     },
     {
-      "id": "Q358",
+      "id": "Q357",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does drill links exist between sections?"
     },
     {
-      "id": "Q359",
+      "id": "Q358",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does drill links exist between sections?"
     },
     {
-      "id": "Q360",
+      "id": "Q359",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does drill links exist between sections?"
     },
     {
-      "id": "Q361",
+      "id": "Q360",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason drill links exist between sections?"
     },
     {
-      "id": "Q362",
+      "id": "Q361",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does drill links exist between sections?"
     },
     {
-      "id": "Q363",
+      "id": "Q362",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does drill links exist between sections?"
     },
     {
-      "id": "Q364",
+      "id": "Q363",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why drill links exist between sections?"
     },
     {
-      "id": "Q365",
+      "id": "Q364",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why drill links exist between sections?"
     },
     {
-      "id": "Q366",
+      "id": "Q365",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does drill links exist between sections?"
     },
     {
-      "id": "Q367",
+      "id": "Q366",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why drill links exist between sections?"
     },
     {
-      "id": "Q368",
+      "id": "Q367",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does drill links exist between sections?"
     },
     {
-      "id": "Q369",
+      "id": "Q368",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q370",
+      "id": "Q369",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q371",
+      "id": "Q370",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q372",
+      "id": "Q371",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q373",
+      "id": "Q372",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q374",
+      "id": "Q373",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q375",
+      "id": "Q374",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q376",
+      "id": "Q375",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q377",
+      "id": "Q376",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q378",
+      "id": "Q377",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q379",
+      "id": "Q378",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q380",
+      "id": "Q379",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the guide is framed for stakeholders rather than end users?"
     },
     {
-      "id": "Q381",
+      "id": "Q380",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q382",
+      "id": "Q381",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q383",
+      "id": "Q382",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q384",
+      "id": "Q383",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q385",
+      "id": "Q384",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the guide should answer briefly by default?"
     },
     {
-      "id": "Q386",
+      "id": "Q385",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q387",
+      "id": "Q386",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q388",
+      "id": "Q387",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the guide should answer briefly by default?"
     },
     {
-      "id": "Q389",
+      "id": "Q388",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the guide should answer briefly by default?"
     },
     {
-      "id": "Q390",
+      "id": "Q389",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q391",
+      "id": "Q390",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the guide should answer briefly by default?"
     },
     {
-      "id": "Q392",
+      "id": "Q391",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the guide should answer briefly by default?"
     },
     {
-      "id": "Q393",
+      "id": "Q392",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q394",
+      "id": "Q393",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q395",
+      "id": "Q394",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q396",
+      "id": "Q395",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q397",
+      "id": "Q396",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q398",
+      "id": "Q397",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q399",
+      "id": "Q398",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q400",
+      "id": "Q399",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q401",
+      "id": "Q400",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q402",
+      "id": "Q401",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q403",
+      "id": "Q402",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q404",
+      "id": "Q403",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does detail feedback gets nudged before logging?"
     },
     {
-      "id": "Q405",
+      "id": "Q404",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q406",
+      "id": "Q405",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q407",
+      "id": "Q406",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q408",
+      "id": "Q407",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q409",
+      "id": "Q408",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q410",
+      "id": "Q409",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q411",
+      "id": "Q410",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q412",
+      "id": "Q411",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q413",
+      "id": "Q412",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q414",
+      "id": "Q413",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q415",
+      "id": "Q414",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q416",
+      "id": "Q415",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the guide should prefer the underlying concern over a cosmetic fix?"
     },
     {
-      "id": "Q417",
+      "id": "Q416",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q418",
+      "id": "Q417",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q419",
+      "id": "Q418",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q420",
+      "id": "Q419",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q421",
+      "id": "Q420",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q422",
+      "id": "Q421",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q423",
+      "id": "Q422",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q424",
+      "id": "Q423",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q425",
+      "id": "Q424",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q426",
+      "id": "Q425",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q427",
+      "id": "Q426",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q428",
+      "id": "Q427",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does non-final UI details should be answered provisionally?"
     },
     {
-      "id": "Q429",
+      "id": "Q428",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q430",
+      "id": "Q429",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q431",
+      "id": "Q430",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q432",
+      "id": "Q431",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q433",
+      "id": "Q432",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q434",
+      "id": "Q433",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q435",
+      "id": "Q434",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q436",
+      "id": "Q435",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q437",
+      "id": "Q436",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q438",
+      "id": "Q437",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q439",
+      "id": "Q438",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q440",
+      "id": "Q439",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does voice signals are scoped instead of given a separate structure?"
     },
     {
-      "id": "Q441",
+      "id": "Q440",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q442",
+      "id": "Q441",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q443",
+      "id": "Q442",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q444",
+      "id": "Q443",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q445",
+      "id": "Q444",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q446",
+      "id": "Q445",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q447",
+      "id": "Q446",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q448",
+      "id": "Q447",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q449",
+      "id": "Q448",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q450",
+      "id": "Q449",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q451",
+      "id": "Q450",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q452",
+      "id": "Q451",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the Bottlenecks widget belongs in Operate?"
     },
     {
-      "id": "Q453",
+      "id": "Q452",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q454",
+      "id": "Q453",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q455",
+      "id": "Q454",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q456",
+      "id": "Q455",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q457",
+      "id": "Q456",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q458",
+      "id": "Q457",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q459",
+      "id": "Q458",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q460",
+      "id": "Q459",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q461",
+      "id": "Q460",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q462",
+      "id": "Q461",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q463",
+      "id": "Q462",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q464",
+      "id": "Q463",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does Reset All matters in a stakeholder review session?"
     },
     {
-      "id": "Q465",
+      "id": "Q464",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q466",
+      "id": "Q465",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q467",
+      "id": "Q466",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q468",
+      "id": "Q467",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q469",
+      "id": "Q468",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q470",
+      "id": "Q469",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q471",
+      "id": "Q470",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q472",
+      "id": "Q471",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q473",
+      "id": "Q472",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q474",
+      "id": "Q473",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q475",
+      "id": "Q474",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q476",
+      "id": "Q475",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does ticket-detail deep dives are not the organising structure of the model?"
     },
     {
-      "id": "Q477",
+      "id": "Q476",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q478",
+      "id": "Q477",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q479",
+      "id": "Q478",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q480",
+      "id": "Q479",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q481",
+      "id": "Q480",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q482",
+      "id": "Q481",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q483",
+      "id": "Q482",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q484",
+      "id": "Q483",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q485",
+      "id": "Q484",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q486",
+      "id": "Q485",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q487",
+      "id": "Q486",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q488",
+      "id": "Q487",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the model is more future-proof than a ticket-based dashboard system?"
     },
     {
-      "id": "Q489",
+      "id": "Q488",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q490",
+      "id": "Q489",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q491",
+      "id": "Q490",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q492",
+      "id": "Q491",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q493",
+      "id": "Q492",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q494",
+      "id": "Q493",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q495",
+      "id": "Q494",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q496",
+      "id": "Q495",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q497",
+      "id": "Q496",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q498",
+      "id": "Q497",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q499",
+      "id": "Q498",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q500",
+      "id": "Q499",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the prototype keeps one structure while adapting by lens and role?"
     },
     {
-      "id": "Q501",
+      "id": "Q500",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q502",
+      "id": "Q501",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q503",
+      "id": "Q502",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q504",
+      "id": "Q503",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q505",
+      "id": "Q504",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q506",
+      "id": "Q505",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q507",
+      "id": "Q506",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q508",
+      "id": "Q507",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q509",
+      "id": "Q508",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q510",
+      "id": "Q509",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q511",
+      "id": "Q510",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q512",
+      "id": "Q511",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the model treats AI and automation as core parts of the system?"
     },
     {
-      "id": "Q513",
+      "id": "Q512",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q514",
+      "id": "Q513",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Briefly, why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q515",
+      "id": "Q514",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "In one sentence, why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q516",
+      "id": "Q515",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Short answer only: why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q517",
+      "id": "Q516",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the main reason the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q518",
+      "id": "Q517",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "At a high level, why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q519",
+      "id": "Q518",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "If you had to compress it, why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q520",
+      "id": "Q519",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "What's the core point behind why the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q521",
+      "id": "Q520",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Could you give the shortest clear answer for why the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q522",
+      "id": "Q521",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "From a stakeholder perspective, why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q523",
+      "id": "Q522",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "Can you answer very briefly why the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q524",
+      "id": "Q523",
       "groupId": "brevity-structure",
       "groupTitle": "Brevity and structure stress tests",
       "source": "repo",
       "text": "I only need the top reason: why does the concept focuses on decision context instead of metric type?"
     },
     {
-      "id": "Q525",
+      "id": "Q524",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How is this concept different from the current Trengo Live Dashboard idea?"
     },
     {
-      "id": "Q526",
+      "id": "Q525",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Does this prototype replace a live dashboard or sit above it conceptually?"
     },
     {
-      "id": "Q527",
+      "id": "Q526",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How would today's ticket-detail deep dive fit into this new model?"
     },
     {
-      "id": "Q528",
+      "id": "Q527",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Would ticket exports still matter if this model became the main analytics structure?"
     },
     {
-      "id": "Q529",
+      "id": "Q528",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Where would a classic CSAT report map into the five sections?"
     },
     {
-      "id": "Q530",
+      "id": "Q529",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does this concept reframe channel reports from legacy reporting?"
     },
     {
-      "id": "Q531",
+      "id": "Q530",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does this concept reframe label-based reporting from legacy reporting?"
     },
     {
-      "id": "Q532",
+      "id": "Q531",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "If current reporting starts from channels and tickets, what does this model start from instead?"
     },
     {
-      "id": "Q533",
+      "id": "Q532",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How should stakeholders think about business-hours metrics inside this new concept?"
     },
     {
-      "id": "Q534",
+      "id": "Q533",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Would the prototype remove the need for ticket-level investigation pages?"
     },
     {
-      "id": "Q535",
+      "id": "Q534",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does this model change the role of CSV export workflows?"
     },
     {
-      "id": "Q536",
+      "id": "Q535",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Where would AI labeling signals fit conceptually in this structure?"
     },
     {
-      "id": "Q537",
+      "id": "Q536",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does connecting a help centre to AI Agent relate to the Improve and Automate sections?"
     },
     {
-      "id": "Q538",
+      "id": "Q537",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How would teams compare support and sales performance without separate dashboard systems?"
     },
     {
-      "id": "Q539",
+      "id": "Q538",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "What part of the new model best replaces current fragmented reporting surfaces?"
     },
     {
-      "id": "Q540",
+      "id": "Q539",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is a question-led structure better suited to AI growth than report-by-report additions?"
     },
     {
-      "id": "Q541",
+      "id": "Q540",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "What continuity does this model keep with current Trengo metrics like first response time or resolution time?"
     },
     {
-      "id": "Q542",
+      "id": "Q541",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "If a stakeholder is used to channel reports, how should they mentally translate them into this concept?"
     },
     {
-      "id": "Q543",
+      "id": "Q542",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "If a stakeholder is used to ticket-detail tables, how should they think about them here?"
     },
     {
-      "id": "Q544",
+      "id": "Q543",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does this prototype avoid becoming another reporting surface on top of the existing ones?"
     },
     {
-      "id": "Q545",
+      "id": "Q544",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "What would likely remain necessary from current reporting even if the concept is adopted?"
     },
     {
-      "id": "Q546",
+      "id": "Q545",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How should stakeholders compare this prototype to current analytics without expecting one-to-one widget parity?"
     },
     {
-      "id": "Q547",
+      "id": "Q546",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "What does this concept add that current report collections do not add structurally?"
     },
     {
-      "id": "Q548",
+      "id": "Q547",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is the model trying to reduce surface fragmentation instead of adding more specialised dashboards?"
     },
     {
-      "id": "Q549",
+      "id": "Q548",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How can this concept coexist with existing analytics while a migration is still incomplete?"
     },
     {
-      "id": "Q550",
+      "id": "Q549",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "If a stakeholder says this still looks like normal reporting with better labels, what is the rebuttal?"
     },
     {
-      "id": "Q551",
+      "id": "Q550",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "What is the simplest way to explain why Overview is not just a homepage?"
     },
     {
-      "id": "Q552",
+      "id": "Q551",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is Understand not just a segmentation report?"
     },
     {
-      "id": "Q553",
+      "id": "Q552",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is Operate not just a performance dashboard?"
     },
     {
-      "id": "Q554",
+      "id": "Q553",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is Improve not just a backlog of random ideas?"
     },
     {
-      "id": "Q555",
+      "id": "Q554",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is Automate not just an AI KPI page?"
     },
     {
-      "id": "Q556",
+      "id": "Q555",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does the model make AI performance observable without letting AI dominate the entire navigation?"
     },
     {
-      "id": "Q557",
+      "id": "Q556",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "Why is prioritisation separated from explanation in this structure?"
     },
     {
-      "id": "Q558",
+      "id": "Q557",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",
       "text": "How does the model help teams decide where to act next?"
     },
     {
-      "id": "Q559",
+      "id": "Q558",
       "groupId": "external",
       "groupTitle": "Questions informed by current Trengo docs",
       "source": "external",

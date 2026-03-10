@@ -237,7 +237,6 @@ const PROMPT_BEHAVIOR_QUESTIONS = [
   'How should the guide answer a question about a non-final UI detail in the prototype?',
   'If someone asks whether a chart type in the prototype is final, how should the guide frame the answer?',
   'How should the guide respond if someone asks about Trengo\'s roadmap for this analytics model?',
-  'How should the guide respond if someone asks what feedback has been collected without using the word Helion?',
   'Why should the guide prefer logging the underlying concern instead of only the proposed cosmetic fix?'
 ];
 
@@ -1144,7 +1143,6 @@ function getTestSingles(bank) {
     'How should the guide answer a question about a non-final UI detail in the prototype?',
     'If someone asks whether a chart type in the prototype is final, how should the guide frame the answer?',
     'How should the guide respond if someone asks about Trengo\'s roadmap for this analytics model?',
-    'How should the guide respond if someone asks what feedback has been collected without using the word Helion?',
     'Why should the guide prefer logging the underlying concern instead of only the proposed cosmetic fix?'
   ];
   const fixedSelection = bank.singles.filter(item => selectedPrompts.includes(item.text));

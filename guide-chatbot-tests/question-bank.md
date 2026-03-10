@@ -1,10 +1,10 @@
 # Prototype Guide question bank
 
-Generated at: 2026-03-10T14:12:31.739Z
+Generated at: 2026-03-10T14:58:54.368Z
 
-Single questions: 559
+Single questions: 558
 Sequences: 21
-Total prompts represented: 637
+Total prompts represented: 636
 
 ## Concept foundations
 
@@ -260,337 +260,336 @@ Q231. If a user says only "this feels off", what should the guide do next?
 Q232. How should the guide answer a question about a non-final UI detail in the prototype?
 Q233. If someone asks whether a chart type in the prototype is final, how should the guide frame the answer?
 Q234. How should the guide respond if someone asks about Trengo's roadmap for this analytics model?
-Q235. How should the guide respond if someone asks what feedback has been collected without using the word Helion?
-Q236. Why should the guide prefer logging the underlying concern instead of only the proposed cosmetic fix?
+Q235. Why should the guide prefer logging the underlying concern instead of only the proposed cosmetic fix?
 
 ## Brevity and structure stress tests
 
-Q237. Why does the model uses five sections instead of team dashboards?
-Q238. Briefly, why does the model uses five sections instead of team dashboards?
-Q239. In one sentence, why does the model uses five sections instead of team dashboards?
-Q240. Short answer only: why does the model uses five sections instead of team dashboards?
-Q241. What's the main reason the model uses five sections instead of team dashboards?
-Q242. At a high level, why does the model uses five sections instead of team dashboards?
-Q243. If you had to compress it, why does the model uses five sections instead of team dashboards?
-Q244. What's the core point behind why the model uses five sections instead of team dashboards?
-Q245. Could you give the shortest clear answer for why the model uses five sections instead of team dashboards?
-Q246. From a stakeholder perspective, why does the model uses five sections instead of team dashboards?
-Q247. Can you answer very briefly why the model uses five sections instead of team dashboards?
-Q248. I only need the top reason: why does the model uses five sections instead of team dashboards?
-Q249. Why does the structure is question-led instead of ticket-led?
-Q250. Briefly, why does the structure is question-led instead of ticket-led?
-Q251. In one sentence, why does the structure is question-led instead of ticket-led?
-Q252. Short answer only: why does the structure is question-led instead of ticket-led?
-Q253. What's the main reason the structure is question-led instead of ticket-led?
-Q254. At a high level, why does the structure is question-led instead of ticket-led?
-Q255. If you had to compress it, why does the structure is question-led instead of ticket-led?
-Q256. What's the core point behind why the structure is question-led instead of ticket-led?
-Q257. Could you give the shortest clear answer for why the structure is question-led instead of ticket-led?
-Q258. From a stakeholder perspective, why does the structure is question-led instead of ticket-led?
-Q259. Can you answer very briefly why the structure is question-led instead of ticket-led?
-Q260. I only need the top reason: why does the structure is question-led instead of ticket-led?
-Q261. Why does the watchtower framing matters?
-Q262. Briefly, why does the watchtower framing matters?
-Q263. In one sentence, why does the watchtower framing matters?
-Q264. Short answer only: why does the watchtower framing matters?
-Q265. What's the main reason the watchtower framing matters?
-Q266. At a high level, why does the watchtower framing matters?
-Q267. If you had to compress it, why does the watchtower framing matters?
-Q268. What's the core point behind why the watchtower framing matters?
-Q269. Could you give the shortest clear answer for why the watchtower framing matters?
-Q270. From a stakeholder perspective, why does the watchtower framing matters?
-Q271. Can you answer very briefly why the watchtower framing matters?
-Q272. I only need the top reason: why does the watchtower framing matters?
-Q273. Why does Overview is separate from Understand?
-Q274. Briefly, why does Overview is separate from Understand?
-Q275. In one sentence, why does Overview is separate from Understand?
-Q276. Short answer only: why does Overview is separate from Understand?
-Q277. What's the main reason Overview is separate from Understand?
-Q278. At a high level, why does Overview is separate from Understand?
-Q279. If you had to compress it, why does Overview is separate from Understand?
-Q280. What's the core point behind why Overview is separate from Understand?
-Q281. Could you give the shortest clear answer for why Overview is separate from Understand?
-Q282. From a stakeholder perspective, why does Overview is separate from Understand?
-Q283. Can you answer very briefly why Overview is separate from Understand?
-Q284. I only need the top reason: why does Overview is separate from Understand?
-Q285. Why does Operate is separate from Improve?
-Q286. Briefly, why does Operate is separate from Improve?
-Q287. In one sentence, why does Operate is separate from Improve?
-Q288. Short answer only: why does Operate is separate from Improve?
-Q289. What's the main reason Operate is separate from Improve?
-Q290. At a high level, why does Operate is separate from Improve?
-Q291. If you had to compress it, why does Operate is separate from Improve?
-Q292. What's the core point behind why Operate is separate from Improve?
-Q293. Could you give the shortest clear answer for why Operate is separate from Improve?
-Q294. From a stakeholder perspective, why does Operate is separate from Improve?
-Q295. Can you answer very briefly why Operate is separate from Improve?
-Q296. I only need the top reason: why does Operate is separate from Improve?
-Q297. Why does Automate exists as its own section?
-Q298. Briefly, why does Automate exists as its own section?
-Q299. In one sentence, why does Automate exists as its own section?
-Q300. Short answer only: why does Automate exists as its own section?
-Q301. What's the main reason Automate exists as its own section?
-Q302. At a high level, why does Automate exists as its own section?
-Q303. If you had to compress it, why does Automate exists as its own section?
-Q304. What's the core point behind why Automate exists as its own section?
-Q305. Could you give the shortest clear answer for why Automate exists as its own section?
-Q306. From a stakeholder perspective, why does Automate exists as its own section?
-Q307. Can you answer very briefly why Automate exists as its own section?
-Q308. I only need the top reason: why does Automate exists as its own section?
-Q309. Why does support and sales share one structure?
-Q310. Briefly, why does support and sales share one structure?
-Q311. In one sentence, why does support and sales share one structure?
-Q312. Short answer only: why does support and sales share one structure?
-Q313. What's the main reason support and sales share one structure?
-Q314. At a high level, why does support and sales share one structure?
-Q315. If you had to compress it, why does support and sales share one structure?
-Q316. What's the core point behind why support and sales share one structure?
-Q317. Could you give the shortest clear answer for why support and sales share one structure?
-Q318. From a stakeholder perspective, why does support and sales share one structure?
-Q319. Can you answer very briefly why support and sales share one structure?
-Q320. I only need the top reason: why does support and sales share one structure?
-Q321. Why does the prototype keeps continuity with existing metrics?
-Q322. Briefly, why does the prototype keeps continuity with existing metrics?
-Q323. In one sentence, why does the prototype keeps continuity with existing metrics?
-Q324. Short answer only: why does the prototype keeps continuity with existing metrics?
-Q325. What's the main reason the prototype keeps continuity with existing metrics?
-Q326. At a high level, why does the prototype keeps continuity with existing metrics?
-Q327. If you had to compress it, why does the prototype keeps continuity with existing metrics?
-Q328. What's the core point behind why the prototype keeps continuity with existing metrics?
-Q329. Could you give the shortest clear answer for why the prototype keeps continuity with existing metrics?
-Q330. From a stakeholder perspective, why does the prototype keeps continuity with existing metrics?
-Q331. Can you answer very briefly why the prototype keeps continuity with existing metrics?
-Q332. I only need the top reason: why does the prototype keeps continuity with existing metrics?
-Q333. Why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q334. Briefly, why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q335. In one sentence, why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q336. Short answer only: why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q337. What's the main reason the settings popout uses role and use case toggles instead of separate dashboards?
-Q338. At a high level, why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q339. If you had to compress it, why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q340. What's the core point behind why the settings popout uses role and use case toggles instead of separate dashboards?
-Q341. Could you give the shortest clear answer for why the settings popout uses role and use case toggles instead of separate dashboards?
-Q342. From a stakeholder perspective, why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q343. Can you answer very briefly why the settings popout uses role and use case toggles instead of separate dashboards?
-Q344. I only need the top reason: why does the settings popout uses role and use case toggles instead of separate dashboards?
-Q345. Why does custom pages do not undermine the core model?
-Q346. Briefly, why does custom pages do not undermine the core model?
-Q347. In one sentence, why does custom pages do not undermine the core model?
-Q348. Short answer only: why does custom pages do not undermine the core model?
-Q349. What's the main reason custom pages do not undermine the core model?
-Q350. At a high level, why does custom pages do not undermine the core model?
-Q351. If you had to compress it, why does custom pages do not undermine the core model?
-Q352. What's the core point behind why custom pages do not undermine the core model?
-Q353. Could you give the shortest clear answer for why custom pages do not undermine the core model?
-Q354. From a stakeholder perspective, why does custom pages do not undermine the core model?
-Q355. Can you answer very briefly why custom pages do not undermine the core model?
-Q356. I only need the top reason: why does custom pages do not undermine the core model?
-Q357. Why does drill links exist between sections?
-Q358. Briefly, why does drill links exist between sections?
-Q359. In one sentence, why does drill links exist between sections?
-Q360. Short answer only: why does drill links exist between sections?
-Q361. What's the main reason drill links exist between sections?
-Q362. At a high level, why does drill links exist between sections?
-Q363. If you had to compress it, why does drill links exist between sections?
-Q364. What's the core point behind why drill links exist between sections?
-Q365. Could you give the shortest clear answer for why drill links exist between sections?
-Q366. From a stakeholder perspective, why does drill links exist between sections?
-Q367. Can you answer very briefly why drill links exist between sections?
-Q368. I only need the top reason: why does drill links exist between sections?
-Q369. Why does the guide is framed for stakeholders rather than end users?
-Q370. Briefly, why does the guide is framed for stakeholders rather than end users?
-Q371. In one sentence, why does the guide is framed for stakeholders rather than end users?
-Q372. Short answer only: why does the guide is framed for stakeholders rather than end users?
-Q373. What's the main reason the guide is framed for stakeholders rather than end users?
-Q374. At a high level, why does the guide is framed for stakeholders rather than end users?
-Q375. If you had to compress it, why does the guide is framed for stakeholders rather than end users?
-Q376. What's the core point behind why the guide is framed for stakeholders rather than end users?
-Q377. Could you give the shortest clear answer for why the guide is framed for stakeholders rather than end users?
-Q378. From a stakeholder perspective, why does the guide is framed for stakeholders rather than end users?
-Q379. Can you answer very briefly why the guide is framed for stakeholders rather than end users?
-Q380. I only need the top reason: why does the guide is framed for stakeholders rather than end users?
-Q381. Why does the guide should answer briefly by default?
-Q382. Briefly, why does the guide should answer briefly by default?
-Q383. In one sentence, why does the guide should answer briefly by default?
-Q384. Short answer only: why does the guide should answer briefly by default?
-Q385. What's the main reason the guide should answer briefly by default?
-Q386. At a high level, why does the guide should answer briefly by default?
-Q387. If you had to compress it, why does the guide should answer briefly by default?
-Q388. What's the core point behind why the guide should answer briefly by default?
-Q389. Could you give the shortest clear answer for why the guide should answer briefly by default?
-Q390. From a stakeholder perspective, why does the guide should answer briefly by default?
-Q391. Can you answer very briefly why the guide should answer briefly by default?
-Q392. I only need the top reason: why does the guide should answer briefly by default?
-Q393. Why does detail feedback gets nudged before logging?
-Q394. Briefly, why does detail feedback gets nudged before logging?
-Q395. In one sentence, why does detail feedback gets nudged before logging?
-Q396. Short answer only: why does detail feedback gets nudged before logging?
-Q397. What's the main reason detail feedback gets nudged before logging?
-Q398. At a high level, why does detail feedback gets nudged before logging?
-Q399. If you had to compress it, why does detail feedback gets nudged before logging?
-Q400. What's the core point behind why detail feedback gets nudged before logging?
-Q401. Could you give the shortest clear answer for why detail feedback gets nudged before logging?
-Q402. From a stakeholder perspective, why does detail feedback gets nudged before logging?
-Q403. Can you answer very briefly why detail feedback gets nudged before logging?
-Q404. I only need the top reason: why does detail feedback gets nudged before logging?
-Q405. Why does the guide should prefer the underlying concern over a cosmetic fix?
-Q406. Briefly, why does the guide should prefer the underlying concern over a cosmetic fix?
-Q407. In one sentence, why does the guide should prefer the underlying concern over a cosmetic fix?
-Q408. Short answer only: why does the guide should prefer the underlying concern over a cosmetic fix?
-Q409. What's the main reason the guide should prefer the underlying concern over a cosmetic fix?
-Q410. At a high level, why does the guide should prefer the underlying concern over a cosmetic fix?
-Q411. If you had to compress it, why does the guide should prefer the underlying concern over a cosmetic fix?
-Q412. What's the core point behind why the guide should prefer the underlying concern over a cosmetic fix?
-Q413. Could you give the shortest clear answer for why the guide should prefer the underlying concern over a cosmetic fix?
-Q414. From a stakeholder perspective, why does the guide should prefer the underlying concern over a cosmetic fix?
-Q415. Can you answer very briefly why the guide should prefer the underlying concern over a cosmetic fix?
-Q416. I only need the top reason: why does the guide should prefer the underlying concern over a cosmetic fix?
-Q417. Why does non-final UI details should be answered provisionally?
-Q418. Briefly, why does non-final UI details should be answered provisionally?
-Q419. In one sentence, why does non-final UI details should be answered provisionally?
-Q420. Short answer only: why does non-final UI details should be answered provisionally?
-Q421. What's the main reason non-final UI details should be answered provisionally?
-Q422. At a high level, why does non-final UI details should be answered provisionally?
-Q423. If you had to compress it, why does non-final UI details should be answered provisionally?
-Q424. What's the core point behind why non-final UI details should be answered provisionally?
-Q425. Could you give the shortest clear answer for why non-final UI details should be answered provisionally?
-Q426. From a stakeholder perspective, why does non-final UI details should be answered provisionally?
-Q427. Can you answer very briefly why non-final UI details should be answered provisionally?
-Q428. I only need the top reason: why does non-final UI details should be answered provisionally?
-Q429. Why does voice signals are scoped instead of given a separate structure?
-Q430. Briefly, why does voice signals are scoped instead of given a separate structure?
-Q431. In one sentence, why does voice signals are scoped instead of given a separate structure?
-Q432. Short answer only: why does voice signals are scoped instead of given a separate structure?
-Q433. What's the main reason voice signals are scoped instead of given a separate structure?
-Q434. At a high level, why does voice signals are scoped instead of given a separate structure?
-Q435. If you had to compress it, why does voice signals are scoped instead of given a separate structure?
-Q436. What's the core point behind why voice signals are scoped instead of given a separate structure?
-Q437. Could you give the shortest clear answer for why voice signals are scoped instead of given a separate structure?
-Q438. From a stakeholder perspective, why does voice signals are scoped instead of given a separate structure?
-Q439. Can you answer very briefly why voice signals are scoped instead of given a separate structure?
-Q440. I only need the top reason: why does voice signals are scoped instead of given a separate structure?
-Q441. Why does the Bottlenecks widget belongs in Operate?
-Q442. Briefly, why does the Bottlenecks widget belongs in Operate?
-Q443. In one sentence, why does the Bottlenecks widget belongs in Operate?
-Q444. Short answer only: why does the Bottlenecks widget belongs in Operate?
-Q445. What's the main reason the Bottlenecks widget belongs in Operate?
-Q446. At a high level, why does the Bottlenecks widget belongs in Operate?
-Q447. If you had to compress it, why does the Bottlenecks widget belongs in Operate?
-Q448. What's the core point behind why the Bottlenecks widget belongs in Operate?
-Q449. Could you give the shortest clear answer for why the Bottlenecks widget belongs in Operate?
-Q450. From a stakeholder perspective, why does the Bottlenecks widget belongs in Operate?
-Q451. Can you answer very briefly why the Bottlenecks widget belongs in Operate?
-Q452. I only need the top reason: why does the Bottlenecks widget belongs in Operate?
-Q453. Why does Reset All matters in a stakeholder review session?
-Q454. Briefly, why does Reset All matters in a stakeholder review session?
-Q455. In one sentence, why does Reset All matters in a stakeholder review session?
-Q456. Short answer only: why does Reset All matters in a stakeholder review session?
-Q457. What's the main reason Reset All matters in a stakeholder review session?
-Q458. At a high level, why does Reset All matters in a stakeholder review session?
-Q459. If you had to compress it, why does Reset All matters in a stakeholder review session?
-Q460. What's the core point behind why Reset All matters in a stakeholder review session?
-Q461. Could you give the shortest clear answer for why Reset All matters in a stakeholder review session?
-Q462. From a stakeholder perspective, why does Reset All matters in a stakeholder review session?
-Q463. Can you answer very briefly why Reset All matters in a stakeholder review session?
-Q464. I only need the top reason: why does Reset All matters in a stakeholder review session?
-Q465. Why does ticket-detail deep dives are not the organising structure of the model?
-Q466. Briefly, why does ticket-detail deep dives are not the organising structure of the model?
-Q467. In one sentence, why does ticket-detail deep dives are not the organising structure of the model?
-Q468. Short answer only: why does ticket-detail deep dives are not the organising structure of the model?
-Q469. What's the main reason ticket-detail deep dives are not the organising structure of the model?
-Q470. At a high level, why does ticket-detail deep dives are not the organising structure of the model?
-Q471. If you had to compress it, why does ticket-detail deep dives are not the organising structure of the model?
-Q472. What's the core point behind why ticket-detail deep dives are not the organising structure of the model?
-Q473. Could you give the shortest clear answer for why ticket-detail deep dives are not the organising structure of the model?
-Q474. From a stakeholder perspective, why does ticket-detail deep dives are not the organising structure of the model?
-Q475. Can you answer very briefly why ticket-detail deep dives are not the organising structure of the model?
-Q476. I only need the top reason: why does ticket-detail deep dives are not the organising structure of the model?
-Q477. Why does the model is more future-proof than a ticket-based dashboard system?
-Q478. Briefly, why does the model is more future-proof than a ticket-based dashboard system?
-Q479. In one sentence, why does the model is more future-proof than a ticket-based dashboard system?
-Q480. Short answer only: why does the model is more future-proof than a ticket-based dashboard system?
-Q481. What's the main reason the model is more future-proof than a ticket-based dashboard system?
-Q482. At a high level, why does the model is more future-proof than a ticket-based dashboard system?
-Q483. If you had to compress it, why does the model is more future-proof than a ticket-based dashboard system?
-Q484. What's the core point behind why the model is more future-proof than a ticket-based dashboard system?
-Q485. Could you give the shortest clear answer for why the model is more future-proof than a ticket-based dashboard system?
-Q486. From a stakeholder perspective, why does the model is more future-proof than a ticket-based dashboard system?
-Q487. Can you answer very briefly why the model is more future-proof than a ticket-based dashboard system?
-Q488. I only need the top reason: why does the model is more future-proof than a ticket-based dashboard system?
-Q489. Why does the prototype keeps one structure while adapting by lens and role?
-Q490. Briefly, why does the prototype keeps one structure while adapting by lens and role?
-Q491. In one sentence, why does the prototype keeps one structure while adapting by lens and role?
-Q492. Short answer only: why does the prototype keeps one structure while adapting by lens and role?
-Q493. What's the main reason the prototype keeps one structure while adapting by lens and role?
-Q494. At a high level, why does the prototype keeps one structure while adapting by lens and role?
-Q495. If you had to compress it, why does the prototype keeps one structure while adapting by lens and role?
-Q496. What's the core point behind why the prototype keeps one structure while adapting by lens and role?
-Q497. Could you give the shortest clear answer for why the prototype keeps one structure while adapting by lens and role?
-Q498. From a stakeholder perspective, why does the prototype keeps one structure while adapting by lens and role?
-Q499. Can you answer very briefly why the prototype keeps one structure while adapting by lens and role?
-Q500. I only need the top reason: why does the prototype keeps one structure while adapting by lens and role?
-Q501. Why does the model treats AI and automation as core parts of the system?
-Q502. Briefly, why does the model treats AI and automation as core parts of the system?
-Q503. In one sentence, why does the model treats AI and automation as core parts of the system?
-Q504. Short answer only: why does the model treats AI and automation as core parts of the system?
-Q505. What's the main reason the model treats AI and automation as core parts of the system?
-Q506. At a high level, why does the model treats AI and automation as core parts of the system?
-Q507. If you had to compress it, why does the model treats AI and automation as core parts of the system?
-Q508. What's the core point behind why the model treats AI and automation as core parts of the system?
-Q509. Could you give the shortest clear answer for why the model treats AI and automation as core parts of the system?
-Q510. From a stakeholder perspective, why does the model treats AI and automation as core parts of the system?
-Q511. Can you answer very briefly why the model treats AI and automation as core parts of the system?
-Q512. I only need the top reason: why does the model treats AI and automation as core parts of the system?
-Q513. Why does the concept focuses on decision context instead of metric type?
-Q514. Briefly, why does the concept focuses on decision context instead of metric type?
-Q515. In one sentence, why does the concept focuses on decision context instead of metric type?
-Q516. Short answer only: why does the concept focuses on decision context instead of metric type?
-Q517. What's the main reason the concept focuses on decision context instead of metric type?
-Q518. At a high level, why does the concept focuses on decision context instead of metric type?
-Q519. If you had to compress it, why does the concept focuses on decision context instead of metric type?
-Q520. What's the core point behind why the concept focuses on decision context instead of metric type?
-Q521. Could you give the shortest clear answer for why the concept focuses on decision context instead of metric type?
-Q522. From a stakeholder perspective, why does the concept focuses on decision context instead of metric type?
-Q523. Can you answer very briefly why the concept focuses on decision context instead of metric type?
-Q524. I only need the top reason: why does the concept focuses on decision context instead of metric type?
+Q236. Why does the model uses five sections instead of team dashboards?
+Q237. Briefly, why does the model uses five sections instead of team dashboards?
+Q238. In one sentence, why does the model uses five sections instead of team dashboards?
+Q239. Short answer only: why does the model uses five sections instead of team dashboards?
+Q240. What's the main reason the model uses five sections instead of team dashboards?
+Q241. At a high level, why does the model uses five sections instead of team dashboards?
+Q242. If you had to compress it, why does the model uses five sections instead of team dashboards?
+Q243. What's the core point behind why the model uses five sections instead of team dashboards?
+Q244. Could you give the shortest clear answer for why the model uses five sections instead of team dashboards?
+Q245. From a stakeholder perspective, why does the model uses five sections instead of team dashboards?
+Q246. Can you answer very briefly why the model uses five sections instead of team dashboards?
+Q247. I only need the top reason: why does the model uses five sections instead of team dashboards?
+Q248. Why does the structure is question-led instead of ticket-led?
+Q249. Briefly, why does the structure is question-led instead of ticket-led?
+Q250. In one sentence, why does the structure is question-led instead of ticket-led?
+Q251. Short answer only: why does the structure is question-led instead of ticket-led?
+Q252. What's the main reason the structure is question-led instead of ticket-led?
+Q253. At a high level, why does the structure is question-led instead of ticket-led?
+Q254. If you had to compress it, why does the structure is question-led instead of ticket-led?
+Q255. What's the core point behind why the structure is question-led instead of ticket-led?
+Q256. Could you give the shortest clear answer for why the structure is question-led instead of ticket-led?
+Q257. From a stakeholder perspective, why does the structure is question-led instead of ticket-led?
+Q258. Can you answer very briefly why the structure is question-led instead of ticket-led?
+Q259. I only need the top reason: why does the structure is question-led instead of ticket-led?
+Q260. Why does the watchtower framing matters?
+Q261. Briefly, why does the watchtower framing matters?
+Q262. In one sentence, why does the watchtower framing matters?
+Q263. Short answer only: why does the watchtower framing matters?
+Q264. What's the main reason the watchtower framing matters?
+Q265. At a high level, why does the watchtower framing matters?
+Q266. If you had to compress it, why does the watchtower framing matters?
+Q267. What's the core point behind why the watchtower framing matters?
+Q268. Could you give the shortest clear answer for why the watchtower framing matters?
+Q269. From a stakeholder perspective, why does the watchtower framing matters?
+Q270. Can you answer very briefly why the watchtower framing matters?
+Q271. I only need the top reason: why does the watchtower framing matters?
+Q272. Why does Overview is separate from Understand?
+Q273. Briefly, why does Overview is separate from Understand?
+Q274. In one sentence, why does Overview is separate from Understand?
+Q275. Short answer only: why does Overview is separate from Understand?
+Q276. What's the main reason Overview is separate from Understand?
+Q277. At a high level, why does Overview is separate from Understand?
+Q278. If you had to compress it, why does Overview is separate from Understand?
+Q279. What's the core point behind why Overview is separate from Understand?
+Q280. Could you give the shortest clear answer for why Overview is separate from Understand?
+Q281. From a stakeholder perspective, why does Overview is separate from Understand?
+Q282. Can you answer very briefly why Overview is separate from Understand?
+Q283. I only need the top reason: why does Overview is separate from Understand?
+Q284. Why does Operate is separate from Improve?
+Q285. Briefly, why does Operate is separate from Improve?
+Q286. In one sentence, why does Operate is separate from Improve?
+Q287. Short answer only: why does Operate is separate from Improve?
+Q288. What's the main reason Operate is separate from Improve?
+Q289. At a high level, why does Operate is separate from Improve?
+Q290. If you had to compress it, why does Operate is separate from Improve?
+Q291. What's the core point behind why Operate is separate from Improve?
+Q292. Could you give the shortest clear answer for why Operate is separate from Improve?
+Q293. From a stakeholder perspective, why does Operate is separate from Improve?
+Q294. Can you answer very briefly why Operate is separate from Improve?
+Q295. I only need the top reason: why does Operate is separate from Improve?
+Q296. Why does Automate exists as its own section?
+Q297. Briefly, why does Automate exists as its own section?
+Q298. In one sentence, why does Automate exists as its own section?
+Q299. Short answer only: why does Automate exists as its own section?
+Q300. What's the main reason Automate exists as its own section?
+Q301. At a high level, why does Automate exists as its own section?
+Q302. If you had to compress it, why does Automate exists as its own section?
+Q303. What's the core point behind why Automate exists as its own section?
+Q304. Could you give the shortest clear answer for why Automate exists as its own section?
+Q305. From a stakeholder perspective, why does Automate exists as its own section?
+Q306. Can you answer very briefly why Automate exists as its own section?
+Q307. I only need the top reason: why does Automate exists as its own section?
+Q308. Why does support and sales share one structure?
+Q309. Briefly, why does support and sales share one structure?
+Q310. In one sentence, why does support and sales share one structure?
+Q311. Short answer only: why does support and sales share one structure?
+Q312. What's the main reason support and sales share one structure?
+Q313. At a high level, why does support and sales share one structure?
+Q314. If you had to compress it, why does support and sales share one structure?
+Q315. What's the core point behind why support and sales share one structure?
+Q316. Could you give the shortest clear answer for why support and sales share one structure?
+Q317. From a stakeholder perspective, why does support and sales share one structure?
+Q318. Can you answer very briefly why support and sales share one structure?
+Q319. I only need the top reason: why does support and sales share one structure?
+Q320. Why does the prototype keeps continuity with existing metrics?
+Q321. Briefly, why does the prototype keeps continuity with existing metrics?
+Q322. In one sentence, why does the prototype keeps continuity with existing metrics?
+Q323. Short answer only: why does the prototype keeps continuity with existing metrics?
+Q324. What's the main reason the prototype keeps continuity with existing metrics?
+Q325. At a high level, why does the prototype keeps continuity with existing metrics?
+Q326. If you had to compress it, why does the prototype keeps continuity with existing metrics?
+Q327. What's the core point behind why the prototype keeps continuity with existing metrics?
+Q328. Could you give the shortest clear answer for why the prototype keeps continuity with existing metrics?
+Q329. From a stakeholder perspective, why does the prototype keeps continuity with existing metrics?
+Q330. Can you answer very briefly why the prototype keeps continuity with existing metrics?
+Q331. I only need the top reason: why does the prototype keeps continuity with existing metrics?
+Q332. Why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q333. Briefly, why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q334. In one sentence, why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q335. Short answer only: why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q336. What's the main reason the settings popout uses role and use case toggles instead of separate dashboards?
+Q337. At a high level, why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q338. If you had to compress it, why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q339. What's the core point behind why the settings popout uses role and use case toggles instead of separate dashboards?
+Q340. Could you give the shortest clear answer for why the settings popout uses role and use case toggles instead of separate dashboards?
+Q341. From a stakeholder perspective, why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q342. Can you answer very briefly why the settings popout uses role and use case toggles instead of separate dashboards?
+Q343. I only need the top reason: why does the settings popout uses role and use case toggles instead of separate dashboards?
+Q344. Why does custom pages do not undermine the core model?
+Q345. Briefly, why does custom pages do not undermine the core model?
+Q346. In one sentence, why does custom pages do not undermine the core model?
+Q347. Short answer only: why does custom pages do not undermine the core model?
+Q348. What's the main reason custom pages do not undermine the core model?
+Q349. At a high level, why does custom pages do not undermine the core model?
+Q350. If you had to compress it, why does custom pages do not undermine the core model?
+Q351. What's the core point behind why custom pages do not undermine the core model?
+Q352. Could you give the shortest clear answer for why custom pages do not undermine the core model?
+Q353. From a stakeholder perspective, why does custom pages do not undermine the core model?
+Q354. Can you answer very briefly why custom pages do not undermine the core model?
+Q355. I only need the top reason: why does custom pages do not undermine the core model?
+Q356. Why does drill links exist between sections?
+Q357. Briefly, why does drill links exist between sections?
+Q358. In one sentence, why does drill links exist between sections?
+Q359. Short answer only: why does drill links exist between sections?
+Q360. What's the main reason drill links exist between sections?
+Q361. At a high level, why does drill links exist between sections?
+Q362. If you had to compress it, why does drill links exist between sections?
+Q363. What's the core point behind why drill links exist between sections?
+Q364. Could you give the shortest clear answer for why drill links exist between sections?
+Q365. From a stakeholder perspective, why does drill links exist between sections?
+Q366. Can you answer very briefly why drill links exist between sections?
+Q367. I only need the top reason: why does drill links exist between sections?
+Q368. Why does the guide is framed for stakeholders rather than end users?
+Q369. Briefly, why does the guide is framed for stakeholders rather than end users?
+Q370. In one sentence, why does the guide is framed for stakeholders rather than end users?
+Q371. Short answer only: why does the guide is framed for stakeholders rather than end users?
+Q372. What's the main reason the guide is framed for stakeholders rather than end users?
+Q373. At a high level, why does the guide is framed for stakeholders rather than end users?
+Q374. If you had to compress it, why does the guide is framed for stakeholders rather than end users?
+Q375. What's the core point behind why the guide is framed for stakeholders rather than end users?
+Q376. Could you give the shortest clear answer for why the guide is framed for stakeholders rather than end users?
+Q377. From a stakeholder perspective, why does the guide is framed for stakeholders rather than end users?
+Q378. Can you answer very briefly why the guide is framed for stakeholders rather than end users?
+Q379. I only need the top reason: why does the guide is framed for stakeholders rather than end users?
+Q380. Why does the guide should answer briefly by default?
+Q381. Briefly, why does the guide should answer briefly by default?
+Q382. In one sentence, why does the guide should answer briefly by default?
+Q383. Short answer only: why does the guide should answer briefly by default?
+Q384. What's the main reason the guide should answer briefly by default?
+Q385. At a high level, why does the guide should answer briefly by default?
+Q386. If you had to compress it, why does the guide should answer briefly by default?
+Q387. What's the core point behind why the guide should answer briefly by default?
+Q388. Could you give the shortest clear answer for why the guide should answer briefly by default?
+Q389. From a stakeholder perspective, why does the guide should answer briefly by default?
+Q390. Can you answer very briefly why the guide should answer briefly by default?
+Q391. I only need the top reason: why does the guide should answer briefly by default?
+Q392. Why does detail feedback gets nudged before logging?
+Q393. Briefly, why does detail feedback gets nudged before logging?
+Q394. In one sentence, why does detail feedback gets nudged before logging?
+Q395. Short answer only: why does detail feedback gets nudged before logging?
+Q396. What's the main reason detail feedback gets nudged before logging?
+Q397. At a high level, why does detail feedback gets nudged before logging?
+Q398. If you had to compress it, why does detail feedback gets nudged before logging?
+Q399. What's the core point behind why detail feedback gets nudged before logging?
+Q400. Could you give the shortest clear answer for why detail feedback gets nudged before logging?
+Q401. From a stakeholder perspective, why does detail feedback gets nudged before logging?
+Q402. Can you answer very briefly why detail feedback gets nudged before logging?
+Q403. I only need the top reason: why does detail feedback gets nudged before logging?
+Q404. Why does the guide should prefer the underlying concern over a cosmetic fix?
+Q405. Briefly, why does the guide should prefer the underlying concern over a cosmetic fix?
+Q406. In one sentence, why does the guide should prefer the underlying concern over a cosmetic fix?
+Q407. Short answer only: why does the guide should prefer the underlying concern over a cosmetic fix?
+Q408. What's the main reason the guide should prefer the underlying concern over a cosmetic fix?
+Q409. At a high level, why does the guide should prefer the underlying concern over a cosmetic fix?
+Q410. If you had to compress it, why does the guide should prefer the underlying concern over a cosmetic fix?
+Q411. What's the core point behind why the guide should prefer the underlying concern over a cosmetic fix?
+Q412. Could you give the shortest clear answer for why the guide should prefer the underlying concern over a cosmetic fix?
+Q413. From a stakeholder perspective, why does the guide should prefer the underlying concern over a cosmetic fix?
+Q414. Can you answer very briefly why the guide should prefer the underlying concern over a cosmetic fix?
+Q415. I only need the top reason: why does the guide should prefer the underlying concern over a cosmetic fix?
+Q416. Why does non-final UI details should be answered provisionally?
+Q417. Briefly, why does non-final UI details should be answered provisionally?
+Q418. In one sentence, why does non-final UI details should be answered provisionally?
+Q419. Short answer only: why does non-final UI details should be answered provisionally?
+Q420. What's the main reason non-final UI details should be answered provisionally?
+Q421. At a high level, why does non-final UI details should be answered provisionally?
+Q422. If you had to compress it, why does non-final UI details should be answered provisionally?
+Q423. What's the core point behind why non-final UI details should be answered provisionally?
+Q424. Could you give the shortest clear answer for why non-final UI details should be answered provisionally?
+Q425. From a stakeholder perspective, why does non-final UI details should be answered provisionally?
+Q426. Can you answer very briefly why non-final UI details should be answered provisionally?
+Q427. I only need the top reason: why does non-final UI details should be answered provisionally?
+Q428. Why does voice signals are scoped instead of given a separate structure?
+Q429. Briefly, why does voice signals are scoped instead of given a separate structure?
+Q430. In one sentence, why does voice signals are scoped instead of given a separate structure?
+Q431. Short answer only: why does voice signals are scoped instead of given a separate structure?
+Q432. What's the main reason voice signals are scoped instead of given a separate structure?
+Q433. At a high level, why does voice signals are scoped instead of given a separate structure?
+Q434. If you had to compress it, why does voice signals are scoped instead of given a separate structure?
+Q435. What's the core point behind why voice signals are scoped instead of given a separate structure?
+Q436. Could you give the shortest clear answer for why voice signals are scoped instead of given a separate structure?
+Q437. From a stakeholder perspective, why does voice signals are scoped instead of given a separate structure?
+Q438. Can you answer very briefly why voice signals are scoped instead of given a separate structure?
+Q439. I only need the top reason: why does voice signals are scoped instead of given a separate structure?
+Q440. Why does the Bottlenecks widget belongs in Operate?
+Q441. Briefly, why does the Bottlenecks widget belongs in Operate?
+Q442. In one sentence, why does the Bottlenecks widget belongs in Operate?
+Q443. Short answer only: why does the Bottlenecks widget belongs in Operate?
+Q444. What's the main reason the Bottlenecks widget belongs in Operate?
+Q445. At a high level, why does the Bottlenecks widget belongs in Operate?
+Q446. If you had to compress it, why does the Bottlenecks widget belongs in Operate?
+Q447. What's the core point behind why the Bottlenecks widget belongs in Operate?
+Q448. Could you give the shortest clear answer for why the Bottlenecks widget belongs in Operate?
+Q449. From a stakeholder perspective, why does the Bottlenecks widget belongs in Operate?
+Q450. Can you answer very briefly why the Bottlenecks widget belongs in Operate?
+Q451. I only need the top reason: why does the Bottlenecks widget belongs in Operate?
+Q452. Why does Reset All matters in a stakeholder review session?
+Q453. Briefly, why does Reset All matters in a stakeholder review session?
+Q454. In one sentence, why does Reset All matters in a stakeholder review session?
+Q455. Short answer only: why does Reset All matters in a stakeholder review session?
+Q456. What's the main reason Reset All matters in a stakeholder review session?
+Q457. At a high level, why does Reset All matters in a stakeholder review session?
+Q458. If you had to compress it, why does Reset All matters in a stakeholder review session?
+Q459. What's the core point behind why Reset All matters in a stakeholder review session?
+Q460. Could you give the shortest clear answer for why Reset All matters in a stakeholder review session?
+Q461. From a stakeholder perspective, why does Reset All matters in a stakeholder review session?
+Q462. Can you answer very briefly why Reset All matters in a stakeholder review session?
+Q463. I only need the top reason: why does Reset All matters in a stakeholder review session?
+Q464. Why does ticket-detail deep dives are not the organising structure of the model?
+Q465. Briefly, why does ticket-detail deep dives are not the organising structure of the model?
+Q466. In one sentence, why does ticket-detail deep dives are not the organising structure of the model?
+Q467. Short answer only: why does ticket-detail deep dives are not the organising structure of the model?
+Q468. What's the main reason ticket-detail deep dives are not the organising structure of the model?
+Q469. At a high level, why does ticket-detail deep dives are not the organising structure of the model?
+Q470. If you had to compress it, why does ticket-detail deep dives are not the organising structure of the model?
+Q471. What's the core point behind why ticket-detail deep dives are not the organising structure of the model?
+Q472. Could you give the shortest clear answer for why ticket-detail deep dives are not the organising structure of the model?
+Q473. From a stakeholder perspective, why does ticket-detail deep dives are not the organising structure of the model?
+Q474. Can you answer very briefly why ticket-detail deep dives are not the organising structure of the model?
+Q475. I only need the top reason: why does ticket-detail deep dives are not the organising structure of the model?
+Q476. Why does the model is more future-proof than a ticket-based dashboard system?
+Q477. Briefly, why does the model is more future-proof than a ticket-based dashboard system?
+Q478. In one sentence, why does the model is more future-proof than a ticket-based dashboard system?
+Q479. Short answer only: why does the model is more future-proof than a ticket-based dashboard system?
+Q480. What's the main reason the model is more future-proof than a ticket-based dashboard system?
+Q481. At a high level, why does the model is more future-proof than a ticket-based dashboard system?
+Q482. If you had to compress it, why does the model is more future-proof than a ticket-based dashboard system?
+Q483. What's the core point behind why the model is more future-proof than a ticket-based dashboard system?
+Q484. Could you give the shortest clear answer for why the model is more future-proof than a ticket-based dashboard system?
+Q485. From a stakeholder perspective, why does the model is more future-proof than a ticket-based dashboard system?
+Q486. Can you answer very briefly why the model is more future-proof than a ticket-based dashboard system?
+Q487. I only need the top reason: why does the model is more future-proof than a ticket-based dashboard system?
+Q488. Why does the prototype keeps one structure while adapting by lens and role?
+Q489. Briefly, why does the prototype keeps one structure while adapting by lens and role?
+Q490. In one sentence, why does the prototype keeps one structure while adapting by lens and role?
+Q491. Short answer only: why does the prototype keeps one structure while adapting by lens and role?
+Q492. What's the main reason the prototype keeps one structure while adapting by lens and role?
+Q493. At a high level, why does the prototype keeps one structure while adapting by lens and role?
+Q494. If you had to compress it, why does the prototype keeps one structure while adapting by lens and role?
+Q495. What's the core point behind why the prototype keeps one structure while adapting by lens and role?
+Q496. Could you give the shortest clear answer for why the prototype keeps one structure while adapting by lens and role?
+Q497. From a stakeholder perspective, why does the prototype keeps one structure while adapting by lens and role?
+Q498. Can you answer very briefly why the prototype keeps one structure while adapting by lens and role?
+Q499. I only need the top reason: why does the prototype keeps one structure while adapting by lens and role?
+Q500. Why does the model treats AI and automation as core parts of the system?
+Q501. Briefly, why does the model treats AI and automation as core parts of the system?
+Q502. In one sentence, why does the model treats AI and automation as core parts of the system?
+Q503. Short answer only: why does the model treats AI and automation as core parts of the system?
+Q504. What's the main reason the model treats AI and automation as core parts of the system?
+Q505. At a high level, why does the model treats AI and automation as core parts of the system?
+Q506. If you had to compress it, why does the model treats AI and automation as core parts of the system?
+Q507. What's the core point behind why the model treats AI and automation as core parts of the system?
+Q508. Could you give the shortest clear answer for why the model treats AI and automation as core parts of the system?
+Q509. From a stakeholder perspective, why does the model treats AI and automation as core parts of the system?
+Q510. Can you answer very briefly why the model treats AI and automation as core parts of the system?
+Q511. I only need the top reason: why does the model treats AI and automation as core parts of the system?
+Q512. Why does the concept focuses on decision context instead of metric type?
+Q513. Briefly, why does the concept focuses on decision context instead of metric type?
+Q514. In one sentence, why does the concept focuses on decision context instead of metric type?
+Q515. Short answer only: why does the concept focuses on decision context instead of metric type?
+Q516. What's the main reason the concept focuses on decision context instead of metric type?
+Q517. At a high level, why does the concept focuses on decision context instead of metric type?
+Q518. If you had to compress it, why does the concept focuses on decision context instead of metric type?
+Q519. What's the core point behind why the concept focuses on decision context instead of metric type?
+Q520. Could you give the shortest clear answer for why the concept focuses on decision context instead of metric type?
+Q521. From a stakeholder perspective, why does the concept focuses on decision context instead of metric type?
+Q522. Can you answer very briefly why the concept focuses on decision context instead of metric type?
+Q523. I only need the top reason: why does the concept focuses on decision context instead of metric type?
 
 ## Questions informed by current Trengo docs
 
-Q525. How is this concept different from the current Trengo Live Dashboard idea?
-Q526. Does this prototype replace a live dashboard or sit above it conceptually?
-Q527. How would today's ticket-detail deep dive fit into this new model?
-Q528. Would ticket exports still matter if this model became the main analytics structure?
-Q529. Where would a classic CSAT report map into the five sections?
-Q530. How does this concept reframe channel reports from legacy reporting?
-Q531. How does this concept reframe label-based reporting from legacy reporting?
-Q532. If current reporting starts from channels and tickets, what does this model start from instead?
-Q533. How should stakeholders think about business-hours metrics inside this new concept?
-Q534. Would the prototype remove the need for ticket-level investigation pages?
-Q535. How does this model change the role of CSV export workflows?
-Q536. Where would AI labeling signals fit conceptually in this structure?
-Q537. How does connecting a help centre to AI Agent relate to the Improve and Automate sections?
-Q538. How would teams compare support and sales performance without separate dashboard systems?
-Q539. What part of the new model best replaces current fragmented reporting surfaces?
-Q540. Why is a question-led structure better suited to AI growth than report-by-report additions?
-Q541. What continuity does this model keep with current Trengo metrics like first response time or resolution time?
-Q542. If a stakeholder is used to channel reports, how should they mentally translate them into this concept?
-Q543. If a stakeholder is used to ticket-detail tables, how should they think about them here?
-Q544. How does this prototype avoid becoming another reporting surface on top of the existing ones?
-Q545. What would likely remain necessary from current reporting even if the concept is adopted?
-Q546. How should stakeholders compare this prototype to current analytics without expecting one-to-one widget parity?
-Q547. What does this concept add that current report collections do not add structurally?
-Q548. Why is the model trying to reduce surface fragmentation instead of adding more specialised dashboards?
-Q549. How can this concept coexist with existing analytics while a migration is still incomplete?
-Q550. If a stakeholder says this still looks like normal reporting with better labels, what is the rebuttal?
-Q551. What is the simplest way to explain why Overview is not just a homepage?
-Q552. Why is Understand not just a segmentation report?
-Q553. Why is Operate not just a performance dashboard?
-Q554. Why is Improve not just a backlog of random ideas?
-Q555. Why is Automate not just an AI KPI page?
-Q556. How does the model make AI performance observable without letting AI dominate the entire navigation?
-Q557. Why is prioritisation separated from explanation in this structure?
-Q558. How does the model help teams decide where to act next?
-Q559. Why does the concept make room for opportunities rather than only outcomes?
+Q524. How is this concept different from the current Trengo Live Dashboard idea?
+Q525. Does this prototype replace a live dashboard or sit above it conceptually?
+Q526. How would today's ticket-detail deep dive fit into this new model?
+Q527. Would ticket exports still matter if this model became the main analytics structure?
+Q528. Where would a classic CSAT report map into the five sections?
+Q529. How does this concept reframe channel reports from legacy reporting?
+Q530. How does this concept reframe label-based reporting from legacy reporting?
+Q531. If current reporting starts from channels and tickets, what does this model start from instead?
+Q532. How should stakeholders think about business-hours metrics inside this new concept?
+Q533. Would the prototype remove the need for ticket-level investigation pages?
+Q534. How does this model change the role of CSV export workflows?
+Q535. Where would AI labeling signals fit conceptually in this structure?
+Q536. How does connecting a help centre to AI Agent relate to the Improve and Automate sections?
+Q537. How would teams compare support and sales performance without separate dashboard systems?
+Q538. What part of the new model best replaces current fragmented reporting surfaces?
+Q539. Why is a question-led structure better suited to AI growth than report-by-report additions?
+Q540. What continuity does this model keep with current Trengo metrics like first response time or resolution time?
+Q541. If a stakeholder is used to channel reports, how should they mentally translate them into this concept?
+Q542. If a stakeholder is used to ticket-detail tables, how should they think about them here?
+Q543. How does this prototype avoid becoming another reporting surface on top of the existing ones?
+Q544. What would likely remain necessary from current reporting even if the concept is adopted?
+Q545. How should stakeholders compare this prototype to current analytics without expecting one-to-one widget parity?
+Q546. What does this concept add that current report collections do not add structurally?
+Q547. Why is the model trying to reduce surface fragmentation instead of adding more specialised dashboards?
+Q548. How can this concept coexist with existing analytics while a migration is still incomplete?
+Q549. If a stakeholder says this still looks like normal reporting with better labels, what is the rebuttal?
+Q550. What is the simplest way to explain why Overview is not just a homepage?
+Q551. Why is Understand not just a segmentation report?
+Q552. Why is Operate not just a performance dashboard?
+Q553. Why is Improve not just a backlog of random ideas?
+Q554. Why is Automate not just an AI KPI page?
+Q555. How does the model make AI performance observable without letting AI dominate the entire navigation?
+Q556. Why is prioritisation separated from explanation in this structure?
+Q557. How does the model help teams decide where to act next?
+Q558. Why does the concept make room for opportunities rather than only outcomes?
 
 ## Follow-up sequences
 
