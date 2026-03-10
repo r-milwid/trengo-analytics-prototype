@@ -153,6 +153,26 @@ function initTabWidgets() {
 }
 initTabWidgets();
 
+function buildDefaultTabWidgets() {
+  const tabWidgets = {};
+  DEFAULT_TABS.forEach(tab => {
+    if (tab.category && WIDGETS[tab.category]) {
+      tabWidgets[tab.id] = new Set(WIDGETS[tab.category].map(w => w.id));
+    } else {
+      tabWidgets[tab.id] = new Set();
+    }
+  });
+  return tabWidgets;
+}
+
+function resetSubnavStateToDefaults() {
+  state.tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
+  state.tabWidgets = buildDefaultTabWidgets();
+  state.sectionOrder = {};
+  state.sectionLayout = {};
+  state.activeSection = 'overview';
+}
+
 // ── CONFIG CONFLICT HANDLER ──────────────────────────────────
 // Called by DashboardConfig when a save returns 409 (server has newer config).
 // Re-applies the server's version and re-renders.
@@ -3858,10 +3878,25 @@ document.addEventListener('click', (e) => {
 // Reset sub-navigation button
 const resetSubnavBtn = document.getElementById('reset-subnav-btn');
 if (resetSubnavBtn) {
-  resetSubnavBtn.addEventListener('click', () => {
+  resetSubnavBtn.addEventListener('click', async () => {
+    resetSubnavBtn.disabled = true;
+    resetSubnavBtn.textContent = 'Resetting…';
+
+    resetSubnavStateToDefaults();
     history.replaceState(null, '', '#analytics/overview');
+
+    const userId = localStorage.getItem('trengo_session_user_name');
+    if (userId) {
+      const saved = await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-subnav'));
+      if (!saved) {
+        resetSubnavBtn.disabled = false;
+        resetSubnavBtn.textContent = 'Reset failed';
+        return;
+      }
+    }
+
     resetSubnavBtn.textContent = 'Reset to default ✓';
-    setTimeout(() => { location.reload(); }, 800);
+    setTimeout(() => { location.reload(); }, 300);
   });
 }
 
@@ -4732,10 +4767,12 @@ Do NOT volunteer caveats about the prototype being incomplete. Just avoid soundi
 Below is a complete description of everything implemented in the clickable prototype.
 
 NAVIGATION AND LAYOUT
-- The sidebar contains navigation icons: Inbox, Contacts, Automations, Knowledge, Broadcast, Settings. Only Analytics is functional; the rest are visual placeholders.
-- The Settings cog opens a popout with two preview toggles:
+- The sidebar contains navigation icons: Inbox, Pipeline, AI & Automation, Analytics, Broadcast, Settings. The bottom of the sidebar has Voice, Support, and Notifications icons. Only Analytics is functional; the rest are visual placeholders.
+- The Settings cog opens a popout with preview options:
   - Role: Supervisor (default) or Agent — filters content by role perspective
   - Use Case: Resolve (default) or Convert — filters content by use case goal
+  - View / Edit mode: Enabled (default) or Disabled — toggles between editable and read-only views
+  - Sub Navigation: a "Reset To Default" button that resets the active tab back to Overview
 
 FILTERS
 - Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
@@ -4750,15 +4787,22 @@ The Role toggle and Use Case toggle combine to create four states: support_super
 - hide: remove from view
 - emphasize: visually highlight as high-priority
 - deemphasize: visually mute as lower-priority
+State overrides take precedence over base visibility. This means a widget listed as "always visible" can still be hidden in specific states (e.g., Entry channels is always visible by default but hidden for agent roles).
 Some widgets also change their sub-label (scopeLabel) and tooltip text depending on the active state.
+Additionally, widgets marked "Voice channel only" in the widget lists below are only visible when the channel filter is set to Phone. They are hidden by default under "All channels" and only appear when the voice channel is explicitly selected.
+
+VIEW / EDIT MODE
+The prototype has a View/Edit mode toggle in the settings popout. In View mode the dashboard is read-only. In Edit mode users can drag-reorder widgets, resize them, hide them, and manage tabs (create, rename, delete pages). Edit mode is enabled by default.
 
 WIDGET INTERACTIONS
+All drag, resize, and hide interactions below require Edit mode to be enabled.
 - Drag and drop: Widgets can be reordered by dragging the 6-dot handle in the top-left corner.
 - Resize: Widgets can be resized by dragging the corner handle. Snap points show available widths (25%, 33%, 50%, 66%, 75%, 100%).
 - Hide: Widgets (except "always visible" ones) can be hidden via the X button.
 - Tooltips: Hovering the (i) icon shows context-sensitive help text.
 - Drill links: Some widgets have links like "See why" or "Improve this" that navigate to related sections.
 - Expand/collapse: List-type widgets have "Show more" / "Show less" buttons.
+- CSV download: Chart widgets have a download button that exports the chart data as a .csv file.
 
 WIDGET DRAWER (MANAGE WIDGETS SIDEBAR)
 - Opened by clicking "Manage widgets" in the top bar, "+ Add widgets" on an empty tile, or "+ Manage widgets" on a new empty page.
@@ -4776,6 +4820,9 @@ CUSTOM PAGES AND TAB MANAGEMENT
 - Pages can be deleted via the same pencil menu, which shows a "Delete page" button. Deleting a page requires confirmation. At least one page must remain.
 - The five default pages cannot be deleted but can be customised by adding or removing widgets.
 - This allows users to create focused views (e.g., a "My Dashboard" page with selected KPIs from across all sections) without disrupting the standard five-section structure.
+
+GUIDED WALKTHROUGH
+On first visit, a multi-step walkthrough introduces the prototype. It covers the five-section model, how to interact with widgets, how to use filters, and how to switch between view-only and edit modes. The walkthrough can be dismissed and reset from the feature flags popout.
 
 CHART TYPES USED
 - KPI cards: Large number with trend indicator (up/down percentage) and sub-label
@@ -4812,12 +4859,12 @@ OVERVIEW SECTION WIDGETS
 
 UNDERSTAND SECTION WIDGETS
 - Tickets created (line chart, always visible) — Trend over time. De-emphasized for sales supervisors, hidden for sales agents.
-- Entry channels (bar chart, always visible) — Distribution by channel. Tooltip changes for sales roles to reference contacts and pipeline entries.
+- Entry channels (bar chart, always visible) — Distribution by channel. Hidden for agents. Tooltip changes for sales roles to reference contacts and pipeline entries.
 - New vs returning contacts (doughnut chart, default) — 62%/38% split. Emphasized for sales supervisors.
 - Intent clusters (bar chart, default) — Top customer intents by AI classification. Hidden for agents, emphasized for sales supervisors.
 - Intent trends over time (line chart, default) — How intents change. Hidden for agents.
 - Emerging intents (list, hidden) — New or growing intent clusters. Hidden for agents.
-- Unknown/unclassified intents (KPI, default) — Tickets AI could not classify. Hidden for agents.
+- Unknown/unclassified intents (KPI, default) — Tickets AI could not classify. Hidden for agents and sales supervisors.
 - Escalations by intent (bar chart, hidden) — Which intents cause most escalations. Hidden in all states.
 - New leads (stacked bar chart, default) — Leads by channel over 7 days. Hidden for support roles.
 - Deals created (stacked bar chart, default) — Deals created by channel over 7 days. Hidden for support roles.
@@ -4835,8 +4882,9 @@ OPERATE SECTION WIDGETS
 - Reopened tickets (KPI, default) — Tickets reopened after resolution. Hidden in sales. Supervisor: "Reopened this period". Agent: "Your reopened tickets".
 - Workload by agent (table, default) — Per-agent metrics table with 8 agents and 7 columns (Agent, Assigned, First response, Resolution time, Closed, Messages sent, Internal comments). Hidden for agents and sales.
 - SLA compliance (progress bar, default) — Percentage within SLA. Hidden in sales. Supervisor shows 87%, Agent shows 91%.
-- Bottlenecks by status or stage (bar chart, always visible) — Where tickets get stuck. Hidden for agents. Tooltip changes in sales to reference pipeline stages.
+- Ticket counts per status or stage (bar chart, always visible) — Where tickets get stuck. Only visible for support supervisors.
 - Capacity vs demand (line chart, hidden) — Incoming work vs agent capacity. Hidden for agents.
+- Performance by channel (table, default) — Key metrics broken down by channel. Hidden for agents.
 - Sales performance (table, default) — Per-agent table with Leads, Deals, Pipeline value, Revenue, Win rate. Hidden for support roles.
 - Channel × stage matrix (table, default) — Deals by channel across pipeline stages. Hidden for support roles.
 - Time to answer (KPI, default) — Average time before a call is answered. Voice channel only.
@@ -4855,9 +4903,9 @@ IMPROVE SECTION WIDGETS
 - CSAT Breakdown (KPI group, default) — Sentiment breakdown showing thumbs up 30, neutral face 1, thumbs down 2. Hidden in sales. Shown for support agents.
 - Satisfaction score (line chart, default) — CSAT trend over time. Hidden for agents and sales.
 - Surveys received (bar chart, default) — Daily survey count. Hidden for agents and sales.
-- Reopen rate (KPI, default) — Percentage of resolved tickets reopened. Hidden in sales. Supervisor: "Of resolved tickets". Agent: "Of your resolved tickets".
-- Knowledge gaps by intent (bar chart, hidden) — Intents with most knowledge gaps. Shown for support agents with tooltip "Knowledge gaps you encountered most often." Hidden in sales.
-- Suggested knowledge additions (list with actions, default) — AI-suggested articles with Approve/Reject buttons. Three sample items: "How to connect API keys" (from 42 fallback tickets), "Pricing plans overview" (from feedback + escalation data), "Mobile app troubleshooting" (from emerging intent detection). Hidden for agents and sales.
+- Reopen rate (KPI, default) — Percentage of resolved tickets reopened. Shown in all states. Supervisor: "Of resolved tickets". Agent: "Of your resolved tickets".
+- Knowledge gaps by intent (bar chart, hidden) — Intents with most knowledge gaps. Shown for support agents and sales agents with tooltip "Knowledge gaps you encountered most often." Hidden for sales supervisors.
+- Suggested knowledge additions (list with actions, default) — AI-suggested articles with Approve/Reject buttons. Three sample items: "How to connect API keys" (from 42 fallback tickets), "Pricing plans overview" (from feedback + escalation data), "Mobile app troubleshooting" (from emerging intent detection). Hidden for agents.
 - Opportunities backlog (opportunities widget, always visible) — 15 prioritised improvement opportunities with impact (high/medium/low), owner (AI Analysis, Content Team, Support Lead, Automation Team), and status (new/approved). Users can Dismiss or Action each. Actioning opens a modal with AI recommendation, analysis details, estimated impact, and a Confirm button that creates a draft knowledge article. Hidden for agents.
 - First call resolution (KPI, default) — Percentage of calls resolved without follow-up. Voice channel only.
 - Call-to-ticket rate (KPI, default) — Percentage of calls that generate a ticket. Voice channel only.
