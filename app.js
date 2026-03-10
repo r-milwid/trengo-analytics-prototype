@@ -4813,7 +4813,7 @@ NAVIGATION AND LAYOUT
   - Role: Supervisor (default) or Agent — filters content by role perspective
   - Use Case: Resolve (default) or Convert — filters content by use case goal
   - View / Edit mode: Enabled (default) or Disabled — toggles between editable and read-only views
-  - Sub Navigation: a "Reset To Default" button that resets the active tab back to Overview
+  - Reset All: resets the entire prototype to its default state — tabs, widgets, filters, role, and use case
 
 FILTERS
 - Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
@@ -4863,7 +4863,7 @@ CUSTOM PAGES AND TAB MANAGEMENT
 - This allows users to create focused views (e.g., a "My Dashboard" page with selected KPIs from across all sections) without disrupting the standard five-section structure.
 
 GUIDED WALKTHROUGH
-On first visit, a multi-step walkthrough introduces the prototype. It covers the five-section model, how to interact with widgets, how to use filters, and how to switch between view-only and edit modes. The walkthrough can be dismissed and reset from the feature flags popout.
+On first visit, a multi-step walkthrough introduces the prototype. It covers the five-section model, the Prototype Guide, the settings popout (roles, use cases, view/edit mode, and reset), and how to customise widgets in edit mode. The walkthrough can be dismissed and reset from the feature flags popout.
 
 CHART TYPES USED
 - KPI cards: Large number with trend indicator (up/down percentage) and sub-label
@@ -5682,7 +5682,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   const ONBOARDING_KEY = 'trengo_onboarding_done';
   const ONBOARDING_STEPS = [
     {
-      text: 'This prototype explores a new analytics model \u2014 replacing fragmented dashboards with five stable sections, each answering a distinct operational question. Some of the charts and visual details are only illustrative \u2014 the focus is on the overall structure and concepts.',
+      text: 'This prototype explores a new analytics model \u2014 replacing fragmented dashboards with five default sections, each answering a distinct operational question. Some of the charts and visual details are only illustrative \u2014 the focus is on the overall structure and concepts.',
       getTargets: () => [],
       placement: 'center'
     },
@@ -5692,12 +5692,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       placement: 'left-of-panel'
     },
     {
-      text: 'The Analytics navigation answers operational questions: Overview (where to look), Understand (why work enters), Operate (is it flowing), Improve (what changes help), and Automate (what runs without humans).',
+      text: 'The default Analytics navigation answers operational questions: Overview (where to look), Understand (why work enters), Operate (is it flowing), Improve (what changes help), and Automate (what runs without humans). Users can customise to the language and structure they choose.',
       getTargets: () => [document.querySelector('#sub-nav')],
       placement: 'above-subnav'
     },
     {
-      text: 'Use the settings icon to preview how this dashboard appears for different roles and use cases. This will most likely be configuration that Trengo or an admin would set up for users.',
+      text: 'Use the settings icon to preview, edit, and reset the dashboard.',
       getTargets: () => [document.querySelector('#settings-nav')],
       placement: 'right-of-cog'
     },
