@@ -3666,7 +3666,9 @@ function navigate(view) {
     state.currentView = 'analytics';
     document.getElementById('landing-state').style.display = 'none';
     document.getElementById('analytics-page').style.display = 'flex';
-    window.location.hash = '#analytics';
+    if (!window.location.hash.startsWith('#analytics')) {
+      window.location.hash = '#analytics';
+    }
     // After showing, set up observers
     setTimeout(() => {
       teardownSentinels();
