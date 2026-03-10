@@ -3829,10 +3829,12 @@ if (settingsNav && userPopout) {
       userPopout.classList.remove('open');
       setTimeout(() => { userPopout.style.display = 'none'; }, 200);
     } else {
-      // Position popout next to the settings cog
+      // Position popout next to the settings cog, clamped to viewport
       const rect = settingsNav.getBoundingClientRect();
-      userPopout.style.top = rect.top + 'px';
       userPopout.style.display = 'block';
+      const popoutH = userPopout.offsetHeight;
+      const maxTop = window.innerHeight - popoutH - 12;
+      userPopout.style.top = Math.min(rect.top, Math.max(12, maxTop)) + 'px';
       requestAnimationFrame(() => userPopout.classList.add('open'));
     }
 
@@ -3851,6 +3853,16 @@ document.addEventListener('click', (e) => {
     setTimeout(() => { userPopout.style.display = 'none'; }, 200);
   }
 });
+// Reset sub-navigation button
+const resetSubnavBtn = document.getElementById('reset-subnav-btn');
+if (resetSubnavBtn) {
+  resetSubnavBtn.addEventListener('click', () => {
+    history.replaceState(null, '', '#analytics/overview');
+    resetSubnavBtn.textContent = 'Reset to default ✓';
+    setTimeout(() => { location.reload(); }, 800);
+  });
+}
+
 // Reset onboarding button
 const resetOnboardingBtn = document.getElementById('reset-onboarding-btn');
 if (resetOnboardingBtn) {

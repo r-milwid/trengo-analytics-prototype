@@ -1,0 +1,6 @@
+# Claude Code local config (personal settings, not skills)
+.claude/*
+!.claude/skills/
+
+# Optional: ephemeral task tracking (comment out if you want to commit tasks)
+# tasks/todo.md
