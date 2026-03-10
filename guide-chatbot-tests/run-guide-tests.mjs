@@ -881,13 +881,88 @@ function evaluateResponse(cleanText) {
     "sorry, i can't answer that — please ask rowan",
     "sorry, i can't answer that — please ask rowan."
   ]);
+  const sentences = text.split(/[.!?]+/).map(chunk => chunk.trim()).filter(Boolean);
   return {
     empty: text.length === 0,
     fallback: exactFallbacks.has(normalized),
     tooLong: text.split(/\s+/).length > 120,
     hasQuestionBack: text.includes('?'),
-    sentenceCount: text.split(/[.!?]+/).map(chunk => chunk.trim()).filter(Boolean).length
+    sentenceCount: sentences.length,
+    overageQuality: assessOverageQuality(sentences)
   };
+}
+
+function assessOverageQuality(sentences) {
+  if (sentences.length <= 3) {
+    return {
+      classification: 'within_limit',
+      distinctNecessaryIdeaAdded: false,
+      notes: 'Response stayed within the default sentence budget.'
+    };
+  }
+
+  const base = sentences.slice(0, 3).join(' ').toLowerCase();
+  const extras = sentences.slice(3);
+  const tokens = tokenize(base);
+
+  let distinctCount = 0;
+  let elaborativeCount = 0;
+
+  for (const sentence of extras) {
+    const lower = sentence.toLowerCase();
+    const extraTokens = tokenize(lower);
+    const overlap = overlapRatio(extraTokens, tokens);
+    const hasNewConceptCue = /\b(instead|rather than|but|while|whereas|only if|unless|not final|provisional|firm|scope|difference|because|that means)\b/.test(lower);
+    const isExampleLike = /\b(for example|e\.g\.|such as|like|for instance)\b/.test(lower);
+    const isRestatementLike = /\bthis means|in other words|the point is|this keeps|this allows|this is why|either way|all of this)\b/.test(lower);
+
+    if ((overlap < 0.45 && hasNewConceptCue) || (overlap < 0.3 && !isExampleLike && !isRestatementLike)) {
+      distinctCount += 1;
+    } else {
+      elaborativeCount += 1;
+    }
+  }
+
+  if (distinctCount > 0 && elaborativeCount === 0) {
+    return {
+      classification: 'justified_overage',
+      distinctNecessaryIdeaAdded: true,
+      notes: 'Sentence 4+ appears to add a distinct clarifying idea rather than simple elaboration.'
+    };
+  }
+
+  if (distinctCount > 0 && elaborativeCount > 0) {
+    return {
+      classification: 'borderline_overage',
+      distinctNecessaryIdeaAdded: true,
+      notes: 'Sentence 4+ adds some distinct value, but part of the overage looks elaborative.'
+    };
+  }
+
+  return {
+    classification: 'low_value_overage',
+    distinctNecessaryIdeaAdded: false,
+    notes: 'Sentence 4+ looks mostly like elaboration or repetition rather than a necessary new idea.'
+  };
+}
+
+function tokenize(text) {
+  return new Set(
+    text
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .map(token => token.trim())
+      .filter(token => token.length >= 4)
+  );
+}
+
+function overlapRatio(setA, setB) {
+  if (!setA.size || !setB.size) return 0;
+  let shared = 0;
+  for (const token of setA) {
+    if (setB.has(token)) shared += 1;
+  }
+  return shared / Math.max(1, setA.size);
 }
 
 function parseSentinels(text) {
@@ -1165,7 +1240,7 @@ function renderResultsMarkdown(resultBundle) {
     lines.push('');
     lines.push(`Response: ${test.assistant}`);
     lines.push('');
-    lines.push(`Evaluation: fallback=${test.evaluation.fallback}, empty=${test.evaluation.empty}, tooLong=${test.evaluation.tooLong}, questionBack=${test.evaluation.hasQuestionBack}, sentences=${test.evaluation.sentenceCount}`);
+    lines.push(`Evaluation: fallback=${test.evaluation.fallback}, empty=${test.evaluation.empty}, tooLong=${test.evaluation.tooLong}, questionBack=${test.evaluation.hasQuestionBack}, sentences=${test.evaluation.sentenceCount}, overage=${test.evaluation.overageQuality.classification}`);
     lines.push('');
   }
 
@@ -1179,7 +1254,7 @@ function renderResultsMarkdown(resultBundle) {
       lines.push('');
       lines.push(`Turn ${turn.turn} response: ${turn.assistant}`);
       lines.push('');
-      lines.push(`Turn ${turn.turn} evaluation: fallback=${turn.evaluation.fallback}, empty=${turn.evaluation.empty}, tooLong=${turn.evaluation.tooLong}, questionBack=${turn.evaluation.hasQuestionBack}, sentences=${turn.evaluation.sentenceCount}`);
+      lines.push(`Turn ${turn.turn} evaluation: fallback=${turn.evaluation.fallback}, empty=${turn.evaluation.empty}, tooLong=${turn.evaluation.tooLong}, questionBack=${turn.evaluation.hasQuestionBack}, sentences=${turn.evaluation.sentenceCount}, overage=${turn.evaluation.overageQuality.classification}`);
       lines.push('');
     }
   }
