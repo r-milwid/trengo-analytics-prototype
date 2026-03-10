@@ -165,12 +165,53 @@ function buildDefaultTabWidgets() {
   return tabWidgets;
 }
 
-function resetSubnavStateToDefaults() {
+function buildDefaultTeamUsecases() {
+  const defaults = {};
+  TEAMS_DATA.forEach(team => {
+    defaults[team.name] = team.name === 'Sales team' ? 'convert' : 'resolve';
+  });
+  return defaults;
+}
+
+function resetPrototypeStateToDefaults() {
+  // Keep walkthrough completion intact; Reset All should not re-open onboarding.
+  localStorage.removeItem(FEATURE_FLAGS_KEY);
   state.tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
   state.tabWidgets = buildDefaultTabWidgets();
+  state.lens = 'support';
+  state.role = 'supervisor';
+  state.navMode = 'tabs';
+  state.dateFilter = 'Last 30 days';
+  state.channelFilter = new Set();
+  state.teamFilter = 'All teams';
+  state.teamUsecases = buildDefaultTeamUsecases();
+  state.opportunityStates = {};
+  state.chartViewMode = {};
+  state.barFilter = { widgetId: null, sectionId: null, selectedIndices: new Set() };
+  state.hiddenWidgets = new Set();
+  state.addedWidgets = new Set();
   state.sectionOrder = {};
   state.sectionLayout = {};
+  state.widgetSpans = {};
+  state.loadedSections = new Set();
+  state.pendingLoads = {};
+  state.instantLoadSections = new Set();
   state.activeSection = 'overview';
+  if (state.expandedWidgets) state.expandedWidgets = new Set();
+
+  document.body.dataset.role = state.role;
+  document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.role === state.role);
+  });
+  syncLensButtons();
+
+  document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.editmode === 'enabled');
+  });
+  if (viewEditToggleBtn) {
+    viewEditToggleBtn.style.display = '';
+    setViewEditMode('edit');
+  }
 }
 
 // ── CONFIG CONFLICT HANDLER ──────────────────────────────────
@@ -3882,7 +3923,7 @@ if (resetSubnavBtn) {
     resetSubnavBtn.disabled = true;
     resetSubnavBtn.textContent = 'Resetting…';
 
-    resetSubnavStateToDefaults();
+    resetPrototypeStateToDefaults();
     history.replaceState(null, '', '#analytics/overview');
 
     const userId = localStorage.getItem('trengo_session_user_name');
