@@ -5763,15 +5763,15 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       [...state.loadedSections].forEach(s => remountSection(s));
 
       localStorage.setItem(ES_KEY, 'true');
-      closeEasySetup();
+      closeEasySetup(true);
     }
 
     function skipSetup() {
       localStorage.setItem(ES_KEY, 'true');
-      closeEasySetup();
+      closeEasySetup(false);
     }
 
-    function closeEasySetup() {
+    function closeEasySetup(startWalkthrough) {
       const overlay = document.getElementById('easy-setup-overlay');
       if (!overlay) return;
       overlay.style.opacity = '0';
@@ -5780,6 +5780,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         overlay.style.display = 'none';
         overlay.style.opacity = '';
         overlay.style.transition = '';
+        if (startWalkthrough && window.triggerWalkthrough) window.triggerWalkthrough();
       }, 300);
     }
 
@@ -6179,6 +6180,13 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     clearTimeout(onboardingResizeTimer);
     onboardingResizeTimer = setTimeout(() => positionStep(onboardingStep), 100);
   });
+
+  window.triggerWalkthrough = function() {
+    localStorage.removeItem(ONBOARDING_KEY);
+    const overviewContent = document.querySelector('.section-content[data-section="overview"]');
+    if (overviewContent && !overviewContent.classList.contains('loaded')) mountSection('overview');
+    setTimeout(showOnboarding, 300);
+  };
 
   initOnboarding();
 })();
