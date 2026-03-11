@@ -1,0 +1,22 @@
+{
+  "customers": [
+    {
+      "id": "northstar-health",
+      "company": "Northstar Health",
+      "industry": "Healthcare SaaS",
+      "file": "northstar-health.json"
+    },
+    {
+      "id": "luma-commerce",
+      "company": "Luma Commerce",
+      "industry": "E-commerce",
+      "file": "luma-commerce.json"
+    },
+    {
+      "id": "orbit-mobility",
+      "company": "Orbit Mobility",
+      "industry": "Logistics & Mobility",
+      "file": "orbit-mobility.json"
+    }
+  ]
+}

@@ -211,7 +211,110 @@ export default {
       }
     }
 
-    // ── POST / — chat proxy ───────────────────────────────────
+    // ── POST /onboarding/chat — Sonnet proxy with tool_use ────
+    if (path === '/onboarding/chat' && request.method === 'POST') {
+      try {
+        const { system, messages, tools } = await request.json();
+        const body = {
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          system,
+          messages,
+        };
+        if (tools && tools.length > 0) body.tools = tools;
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        return json(data);
+      } catch (e) {
+        return json({ error: 'proxy error', message: e.message }, 500);
+      }
+    }
+
+    // ── GET /profile/:userId — read customer profile ─────────
+    if (path.startsWith('/profile/') && request.method === 'GET') {
+      const userId = decodeURIComponent(path.split('/profile/')[1]);
+      if (!userId) return json({ error: 'missing userId' }, 400);
+      try {
+        const profile = await env.CUSTOMER_PROFILES.get(userId, 'json');
+        if (!profile) return json({ error: 'not found' }, 404);
+        return new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...CORS },
+        });
+      } catch (e) {
+        return json({ error: 'kv error' }, 500);
+      }
+    }
+
+    // ── PUT /profile/:userId — write customer profile ────────
+    if (path.startsWith('/profile/') && request.method === 'PUT') {
+      const userId = decodeURIComponent(path.split('/profile/')[1]);
+      if (!userId) return json({ error: 'missing userId' }, 400);
+      try {
+        const profile = await request.json();
+        profile.updatedAt = new Date().toISOString();
+        if (!profile.createdAt) profile.createdAt = profile.updatedAt;
+        await env.CUSTOMER_PROFILES.put(userId, JSON.stringify(profile));
+        return json({ ok: true });
+      } catch (e) {
+        return json({ error: 'kv error', message: e.message }, 500);
+      }
+    }
+
+    // ── POST /extract-url — fetch URL and extract text ───────
+    if (path === '/extract-url' && request.method === 'POST') {
+      try {
+        const { url } = await request.json();
+        if (!url) return json({ error: 'missing url' }, 400);
+
+        const response = await fetch(url, {
+          headers: { 'User-Agent': 'TrengoAnalyticsBot/1.0' },
+          redirect: 'follow',
+        });
+        if (!response.ok) {
+          return json({ error: 'fetch failed', status: response.status }, 502);
+        }
+
+        const html = await response.text();
+
+        // Extract title
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+
+        // Strip HTML to plain text
+        let text = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')  // remove scripts
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')    // remove styles
+          .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')        // remove nav
+          .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')  // remove header
+          .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')  // remove footer
+          .replace(/<[^>]+>/g, ' ')                           // strip remaining tags
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&#?\w+;/g, ' ')                           // remaining entities
+          .replace(/\s+/g, ' ')                               // collapse whitespace
+          .trim();
+
+        // Truncate to ~50k chars
+        if (text.length > 50000) text = text.substring(0, 50000) + '... [truncated]';
+
+        return json({ text, title, url });
+      } catch (e) {
+        return json({ error: 'extraction failed', message: e.message }, 500);
+      }
+    }
+
+    // ── POST / — chat proxy (Prototype Guide — Haiku) ────────
     if (path === '/' && request.method === 'POST') {
       const { system, messages } = await request.json();
       const response = await fetch('https://api.anthropic.com/v1/messages', {

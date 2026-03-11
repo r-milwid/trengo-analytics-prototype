@@ -1,0 +1,31 @@
+{
+  "id": "northstar-health",
+  "company": "Northstar Health",
+  "industry": "Healthcare SaaS",
+  "productSummary": "Patient engagement platform for clinics, hospitals, and specialty practices. Handles appointment scheduling, patient communication, and care coordination across multiple channels.",
+  "website": "https://www.northstarhealth.io",
+  "helpCenterUrl": "https://help.northstarhealth.io",
+  "knownTeams": [
+    { "name": "Patient Support", "likelyFocus": "resolve", "size": 12, "description": "Handles patient inquiries, appointment issues, and billing questions" },
+    { "name": "Sales", "likelyFocus": "convert", "size": 6, "description": "Inbound demo requests and outbound outreach to clinics" },
+    { "name": "Onboarding", "likelyFocus": "resolve", "size": 4, "description": "Guides new clinic partners through platform setup and training" },
+    { "name": "Enterprise CS", "likelyFocus": "resolve", "size": 3, "description": "Dedicated support for hospital network accounts" }
+  ],
+  "channels": ["email", "whatsapp", "live-chat", "voice", "sms"],
+  "plan": "Scale",
+  "estimatedAgents": 25,
+  "terminologyHints": {
+    "customer": "patient",
+    "ticket": "case",
+    "deal": "partnership",
+    "agent": "care coordinator",
+    "resolution": "case closure"
+  },
+  "currentSetup": {
+    "primaryUseCase": "Patient communication and support triage",
+    "busiestChannels": ["whatsapp", "voice"],
+    "avgMonthlyConversations": 8500,
+    "topPainPoints": ["Long first-response times on weekends", "Difficulty tracking escalated cases across teams"]
+  },
+  "suggestedPreviewContext": "Focus on patient case resolution metrics, cross-team escalation tracking, and first-response time optimization."
+}

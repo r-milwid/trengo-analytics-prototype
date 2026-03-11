@@ -9,3 +9,7 @@ id = "82f267d0c51648f4a67f59d141317412"
 [[kv_namespaces]]
 binding = "DASHBOARD_CONFIG"
 id = "423fe18d5b34407db60c162229bc336c"
+
+[[kv_namespaces]]
+binding = "CUSTOMER_PROFILES"
+id = "0c1e49948295435fac162f47ec0e6ec4"

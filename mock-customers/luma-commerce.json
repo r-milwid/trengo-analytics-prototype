@@ -1,0 +1,31 @@
+{
+  "id": "luma-commerce",
+  "company": "Luma Commerce",
+  "industry": "E-commerce",
+  "productSummary": "Premium home goods and lifestyle brand selling direct-to-consumer across Europe. Operates both online store and wholesale B2B channel.",
+  "website": "https://www.lumacommerce.eu",
+  "helpCenterUrl": "https://support.lumacommerce.eu",
+  "knownTeams": [
+    { "name": "Customer Care", "likelyFocus": "resolve", "size": 18, "description": "Handles order inquiries, returns, shipping issues, and product questions" },
+    { "name": "Sales & Partnerships", "likelyFocus": "convert", "size": 8, "description": "B2B wholesale inquiries, retail partnerships, and bulk orders" },
+    { "name": "VIP Support", "likelyFocus": "resolve", "size": 3, "description": "Dedicated support for loyalty program members and high-value customers" },
+    { "name": "Social Commerce", "likelyFocus": "convert", "size": 5, "description": "Manages Instagram, Facebook, and WhatsApp shopping conversations" }
+  ],
+  "channels": ["email", "whatsapp", "instagram", "facebook-messenger", "live-chat"],
+  "plan": "Enterprise",
+  "estimatedAgents": 34,
+  "terminologyHints": {
+    "customer": "customer",
+    "ticket": "inquiry",
+    "deal": "order",
+    "agent": "advisor",
+    "resolution": "resolution"
+  },
+  "currentSetup": {
+    "primaryUseCase": "Omnichannel customer support with social commerce conversion",
+    "busiestChannels": ["email", "whatsapp", "instagram"],
+    "avgMonthlyConversations": 15200,
+    "topPainPoints": ["Social channels have low conversion tracking", "B2B and B2C inquiries mixed in same queues"]
+  },
+  "suggestedPreviewContext": "Focus on channel-level performance, conversion tracking across social commerce, and separating B2B from B2C support metrics."
+}

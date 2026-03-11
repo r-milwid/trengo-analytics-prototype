@@ -166,6 +166,88 @@
       <!-- Scrollable sections — rendered dynamically by renderSections() -->
       <div class="analytics-sections" id="analytics-sections"></div>
     </div>
+
+    <!-- AI Setup Onboarding (covers analytics content area, not sidebar) -->
+    <div class="ai-setup-overlay" id="ai-setup-overlay" style="display:none;">
+
+      <!-- State 1: Meta-start (customer + role selection) -->
+      <div class="ai-setup-meta" id="ai-setup-meta">
+        <div class="ai-setup-meta-card">
+          <!-- Step A: Customer selection -->
+          <div class="ai-setup-meta-step" id="ai-setup-customer-step">
+            <h2>Select a customer profile</h2>
+            <p class="ai-setup-meta-subtitle">For prototype testing — choose a mock customer to simulate pre-existing data.</p>
+            <div class="ai-setup-customer-grid" id="ai-setup-customer-grid">
+              <!-- Populated by JS from mock-customers/index.json -->
+            </div>
+          </div>
+          <!-- Step B: Role selection -->
+          <div class="ai-setup-meta-step" id="ai-setup-role-step" style="display:none;">
+            <h2>Who would you like to impersonate?</h2>
+            <p class="ai-setup-meta-subtitle">This is a prototype feature — in the real product, the role would be detected automatically.</p>
+            <div class="ai-setup-role-grid">
+              <button class="ai-setup-role-card" data-role="admin">
+                <div class="ai-setup-role-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </div>
+                <div class="ai-setup-role-label">Admin</div>
+                <div class="ai-setup-role-desc">Configuring for the entire company</div>
+              </button>
+              <button class="ai-setup-role-card" data-role="supervisor">
+                <div class="ai-setup-role-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div class="ai-setup-role-label">Supervisor</div>
+                <div class="ai-setup-role-desc">Configuring for yourself and your team</div>
+              </button>
+              <button class="ai-setup-role-card" data-role="agent">
+                <div class="ai-setup-role-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <div class="ai-setup-role-label">Agent</div>
+                <div class="ai-setup-role-desc">Configuring for yourself</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- State 2: Chat + preview split -->
+      <div class="ai-setup-split" id="ai-setup-split" style="display:none;">
+        <!-- Left: Chat -->
+        <div class="ai-setup-chat">
+          <div class="ai-setup-chat-header">
+            <h3>Set up your analytics</h3>
+            <button class="ai-setup-skip-btn" id="ai-setup-skip-btn">Skip setup</button>
+          </div>
+          <div class="ai-setup-messages" id="ai-setup-messages">
+            <!-- Chat bubbles, option cards, source inputs rendered here -->
+          </div>
+          <div class="ai-setup-input-bar">
+            <textarea class="ai-setup-input" id="ai-setup-input" rows="1" placeholder="Type your answer..."></textarea>
+            <button class="ai-setup-send" id="ai-setup-send" aria-label="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- Right: Preview -->
+        <div class="ai-setup-preview">
+          <div class="ai-setup-preview-header">
+            <span class="ai-setup-preview-label">Dashboard Preview</span>
+            <span class="ai-setup-preview-role" id="ai-setup-preview-role"></span>
+          </div>
+          <div class="ai-setup-preview-content" id="ai-setup-preview-content">
+            <!-- Simplified tab bar + widget cards rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <!-- ═══════════════════════════════════════════════════════════
@@ -330,96 +412,23 @@
     </div>
   </div>
 
-  <!-- Easy Setup Onboarding Modal -->
-  <div class="modal-overlay" id="easy-setup-overlay" style="display:none;">
-    <div class="easy-setup-modal" id="easy-setup-modal">
-      <div class="easy-setup-steps" id="easy-setup-steps">
-
-        <!-- STEP 1: Choose Your Focus -->
-        <div class="easy-setup-step" data-step="focus" id="es-step-focus">
-          <div class="easy-setup-header">
-            <h3>Choose your focus</h3>
-            <p class="modal-subtitle">How does your team primarily use Trengo?</p>
-          </div>
-          <div class="easy-setup-body">
-            <div class="es-focus-cards" id="es-focus-cards">
-              <button class="es-focus-card" data-focus="resolve">
-                <div class="es-focus-icon es-focus-icon-resolve">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                </div>
-                <div class="es-focus-text">
-                  <div class="es-focus-label">Resolve</div>
-                  <div class="es-focus-desc">Customer support &amp; service</div>
-                </div>
-              </button>
-              <button class="es-focus-card" data-focus="convert">
-                <div class="es-focus-icon es-focus-icon-convert">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                    <polyline points="17 6 23 6 23 12"/>
-                  </svg>
-                </div>
-                <div class="es-focus-text">
-                  <div class="es-focus-label">Convert</div>
-                  <div class="es-focus-desc">Sales &amp; revenue growth</div>
-                </div>
-              </button>
-              <button class="es-focus-card" data-focus="both">
-                <div class="es-focus-icon es-focus-icon-both">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="2" y1="12" x2="22" y2="12"/>
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                  </svg>
-                </div>
-                <div class="es-focus-text">
-                  <div class="es-focus-label">Both</div>
-                  <div class="es-focus-desc">Support and sales teams</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- STEP 2: Team Assignments (only shown if "Both") -->
-        <div class="easy-setup-step" data-step="teams" id="es-step-teams" style="display:none;">
-          <div class="easy-setup-header">
-            <h3>Assign team focus</h3>
-            <p class="modal-subtitle">Set each team's primary focus to personalise their analytics view.</p>
-          </div>
-          <div class="easy-setup-body">
-            <div class="es-team-list" id="es-team-list">
-              <!-- Populated by JS from TEAMS_DATA -->
-            </div>
-          </div>
-        </div>
-
-        <!-- STEP 3: Default Pages -->
-        <div class="easy-setup-step" data-step="pages" id="es-step-pages" style="display:none;">
-          <div class="easy-setup-header">
-            <h3>Your default pages</h3>
-            <p class="modal-subtitle">Analytics comes with five pages. You can rename, remove, or add pages later.</p>
-          </div>
-          <div class="easy-setup-body">
-            <div class="es-pages-list" id="es-pages-list">
-              <!-- Populated by JS from DEFAULT_TABS -->
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div class="easy-setup-footer" id="easy-setup-footer">
-        <div class="es-dots" id="es-dots"></div>
-        <div class="es-footer-actions">
-          <button class="es-skip-btn" id="es-skip-btn">Skip</button>
-          <button class="es-back-btn" id="es-back-btn" style="display:none;">Back</button>
-          <button class="es-next-btn" id="es-next-btn" disabled>Continue</button>
-        </div>
-      </div>
+  <!-- Post-onboarding Assistant FAB + Panel -->
+  <button class="assistant-fab" id="assistant-fab" style="display:none;" aria-label="Analytics Assistant">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l2.2 6.2h6.6l-5.3 3.8 2.1 6.2L12 15.5 6.4 19.2l2.1-6.2L3.2 9.2h6.6z"/>
+    </svg>
+  </button>
+  <div class="assistant-panel" id="assistant-panel" style="display:none;">
+    <div class="assistant-panel-header">
+      <span class="assistant-panel-title">Analytics Assistant</span>
+      <button class="assistant-panel-close" id="assistant-panel-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="assistant-panel-messages" id="assistant-panel-messages"></div>
+    <div class="assistant-panel-input-bar">
+      <textarea class="assistant-panel-input" id="assistant-panel-input" rows="1" placeholder="Ask anything..."></textarea>
+      <button class="assistant-panel-send" id="assistant-panel-send" aria-label="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
     </div>
   </div>
 
@@ -464,7 +473,8 @@
     <button class="user-popout-close" id="flag-popout-close">&times;</button>
     <div class="user-popout-title">Feature flags</div>
     <div class="user-popout-section" id="flag-list"></div>
-    <button class="reset-onboarding-btn" id="reset-onboarding-btn">Reset Walkthrough</button>
+    <div class="popout-toggle-header" style="margin-top:12px;">Walkthrough &amp; Onboarding</div>
+    <button class="reset-onboarding-btn" id="reset-onboarding-btn">Reset all</button>
   </div>
 
   <!-- Nav scope toast -->
@@ -484,9 +494,15 @@
     <div class="onboarding-steps" id="onboarding-steps"></div>
   </div>
 
+  <!-- Source processing libs (loaded on demand by admin-assistant.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
   <script src="profile.js"></script>
   <script src="widget-catalog.js"></script>
   <script src="dashboard-config.js"></script>
+  <script src="assistant-storage.js"></script>
+  <script src="admin-assistant.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

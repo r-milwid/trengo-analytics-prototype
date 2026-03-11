@@ -1,0 +1,31 @@
+{
+  "id": "orbit-mobility",
+  "company": "Orbit Mobility",
+  "industry": "Logistics & Mobility",
+  "productSummary": "Urban mobility platform offering shared e-bikes, e-scooters, and last-mile delivery services across 12 European cities. Both consumer app and B2B fleet management.",
+  "website": "https://www.orbitmobility.com",
+  "helpCenterUrl": "https://help.orbitmobility.com",
+  "knownTeams": [
+    { "name": "Rider Support", "likelyFocus": "resolve", "size": 22, "description": "App issues, payment disputes, damaged vehicles, safety incidents" },
+    { "name": "Fleet Operations", "likelyFocus": "resolve", "size": 6, "description": "Coordinates with maintenance, city ops, and reports on vehicle availability" },
+    { "name": "B2B Sales", "likelyFocus": "convert", "size": 5, "description": "Corporate fleet deals, city partnerships, and delivery service contracts" },
+    { "name": "City Expansion", "likelyFocus": "convert", "size": 3, "description": "New market launches, regulatory applications, and local partner outreach" }
+  ],
+  "channels": ["email", "whatsapp", "live-chat", "voice"],
+  "plan": "Scale",
+  "estimatedAgents": 36,
+  "terminologyHints": {
+    "customer": "rider",
+    "ticket": "issue",
+    "deal": "contract",
+    "agent": "support specialist",
+    "resolution": "issue resolved"
+  },
+  "currentSetup": {
+    "primaryUseCase": "High-volume rider support with fast resolution SLAs",
+    "busiestChannels": ["live-chat", "whatsapp"],
+    "avgMonthlyConversations": 28000,
+    "topPainPoints": ["SLA compliance drops during peak hours", "No visibility into which cities need more support capacity"]
+  },
+  "suggestedPreviewContext": "Focus on SLA compliance, capacity planning by city/team, first-response time during peak hours, and B2B pipeline tracking."
+}
