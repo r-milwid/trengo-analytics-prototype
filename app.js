@@ -73,6 +73,7 @@ const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
   { id: 'team-usecases',   label: 'Team specific usecases',  desc: 'Assign Convert or Resolve usecases per team from a display settings button next to the team filter' },
+  { id: 'easy-setup',      label: 'Easy setup onboarding',   desc: 'Show a guided setup modal on first visit to choose focus and configure teams' },
 ];
 
 function isFeatureEnabled(id) {
@@ -3946,6 +3947,7 @@ const resetOnboardingBtn = document.getElementById('reset-onboarding-btn');
 if (resetOnboardingBtn) {
   resetOnboardingBtn.addEventListener('click', () => {
     localStorage.removeItem('trengo_onboarding_done');
+    localStorage.removeItem('trengo_easy_setup_done');
     resetOnboardingBtn.textContent = 'Walkthrough reset ✓';
     setTimeout(() => { location.reload(); }, 800);
   });
@@ -3986,6 +3988,9 @@ function renderFlagList() {
       }
       if (cb.dataset.flag === 'team-usecases') {
         applyTeamSettingsFlag();
+      }
+      if (cb.dataset.flag === 'easy-setup' && cb.checked) {
+        localStorage.removeItem('trengo_easy_setup_done');
       }
     });
   });
@@ -5599,6 +5604,242 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   // Expose event tracker for click handlers outside this IIFE
   window.sendEvent = sendEvent;
 
+  // ── EASY SETUP ONBOARDING ────────────────────────────────────
+  (function easySetupModule() {
+    const ES_KEY = 'trengo_easy_setup_done';
+
+    let selectedFocus = null;      // 'resolve' | 'convert' | 'both'
+    let teamAssignments = {};      // { teamName: 'convert' | 'resolve' }
+    let currentStepIndex = 0;
+    let steps = [];                // computed based on selectedFocus
+
+    const PAGE_DESCRIPTIONS = {
+      overview:   'High-level snapshot of your key metrics',
+      understand: 'Why work enters and where it comes from',
+      operate:    'Is work flowing or getting stuck',
+      improve:    'What changes will help the most',
+      automate:   'What can run without human involvement',
+    };
+
+    // ── Step computation ─────────────────────────────────────
+    function computeSteps() {
+      steps = ['focus'];
+      if (selectedFocus === 'both') steps.push('teams');
+      steps.push('pages');
+    }
+
+    // ── Render: team list ────────────────────────────────────
+    function renderTeamsList() {
+      const container = document.getElementById('es-team-list');
+      if (!container) return;
+
+      TEAMS_DATA.forEach(team => {
+        if (!teamAssignments[team.name]) {
+          teamAssignments[team.name] = team.name === 'Sales team' ? 'convert' : 'resolve';
+        }
+      });
+
+      container.innerHTML = TEAMS_DATA.map(team => {
+        const cur = teamAssignments[team.name];
+        return `<div class="es-team-row" data-team="${team.name}">
+          <span class="es-team-name">${team.name}</span>
+          <div class="usecase-toggle">
+            <button class="usecase-btn${cur === 'convert' ? ' active' : ''}" data-usecase="convert">Convert</button>
+            <button class="usecase-btn${cur === 'resolve' ? ' active' : ''}" data-usecase="resolve">Resolve</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      container.querySelectorAll('.usecase-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.classList.contains('active')) return;
+          const row = btn.closest('.es-team-row');
+          row.querySelectorAll('.usecase-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          teamAssignments[row.dataset.team] = btn.dataset.usecase;
+        });
+      });
+    }
+
+    // ── Render: pages list ───────────────────────────────────
+    function renderPagesList() {
+      const container = document.getElementById('es-pages-list');
+      if (!container) return;
+
+      container.innerHTML = DEFAULT_TABS.map((tab, i) => {
+        const desc = PAGE_DESCRIPTIONS[tab.id] || '';
+        return `<div class="es-page-item">
+          <div class="es-page-number">${i + 1}</div>
+          <div class="es-page-info">
+            <div class="es-page-name">${tab.label}</div>
+            <div class="es-page-desc">${desc}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Dots & footer ────────────────────────────────────────
+    function updateDots() {
+      const dotsEl = document.getElementById('es-dots');
+      if (!dotsEl) return;
+      dotsEl.innerHTML = steps.map((_, i) => {
+        let cls = 'es-dot';
+        if (i === currentStepIndex) cls += ' active';
+        else if (i < currentStepIndex) cls += ' completed';
+        return `<div class="${cls}"></div>`;
+      }).join('');
+    }
+
+    function updateFooterButtons() {
+      const backBtn = document.getElementById('es-back-btn');
+      const nextBtn = document.getElementById('es-next-btn');
+      const skipBtn = document.getElementById('es-skip-btn');
+      if (!backBtn || !nextBtn || !skipBtn) return;
+
+      backBtn.style.display = currentStepIndex > 0 ? '' : 'none';
+      skipBtn.style.display = currentStepIndex === 0 ? '' : 'none';
+
+      const isLast = currentStepIndex === steps.length - 1;
+      nextBtn.textContent = isLast ? 'Get started' : 'Continue';
+
+      nextBtn.disabled = steps[currentStepIndex] === 'focus' && !selectedFocus;
+    }
+
+    // ── Step transitions ─────────────────────────────────────
+    function showCurrentStep() {
+      const stepName = steps[currentStepIndex];
+
+      document.querySelectorAll('.easy-setup-step').forEach(el => { el.style.display = 'none'; });
+
+      const stepEl = document.getElementById('es-step-' + stepName);
+      if (stepEl) {
+        stepEl.style.display = '';
+        stepEl.style.animation = 'none';
+        void stepEl.offsetWidth;
+        stepEl.style.animation = '';
+      }
+
+      if (stepName === 'teams') renderTeamsList();
+      if (stepName === 'pages') renderPagesList();
+
+      updateDots();
+      updateFooterButtons();
+    }
+
+    function goNext() {
+      if (steps[currentStepIndex] === 'focus' && !selectedFocus) return;
+
+      if (steps[currentStepIndex] === 'focus') computeSteps();
+
+      currentStepIndex++;
+      if (currentStepIndex >= steps.length) { applyAndClose(); return; }
+      showCurrentStep();
+    }
+
+    function goBack() {
+      if (currentStepIndex <= 0) return;
+      currentStepIndex--;
+      showCurrentStep();
+    }
+
+    // ── Apply & close ────────────────────────────────────────
+    function applyAndClose() {
+      if (selectedFocus === 'resolve') {
+        TEAMS_DATA.forEach(t => { state.teamUsecases[t.name] = 'resolve'; });
+        state.lens = 'support';
+      } else if (selectedFocus === 'convert') {
+        TEAMS_DATA.forEach(t => { state.teamUsecases[t.name] = 'convert'; });
+        state.lens = 'sales';
+      } else if (selectedFocus === 'both') {
+        for (const [name, uc] of Object.entries(teamAssignments)) {
+          state.teamUsecases[name] = uc;
+        }
+        setFeatureFlag('team-usecases', true);
+        applyTeamSettingsFlag();
+      }
+
+      DashboardConfig.notifyChanged();
+      syncLensButtons();
+      [...state.loadedSections].forEach(s => remountSection(s));
+
+      localStorage.setItem(ES_KEY, 'true');
+      closeEasySetup();
+    }
+
+    function skipSetup() {
+      localStorage.setItem(ES_KEY, 'true');
+      closeEasySetup();
+    }
+
+    function closeEasySetup() {
+      const overlay = document.getElementById('easy-setup-overlay');
+      if (!overlay) return;
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.style.opacity = '';
+        overlay.style.transition = '';
+      }, 300);
+    }
+
+    // ── Focus card selection ─────────────────────────────────
+    function initFocusCards() {
+      document.querySelectorAll('.es-focus-card').forEach(card => {
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.es-focus-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedFocus = card.dataset.focus;
+          computeSteps();
+          updateFooterButtons();
+        });
+      });
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+    function openEasySetup() {
+      selectedFocus = null;
+      teamAssignments = {};
+      currentStepIndex = 0;
+      steps = ['focus', 'pages'];
+
+      document.querySelectorAll('.es-focus-card').forEach(c => c.classList.remove('selected'));
+
+      const overlay = document.getElementById('easy-setup-overlay');
+      if (overlay) overlay.style.display = 'flex';
+
+      showCurrentStep();
+    }
+
+    function initEasySetup() {
+      if (!isFeatureEnabled('easy-setup')) return;
+      if (localStorage.getItem(ES_KEY)) return;
+
+      const waitForReady = () => {
+        const analyticsPage = document.getElementById('analytics-page');
+        if (analyticsPage && analyticsPage.style.display !== 'none') {
+          setTimeout(openEasySetup, 200);
+        } else {
+          setTimeout(waitForReady, 200);
+        }
+      };
+      setTimeout(waitForReady, 300);
+    }
+
+    initFocusCards();
+    document.getElementById('es-next-btn')?.addEventListener('click', goNext);
+    document.getElementById('es-back-btn')?.addEventListener('click', goBack);
+    document.getElementById('es-skip-btn')?.addEventListener('click', skipSetup);
+
+    document.getElementById('easy-setup-overlay')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('easy-setup-overlay')) skipSetup();
+    });
+
+    window.resetEasySetup = () => localStorage.removeItem(ES_KEY);
+
+    initEasySetup();
+  })();
+
   // ── ONBOARDING OVERLAY ──────────────────────────────────────
   const ONBOARDING_KEY = 'trengo_onboarding_done';
   const ONBOARDING_STEPS = [
@@ -5908,8 +6149,13 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   function initOnboarding() {
     if (localStorage.getItem(ONBOARDING_KEY)) return;
 
-    // Wait for analytics page to be visible, then show onboarding
+    // Wait for analytics page to be visible (and easy-setup dismissed), then show onboarding
     const waitForReady = () => {
+      const easySetup = document.getElementById('easy-setup-overlay');
+      if (easySetup && easySetup.style.display !== 'none') {
+        setTimeout(waitForReady, 500);
+        return;
+      }
       const analyticsPage = document.getElementById('analytics-page');
       if (analyticsPage && analyticsPage.style.display !== 'none') {
         // Force mount overview section if not loaded (needed for step 4 widget X target)

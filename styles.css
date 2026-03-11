@@ -2676,6 +2676,296 @@ body[data-role="agent"] .sub-nav-actions { display: none !important; }
   pointer-events: none;
 }
 
+/* ============================================================
+   EASY SETUP ONBOARDING MODAL
+   ============================================================ */
+.easy-setup-modal {
+  background: var(--white);
+  border-radius: 24px;
+  width: 480px;
+  height: 640px;
+  max-width: 95vw;
+  max-height: 90vh;
+  box-shadow: 0 25px 50px rgba(0,0,0,.15), 0 8px 20px rgba(0,0,0,.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: esModalIn 0.3s ease;
+}
+
+@keyframes esModalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.easy-setup-steps {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
+
+.easy-setup-step {
+  padding: 36px 32px 24px;
+  animation: esStepIn 0.3s ease;
+}
+
+@keyframes esStepIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.easy-setup-header {
+  margin-bottom: 28px;
+}
+
+.easy-setup-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 6px;
+}
+
+.easy-setup-header .modal-subtitle {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.easy-setup-body {
+  flex: 1;
+}
+
+/* ── Step 1: Focus Cards ──────────────────────────────────── */
+.es-focus-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.es-focus-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  text-align: left;
+  font-family: var(--font);
+}
+
+.es-focus-card:hover {
+  border-color: var(--gray-300);
+  background: var(--gray-50);
+}
+
+.es-focus-card.selected {
+  border-color: var(--gray-900);
+  background: var(--gray-50);
+  box-shadow: 0 0 0 1px var(--gray-900);
+}
+
+.es-focus-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.es-focus-icon-resolve { background: #ecfdf5; color: #1e8a57; }
+.es-focus-icon-convert { background: #eff6ff; color: #3b6fd4; }
+.es-focus-icon-both    { background: #f5f3ff; color: var(--purple); }
+
+.es-focus-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.es-focus-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.es-focus-desc {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+/* ── Step 2: Team List (compact) ─────────────────────────── */
+.es-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.es-team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.es-team-row:last-child {
+  border-bottom: none;
+}
+
+.es-team-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+/* ── Step 3: Pages List ──────────────────────────────────── */
+.es-pages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.es-page-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.es-page-item:last-child {
+  border-bottom: none;
+}
+
+.es-page-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.es-page-info {
+  flex: 1;
+}
+
+.es-page-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.es-page-desc {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+.easy-setup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.es-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.es-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  transition: background 0.2s;
+}
+
+.es-dot.active    { background: var(--gray-700); }
+.es-dot.completed { background: var(--gray-400); }
+
+.es-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.es-skip-btn {
+  height: 40px;
+  padding: 0 18px;
+  background: none;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.es-skip-btn:hover {
+  background: var(--gray-50);
+  color: var(--gray-700);
+  border-color: var(--gray-300);
+}
+
+.es-back-btn {
+  height: 40px;
+  padding: 0 18px;
+  background: none;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.es-back-btn:hover {
+  background: var(--gray-50);
+}
+
+.es-next-btn {
+  height: 40px;
+  padding: 0 24px;
+  background: var(--gray-900);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.es-next-btn:hover {
+  background: var(--gray-700);
+}
+
+.es-next-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 
 /* ── Sales Pipeline Funnel ─────────────────────────────────── */
 .funnel-container {
