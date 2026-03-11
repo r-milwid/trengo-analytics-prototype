@@ -73,13 +73,16 @@ const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
   { id: 'team-usecases',   label: 'Team specific usecases',  desc: 'Assign Convert or Resolve usecases per team from a display settings button next to the team filter' },
-  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation' },
+  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: true },
 ];
 
 function isFeatureEnabled(id) {
   try {
     const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
-    return flags[id] === true;
+    if (id in flags) return flags[id] === true;
+    // Fall back to flag definition default
+    const def = FEATURE_FLAGS.find(f => f.id === id);
+    return def && def.defaultEnabled === true;
   } catch { return false; }
 }
 
