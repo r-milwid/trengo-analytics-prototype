@@ -4566,6 +4566,30 @@ body[data-panel="wide"] .assistant-panel {
   gap: 8px;
 }
 
+.assistant-data-chart-single {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 16px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(59,130,246,0.05) 0%, rgba(59,130,246,0.01) 100%);
+  border: 1px solid rgba(59,130,246,0.08);
+}
+
+.assistant-data-chart-single-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.assistant-data-chart-single-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
 .assistant-data-bar-series {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));

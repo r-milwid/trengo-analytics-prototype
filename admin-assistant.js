@@ -1129,6 +1129,20 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     };
   }
 
+  function buildModelMessages() {
+    const rawMessages = AssistantStorage.getMessages(_session);
+    return rawMessages.flatMap((msg) => {
+      if (!msg) return [];
+      if (msg.role === 'assistant_artifact') {
+        return [];
+      }
+      if (msg.role === 'assistant' || msg.role === 'user') {
+        return [msg];
+      }
+      return [];
+    });
+  }
+
   async function queryAnalytics(action, payload = {}) {
     const resp = await fetch(`${PROXY_URL}/analytics/query`, {
       method: 'POST',
@@ -1243,7 +1257,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const mode = AssistantStorage.getMode(_session) || 'onboarding';
       const tools = getToolsForRole(_role, mode);
       const systemPrompt = buildSystemPrompt();
-      const messages = AssistantStorage.getMessages(_session);
+      const messages = buildModelMessages();
 
       let data;
       try {
@@ -1367,7 +1381,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 - Based on the current state, either ask the single best next question or provide the single clearest next step.
 - Keep it to 1-2 sentences and avoid recap unless it is necessary for clarity.
 </recovery_turn>`,
-          messages: AssistantStorage.getMessages(_session),
+          messages: buildModelMessages(),
         }),
       });
 
@@ -1613,6 +1627,17 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     const wrap = document.createElement('div');
     wrap.className = 'assistant-data-chart';
     const series = Array.isArray(presentation.series) ? presentation.series : [];
+    if (series.length <= 1) {
+      const point = series[0] || {};
+      const label = point.label && point.label !== 'all' ? String(point.label) : 'Selected period';
+      wrap.innerHTML = `
+        <div class="assistant-data-chart-single">
+          <span class="assistant-data-chart-single-label">${escapeHtml(label)}</span>
+          <span class="assistant-data-chart-single-value">${escapeHtml(point.displayValue || 'No data')}</span>
+        </div>
+      `;
+      return wrap;
+    }
     const values = series.map(point => Number(point.value || 0));
     const max = Math.max(...values, 1);
     if (presentation.chartType === 'bar') {
@@ -3585,7 +3610,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system: systemPrompt,
-          messages: AssistantStorage.getMessages(_session),
+          messages: buildModelMessages(),
           tools,
         }),
       });

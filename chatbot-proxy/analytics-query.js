@@ -44,6 +44,11 @@ function canonicalDimension(value) {
 
 function parseTimeRange(value, question = '') {
   const source = `${value || ''} ${question || ''}`.toLowerCase();
+  const daysMatch = source.match(/(?:last|past)\s+(\d+)\s+days?/);
+  if (daysMatch) {
+    const days = Math.max(1, Math.min(180, Number(daysMatch[1])));
+    return { key: `last_${days}_days`, days, label: `Last ${days} days` };
+  }
   if (source.includes('today')) return { key: 'today', days: 1, label: 'Today' };
   if (source.includes('yesterday')) return { key: 'yesterday', days: 1, offsetDays: 1, label: 'Yesterday' };
   if (source.includes('last 7') || source.includes('past 7') || source.includes('this week')) return { key: 'last_7_days', days: 7, label: 'Last 7 days' };
@@ -96,12 +101,21 @@ function inferDimension(question, requestedDimensions = []) {
 }
 
 function inferGrain(question, requestedGrain) {
-  const explicit = canonicalDimension(requestedGrain);
-  if (['date', 'day', 'week', 'month'].includes(explicit)) return explicit === 'day' ? 'date' : explicit;
+  const explicit = normalizeGrain(requestedGrain);
+  if (explicit) return explicit;
   const q = lower(question);
   if (q.includes('by week') || q.includes('weekly')) return 'week';
   if (q.includes('by month') || q.includes('monthly')) return 'month';
   if (q.includes('trend') || q.includes('over time') || q.includes('how has') || q.includes('changed') || q.includes('by day') || q.includes('daily')) return 'date';
+  return null;
+}
+
+function normalizeGrain(value) {
+  const normalized = lower(value);
+  if (!normalized) return null;
+  if (normalized === 'date' || normalized === 'day' || normalized === 'daily' || normalized.includes('day')) return 'date';
+  if (normalized === 'week' || normalized === 'weekly' || normalized.includes('week')) return 'week';
+  if (normalized === 'month' || normalized === 'monthly' || normalized.includes('month')) return 'month';
   return null;
 }
 
@@ -308,21 +322,57 @@ function buildPresentation(metric, resultType, querySpec, data) {
   return null;
 }
 
+function normalizeQuerySpec(querySpec = {}, context = {}) {
+  const metric = inferMetric('', [querySpec.metric].filter(Boolean));
+  const meta = METRIC_DEFINITIONS[metric] || {};
+  let dimension = canonicalDimension(querySpec.dimension);
+  let grain = normalizeGrain(querySpec.grain);
+
+  if (dimension === 'date') {
+    grain = 'date';
+    dimension = null;
+  }
+
+  if (!grain && !dimension && meta.defaultDimension) {
+    dimension = meta.defaultDimension;
+  }
+
+  const timeRange = querySpec.timeRange?.days
+    ? querySpec.timeRange
+    : parseTimeRange(
+      querySpec.timeRange?.label || querySpec.timeRange?.key || querySpec.timeRange,
+      ''
+    );
+
+  return {
+    entity: ENTITY_ROW_MAP[querySpec.entity] ? querySpec.entity : (meta.entity || 'team_daily'),
+    metric,
+    dimension,
+    filters: normalizeFilters(querySpec.filters || {}, context),
+    timeRange,
+    grain,
+    comparison: inferComparison('', querySpec.comparison),
+    limit: inferLimit('', querySpec.limit),
+  };
+}
+
 function executeSemanticQuery(querySpec, context) {
+  const normalizedQuerySpec = normalizeQuerySpec(querySpec, context);
+  const query = normalizedQuerySpec;
   const dataset = buildSyntheticDataset(context.customerProfile || {}, context);
-  const meta = METRIC_DEFINITIONS[querySpec.metric];
-  const sourceRows = dataset[ENTITY_ROW_MAP[querySpec.entity || meta?.entity]] || [];
-  const filtered = filterRows(filterRowsByTime(sourceRows, querySpec.timeRange), querySpec.filters);
-  const previousRows = querySpec.comparison === 'previous_period'
-    ? filterRows(filterRowsByTime(sourceRows, { ...querySpec.timeRange, offsetDays: querySpec.timeRange.days }), querySpec.filters)
+  const meta = METRIC_DEFINITIONS[query.metric];
+  const sourceRows = dataset[ENTITY_ROW_MAP[query.entity || meta?.entity]] || [];
+  const filtered = filterRows(filterRowsByTime(sourceRows, query.timeRange), query.filters);
+  const previousRows = query.comparison === 'previous_period'
+    ? filterRows(filterRowsByTime(sourceRows, { ...query.timeRange, offsetDays: query.timeRange.days }), query.filters)
     : [];
   const currentValue = getMetricValue(meta, filtered);
   const previousValue = previousRows.length ? getMetricValue(meta, previousRows) : null;
 
-  if (querySpec.grain) {
+  if (query.grain) {
     const bucketMap = new Map();
     filtered.forEach((row) => {
-      const key = bucketForRow(row, null, querySpec.grain);
+      const key = bucketForRow(row, null, query.grain);
       if (!bucketMap.has(key)) bucketMap.set(key, []);
       bucketMap.get(key).push(row);
     });
@@ -332,21 +382,21 @@ function executeSemanticQuery(querySpec, context) {
       .map(point => ({ ...point, displayValue: formatMetricValue(querySpec.metric, point.value) }));
 
     return {
-      querySpec,
+      querySpec: query,
       resultType: 'timeseries',
       data: { points },
       comparison: previousValue == null ? null : {
         current: currentValue,
         previous: previousValue,
-        delta: compareValue(querySpec.metric, currentValue, previousValue),
+        delta: compareValue(query.metric, currentValue, previousValue),
       },
     };
   }
 
-  if (querySpec.dimension) {
+  if (query.dimension) {
     const bucketMap = new Map();
     filtered.forEach((row) => {
-      const key = bucketForRow(row, querySpec.dimension, null);
+      const key = bucketForRow(row, query.dimension, null);
       if (!bucketMap.has(key)) bucketMap.set(key, []);
       bucketMap.get(key).push(row);
     });
@@ -356,15 +406,15 @@ function executeSemanticQuery(querySpec, context) {
         label,
         value: getMetricValue(meta, groupRows),
       })),
-      querySpec.dimension
+      query.dimension
     )
-      .slice(0, querySpec.limit || 6)
-      .map(row => ({ ...row, displayValue: formatMetricValue(querySpec.metric, row.value) }));
+      .slice(0, query.limit || 6)
+      .map(row => ({ ...row, displayValue: formatMetricValue(query.metric, row.value) }));
 
     const wantsDistribution = meta.preferredChart === 'doughnut' && rows.length > 1 && rows.length <= 5;
-    const wantsTimeseriesBars = querySpec.dimension === 'hour';
+    const wantsTimeseriesBars = query.dimension === 'hour';
     return {
-      querySpec,
+      querySpec: query,
       resultType: wantsTimeseriesBars ? 'timeseries' : wantsDistribution ? 'distribution' : (rows.length > 5 || meta.preferredChart === 'table' ? 'table' : 'ranking'),
       data: wantsTimeseriesBars
         ? { points: rows.map(row => ({ label: row.label, value: row.value, displayValue: row.displayValue })) }
@@ -372,22 +422,22 @@ function executeSemanticQuery(querySpec, context) {
       comparison: previousValue == null ? null : {
         current: currentValue,
         previous: previousValue,
-        delta: compareValue(querySpec.metric, currentValue, previousValue),
+        delta: compareValue(query.metric, currentValue, previousValue),
       },
     };
   }
 
   return {
-    querySpec,
+    querySpec: query,
     resultType: 'metric',
     data: {
       value: currentValue,
-      displayValue: formatMetricValue(querySpec.metric, currentValue),
+      displayValue: formatMetricValue(query.metric, currentValue),
     },
     comparison: previousValue == null ? null : {
       current: currentValue,
       previous: previousValue,
-      delta: compareValue(querySpec.metric, currentValue, previousValue),
+      delta: compareValue(query.metric, currentValue, previousValue),
     },
   };
 }
@@ -435,7 +485,7 @@ function inspectCapability(payload = {}, context = {}) {
 }
 
 function summarizeQueryResult(payload = {}, context = {}) {
-  const querySpec = payload.querySpec || {};
+  const querySpec = normalizeQuerySpec(payload.querySpec || {}, context);
   const result = payload.result || {};
   const metric = querySpec.metric || 'conversations';
   const resultType = result.resultType || 'metric';
