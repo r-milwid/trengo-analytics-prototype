@@ -309,9 +309,17 @@ function buildSummaryHints(metric, resultType, querySpec, data, context = {}) {
   };
 }
 
-function buildPresentation(metric, resultType, querySpec, data) {
+function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
   const meta = METRIC_DEFINITIONS[metric] || {};
   if (resultType === 'metric') return null;
+
+  const shared = {
+    metric,
+    metricKind: meta.kind || 'count',
+    aggregate: extras.aggregate || null,
+    comparison: extras.comparison || null,
+    timeframeLabel: extras.timeframeLabel || null,
+  };
 
   if (resultType === 'timeseries') {
     return {
@@ -319,8 +327,8 @@ function buildPresentation(metric, resultType, querySpec, data) {
       layout: 'wide',
       title: `${meta.label || metric} trend`,
       series: data.points,
-      metric,
       chartType: meta.preferredChart === 'bar' ? 'bar' : 'line',
+      ...shared,
     };
   }
 
@@ -328,8 +336,8 @@ function buildPresentation(metric, resultType, querySpec, data) {
     return {
       kind: 'distribution',
       title: `${meta.label || metric} split`,
-      metric,
       rows: data.rows,
+      ...shared,
     };
   }
 
@@ -338,9 +346,9 @@ function buildPresentation(metric, resultType, querySpec, data) {
       kind: 'table',
       layout: 'wide',
       title: `${meta.label || metric} breakdown`,
-      metric,
       rows: data.rows,
       dimension: querySpec.dimension,
+      ...shared,
     };
   }
 
@@ -349,15 +357,15 @@ function buildPresentation(metric, resultType, querySpec, data) {
       kind: 'ranking',
       layout: data.rows.length > 5 ? 'wide' : 'standard',
       title: `${meta.label || metric} by ${querySpec.dimension || 'breakdown'}`,
-      metric,
       rows: data.rows,
+      ...shared,
     };
   }
 
   return null;
 }
 
-function buildDerivedTrendPresentation(metric, querySpec, context = {}) {
+function buildDerivedTrendPresentation(metric, querySpec, context = {}, extras = {}) {
   const meta = METRIC_DEFINITIONS[metric] || {};
   if (!metric || !meta || querySpec?.grain || querySpec?.dimension) return null;
   if (!querySpec?.timeRange?.days || querySpec.timeRange.days < 2) return null;
@@ -377,7 +385,9 @@ function buildDerivedTrendPresentation(metric, querySpec, context = {}) {
     title: `${meta.label || metric} trend`,
     series: trendResult.data.points,
     metric,
+    metricKind: meta.kind || 'count',
     chartType: meta.preferredChart === 'bar' ? 'bar' : 'line',
+    ...extras,
   };
 }
 
@@ -557,14 +567,37 @@ function summarizeQueryResult(payload = {}, context = {}) {
   const metric = querySpec.metric || 'conversations';
   const resultType = result.resultType || 'metric';
   const data = result.data || {};
+
+  // Compute aggregate + comparison via a metric-only query
+  const aggResult = executeSemanticQuery({
+    ...querySpec, grain: null, dimension: null, comparison: 'previous_period',
+  }, context);
+
+  const aggregate = aggResult?.data
+    ? { value: aggResult.data.value ?? 0, displayValue: aggResult.data.displayValue ?? '0' }
+    : null;
+
+  const comparisonData = aggResult?.comparison && aggResult.comparison.delta != null
+    ? {
+        delta: aggResult.comparison.delta,
+        direction: aggResult.comparison.delta > 0.001 ? 'up' : aggResult.comparison.delta < -0.001 ? 'down' : 'flat',
+      }
+    : null;
+
+  const extras = {
+    aggregate,
+    comparison: comparisonData,
+    timeframeLabel: querySpec.timeRange?.label || 'Selected period',
+  };
+
   const derivedTrendPresentation = resultType === 'metric'
-    ? buildDerivedTrendPresentation(metric, querySpec, context)
+    ? buildDerivedTrendPresentation(metric, querySpec, context, extras)
     : null;
 
   return {
     resultType,
     summaryHints: buildSummaryHints(metric, resultType, querySpec, data, context),
-    presentation: buildPresentation(metric, resultType, querySpec, data) || derivedTrendPresentation,
+    presentation: buildPresentation(metric, resultType, querySpec, data, extras) || derivedTrendPresentation,
     caveats: ['Prototype synthetic analytics data; use for directional feedback rather than exact business decisions.'],
     confidence: resultType === 'metric' ? 0.92 : 0.88,
   };

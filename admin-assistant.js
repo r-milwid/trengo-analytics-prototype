@@ -20,6 +20,27 @@ const AdminAssistant = (() => {
   const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode'; // 'onboarding' | 'assistant' | null
   const THREAD_REVEAL_DELAY_MS = 1200;
 
+  // ── Chart palette (aligned with prototype CHART_COLORS) ───
+  const CHART_PALETTE = ['#6fcdbf','#82c9ff','#cf8dff','#f2c46b','#b7c2e6','#9be1d7','#2a2f4a','#dde2ee'];
+  const TEAL = '#6fcdbf';
+  const TEAL_RGBA = (a) => `rgba(111,205,191,${a})`;
+
+  function formatCompactNumber(n) {
+    const v = Number(n);
+    if (isNaN(v)) return '0';
+    if (Math.abs(v) >= 1000000) return (v / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (Math.abs(v) >= 1000) return (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    if (v % 1 !== 0) return v.toFixed(1);
+    return String(v);
+  }
+
+  function shortDateLabel(label) {
+    const m = String(label).match(/^\d{4}-(\d{2})-(\d{2})$/);
+    if (!m) return label;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${months[Number(m[1]) - 1]} ${Number(m[2])}`;
+  }
+
   // ── Internal state ─────────────────────────────────────────
   let _session = null;        // AssistantStorage session object
   let _customerData = null;   // loaded mock customer data
@@ -1566,6 +1587,27 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     });
   }
 
+  function buildKpiSummaryHtml(presentation) {
+    if (!presentation.aggregate) return '';
+    let html = '<div class="assistant-data-kpi">';
+    html += `<span class="assistant-data-kpi-value">${escapeHtml(presentation.aggregate.displayValue)}</span>`;
+    if (presentation.comparison && presentation.comparison.direction !== 'flat') {
+      const dir = presentation.comparison.direction;
+      const arrow = dir === 'up' ? '\u2191' : '\u2193';
+      const kind = presentation.metricKind || 'count';
+      const delta = Math.abs(presentation.comparison.delta);
+      const label = (kind === 'rate' || kind === 'score')
+        ? `${arrow} ${(delta * 100).toFixed(1)}pp`
+        : `${arrow} ${(delta * 100).toFixed(1)}%`;
+      html += `<span class="assistant-data-trend ${dir}">${label}</span>`;
+    }
+    if (presentation.timeframeLabel) {
+      html += `<span class="assistant-data-timeframe">${escapeHtml(presentation.timeframeLabel)}</span>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
   function renderAnalyticsArtifact(presentation, meta = {}, options = {}) {
     const container = getMessagesContainer();
     if (!container || !presentation) return;
@@ -1586,6 +1628,14 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       ${presentation.metric ? `<span class="assistant-data-result-metric">${escapeHtml(formatMetricChip(presentation.metric))}</span>` : ''}
     `;
     block.appendChild(header);
+
+    // KPI summary (aggregate + trend + timeframe)
+    const kpiHtml = buildKpiSummaryHtml(presentation);
+    if (kpiHtml) {
+      const kpiEl = document.createElement('div');
+      kpiEl.innerHTML = kpiHtml;
+      block.appendChild(kpiEl.firstElementChild);
+    }
 
     if (presentation.kind === 'timeseries') {
       block.appendChild(buildTimeseriesResult(presentation));
@@ -1640,13 +1690,17 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     }
     const values = series.map(point => Number(point.value || 0));
     const max = Math.max(...values, 1);
+    const min = Math.min(...values);
+
+    // Bar chart variant
     if (presentation.chartType === 'bar') {
       wrap.innerHTML = `
         <div class="assistant-data-bar-series">
-          ${series.slice(0, 12).map(point => `
+          ${series.slice(0, 12).map((point, i) => `
             <div class="assistant-data-bar-series-col">
-              <span class="assistant-data-bar-series-bar" style="height:${Math.max(10, (Number(point.value || 0) / max) * 100)}%"></span>
-              <span class="assistant-data-bar-series-label">${escapeHtml(String(point.label))}</span>
+              <span class="assistant-data-bar-series-value">${escapeHtml(point.displayValue || '')}</span>
+              <span class="assistant-data-bar-series-bar" style="height:${Math.max(10, (Number(point.value || 0) / max) * 100)}%; background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></span>
+              <span class="assistant-data-bar-series-label">${escapeHtml(shortDateLabel(String(point.label)))}</span>
             </div>
           `).join('')}
         </div>
@@ -1654,26 +1708,42 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       return wrap;
     }
 
+    // Line chart — SVG
+    const svgH = 80;
+    const padTop = 8;
+    const padBot = 12;
+    const chartH = svgH - padTop - padBot;
     const step = series.length > 1 ? 100 / (series.length - 1) : 100;
     const points = series.map((point, index) => {
       const x = index * step;
-      const y = 64 - ((Number(point.value || 0) / max) * 52);
+      const y = padTop + chartH - ((Number(point.value || 0) / max) * chartH);
       return `${x},${y}`;
     }).join(' ');
 
+    // Auto-fit X-axis labels
+    const maxLabels = Math.min(series.length, 7);
+    const labelStep = Math.max(1, Math.floor((series.length - 1) / (maxLabels - 1)));
+    const axisLabels = [];
+    for (let i = 0; i < series.length; i += labelStep) axisLabels.push(series[i]);
+    if (axisLabels.length > 0 && axisLabels[axisLabels.length - 1] !== series[series.length - 1]) {
+      axisLabels.push(series[series.length - 1]);
+    }
+
     wrap.innerHTML = `
-      <svg viewBox="0 0 100 72" preserveAspectRatio="none" class="assistant-data-chart-svg">
+      <svg viewBox="0 0 100 ${svgH}" preserveAspectRatio="none" class="assistant-data-chart-svg">
         <defs>
           <linearGradient id="assistant-chart-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="rgba(59,130,246,0.22)"></stop>
-            <stop offset="100%" stop-color="rgba(59,130,246,0.02)"></stop>
+            <stop offset="0%" stop-color="${TEAL_RGBA(0.18)}"></stop>
+            <stop offset="100%" stop-color="${TEAL_RGBA(0.02)}"></stop>
           </linearGradient>
         </defs>
-        <path d="M0,64 L${points} L100,64 Z" fill="url(#assistant-chart-fill)"></path>
-        <polyline points="${points}" fill="none" stroke="#3b82f6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <path d="M0,${svgH - padBot} L${points} L100,${svgH - padBot} Z" fill="url(#assistant-chart-fill)"></path>
+        <polyline points="${points}" fill="none" stroke="${TEAL}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
       </svg>
-      <div class="assistant-data-axis">
-        ${series.slice(0, 5).map(point => `<span>${escapeHtml(String(point.label))}</span>`).join('')}
+      <span class="assistant-data-yaxis assistant-data-yaxis--max">${formatCompactNumber(max)}</span>
+      <span class="assistant-data-yaxis assistant-data-yaxis--min">${min > 0 ? formatCompactNumber(min) : '0'}</span>
+      <div class="assistant-data-axis" style="grid-template-columns:repeat(${axisLabels.length},1fr)">
+        ${axisLabels.map(point => `<span>${escapeHtml(shortDateLabel(String(point.label)))}</span>`).join('')}
       </div>
     `;
     return wrap;
@@ -1692,7 +1762,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
           <span class="assistant-data-ranking-label">${index + 1}. ${escapeHtml(row.label)}</span>
           <span class="assistant-data-ranking-value">${escapeHtml(row.displayValue || String(row.value))}</span>
         </div>
-        <div class="assistant-data-ranking-bar"><span style="width:${Math.max(12, (Number(row.value || 0) / max) * 100)}%"></span></div>
+        <div class="assistant-data-ranking-bar"><span style="width:${Math.max(12, (Number(row.value || 0) / max) * 100)}%; background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span></div>
       `;
       wrap.appendChild(item);
     });
@@ -1708,14 +1778,14 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         <thead>
           <tr>
             <th>${escapeHtml(presentation.dimension || 'Breakdown')}</th>
-            <th>${escapeHtml(formatMetricChip(presentation.metric))}</th>
+            <th class="assistant-data-table-val">${escapeHtml(formatMetricChip(presentation.metric))}</th>
           </tr>
         </thead>
         <tbody>
           ${rows.map(row => `
             <tr>
               <td>${escapeHtml(row.label)}</td>
-              <td>${escapeHtml(row.displayValue || String(row.value))}</td>
+              <td class="assistant-data-table-val">${escapeHtml(row.displayValue || String(row.value))}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -1729,29 +1799,31 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     wrap.className = 'assistant-data-distribution';
     const rows = Array.isArray(presentation.rows) ? presentation.rows : [];
     const total = rows.reduce((sum, row) => sum + Number(row.value || 0), 0) || 1;
-    const colors = ['#4F7CFF', '#25B4A4', '#F59E0B', '#E55E84', '#7C6CF2'];
     let offset = 0;
 
     const segments = rows.map((row, index) => {
       const value = Number(row.value || 0);
       const slice = (value / total) * 100;
-      const segment = `${colors[index % colors.length]} ${offset}% ${offset + slice}%`;
+      const segment = `${CHART_PALETTE[index % CHART_PALETTE.length]} ${offset}% ${offset + slice}%`;
       offset += slice;
       return segment;
     }).join(', ');
 
     wrap.innerHTML = `
       <div class="assistant-data-distribution-chart" style="background: conic-gradient(${segments || '#D9E1EF 0 100%'})">
-        <span></span>
+        <span><em>${formatCompactNumber(total)}</em></span>
       </div>
       <div class="assistant-data-distribution-legend">
-        ${rows.map((row, index) => `
+        ${rows.map((row, index) => {
+          const pct = ((Number(row.value || 0) / total) * 100).toFixed(1);
+          return `
           <div class="assistant-data-distribution-row">
-            <span class="assistant-data-distribution-dot" style="background:${colors[index % colors.length]}"></span>
+            <span class="assistant-data-distribution-dot" style="background:${CHART_PALETTE[index % CHART_PALETTE.length]}"></span>
             <span class="assistant-data-distribution-label">${escapeHtml(row.label)}</span>
+            <span class="assistant-data-distribution-pct">${pct}%</span>
             <span class="assistant-data-distribution-value">${escapeHtml(row.displayValue || String(row.value))}</span>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
     `;
     return wrap;
