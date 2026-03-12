@@ -6008,6 +6008,21 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     const text = chatInput.value.trim();
     if (!text) return;
 
+    if (/^helion[.!?]*$/i.test(text)) {
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      addBubble(text, 'user');
+      messages.push({ role: 'user', content: text });
+      unlockHelionAccess();
+      const unlockMsg = 'Helion access enabled.';
+      messages.push({ role: 'assistant', content: unlockMsg });
+      addBubble(unlockMsg, 'assistant');
+      saveChatHistory();
+      chatSend.disabled = false;
+      chatInput.focus();
+      return;
+    }
+
     // ── Conflict approval gate ─────────────────────────────────
     if (_pendingContextApproval !== null) {
       const pending = _pendingContextApproval;
