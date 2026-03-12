@@ -1096,7 +1096,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     });
   }
 
-  function getVisibleWidgetTitles() {
+  function getVisibleWidgets() {
     return state.tabs.flatMap((tab) => {
       const ids = state.tabWidgets && state.tabWidgets[tab.id]
         ? [...state.tabWidgets[tab.id]]
@@ -1104,8 +1104,12 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       return ids
         .map(id => WIDGET_BY_ID[id])
         .filter(Boolean)
-        .map(widget => widget.title);
+        .map(widget => ({ id: widget.id, title: widget.title, type: widget.type }));
     });
+  }
+
+  function getVisibleWidgetTitles() {
+    return getVisibleWidgets().map(widget => widget.title);
   }
 
   function getAnalyticsContext() {
@@ -1120,6 +1124,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       dashboardContext: {
         visibleTabs: state.tabs.map(tab => tab.label),
         visibleWidgetTitles: getVisibleWidgetTitles(),
+        visibleWidgets: getVisibleWidgets(),
       },
     };
   }
@@ -1553,6 +1558,12 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
     const block = document.createElement('div');
     block.className = 'assistant-data-result';
+    if (presentation.layout === 'wide') {
+      block.classList.add('is-wide');
+    }
+    if (presentation.kind) {
+      block.classList.add(`assistant-data-result--${presentation.kind}`);
+    }
 
     const header = document.createElement('div');
     header.className = 'assistant-data-result-header';
@@ -1566,6 +1577,8 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       block.appendChild(buildTimeseriesResult(presentation));
     } else if (presentation.kind === 'ranking') {
       block.appendChild(buildRankingResult(presentation));
+    } else if (presentation.kind === 'distribution') {
+      block.appendChild(buildDistributionResult(presentation));
     } else if (presentation.kind === 'table') {
       block.appendChild(buildTableResult(presentation));
     }
@@ -1587,6 +1600,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       AssistantStorage.save(_session);
     }
     scrollThreadRevealIntoView(container, block);
+    syncAssistantPanelArtifactLayout();
   }
 
   function formatMetricChip(metric) {
@@ -1601,6 +1615,20 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     const series = Array.isArray(presentation.series) ? presentation.series : [];
     const values = series.map(point => Number(point.value || 0));
     const max = Math.max(...values, 1);
+    if (presentation.chartType === 'bar') {
+      wrap.innerHTML = `
+        <div class="assistant-data-bar-series">
+          ${series.slice(0, 12).map(point => `
+            <div class="assistant-data-bar-series-col">
+              <span class="assistant-data-bar-series-bar" style="height:${Math.max(10, (Number(point.value || 0) / max) * 100)}%"></span>
+              <span class="assistant-data-bar-series-label">${escapeHtml(String(point.label))}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      return wrap;
+    }
+
     const step = series.length > 1 ? 100 / (series.length - 1) : 100;
     const points = series.map((point, index) => {
       const x = index * step;
@@ -1620,7 +1648,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         <polyline points="${points}" fill="none" stroke="#3b82f6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
       </svg>
       <div class="assistant-data-axis">
-        ${series.slice(0, 5).map(point => `<span>${escapeHtml(point.label)}</span>`).join('')}
+        ${series.slice(0, 5).map(point => `<span>${escapeHtml(String(point.label))}</span>`).join('')}
       </div>
     `;
     return wrap;
@@ -1669,6 +1697,46 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       </table>
     `;
     return wrap;
+  }
+
+  function buildDistributionResult(presentation) {
+    const wrap = document.createElement('div');
+    wrap.className = 'assistant-data-distribution';
+    const rows = Array.isArray(presentation.rows) ? presentation.rows : [];
+    const total = rows.reduce((sum, row) => sum + Number(row.value || 0), 0) || 1;
+    const colors = ['#4F7CFF', '#25B4A4', '#F59E0B', '#E55E84', '#7C6CF2'];
+    let offset = 0;
+
+    const segments = rows.map((row, index) => {
+      const value = Number(row.value || 0);
+      const slice = (value / total) * 100;
+      const segment = `${colors[index % colors.length]} ${offset}% ${offset + slice}%`;
+      offset += slice;
+      return segment;
+    }).join(', ');
+
+    wrap.innerHTML = `
+      <div class="assistant-data-distribution-chart" style="background: conic-gradient(${segments || '#D9E1EF 0 100%'})">
+        <span></span>
+      </div>
+      <div class="assistant-data-distribution-legend">
+        ${rows.map((row, index) => `
+          <div class="assistant-data-distribution-row">
+            <span class="assistant-data-distribution-dot" style="background:${colors[index % colors.length]}"></span>
+            <span class="assistant-data-distribution-label">${escapeHtml(row.label)}</span>
+            <span class="assistant-data-distribution-value">${escapeHtml(row.displayValue || String(row.value))}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    return wrap;
+  }
+
+  function syncAssistantPanelArtifactLayout() {
+    const panel = document.getElementById('assistant-panel');
+    const container = document.getElementById('assistant-panel-messages');
+    if (!panel || !container) return;
+    panel.classList.toggle('has-wide-artifact', !!container.querySelector('.assistant-data-result.is-wide'));
   }
 
   function renderErrorBubble(text) {
@@ -3631,6 +3699,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         });
       }
     });
+    syncAssistantPanelArtifactLayout();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -3915,6 +3984,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     const container = document.getElementById('assistant-panel-messages');
     if (container) {
       container.innerHTML = '';
+      syncAssistantPanelArtifactLayout();
       // Switch to assistant panel then replay
       replayMessages(messages);
     }
@@ -3925,7 +3995,10 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   function closeAssistantPanel() {
     const panel = document.getElementById('assistant-panel');
     const fab = document.getElementById('assistant-fab');
-    if (panel) panel.style.display = 'none';
+    if (panel) {
+      panel.style.display = 'none';
+      panel.classList.remove('has-wide-artifact');
+    }
     if (fab) showFAB();
   }
 

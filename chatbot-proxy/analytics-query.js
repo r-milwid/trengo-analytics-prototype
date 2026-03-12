@@ -5,8 +5,41 @@ import {
   getSemanticSchema,
 } from '../synthetic-data/base-analytics.js';
 
+const ENTITY_ROW_MAP = {
+  team_daily: 'teamDaily',
+  agent_daily: 'agentDaily',
+  intent_daily: 'intentDaily',
+  stage_daily: 'stageDaily',
+  hourly_daily: 'hourlyDaily',
+  voice_channel_daily: 'voiceChannelDaily',
+  voice_direction_daily: 'voiceDirectionDaily',
+  workflow_status_daily: 'workflowStatusDaily',
+  handoff_reason_daily: 'handoffReasonDaily',
+  contact_type_daily: 'contactTypeDaily',
+};
+
+const DIMENSION_FIELD_MAP = {
+  team: 'team',
+  channel: 'channel',
+  agent: 'agent',
+  intent: 'intent',
+  stage: 'stage',
+  hour: 'hour',
+  status: 'status',
+  reason: 'reason',
+  contact_type: 'contactType',
+  direction: 'direction',
+  date: 'date',
+};
+
 function lower(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function canonicalDimension(value) {
+  const normalized = lower(value);
+  if (normalized === 'contacttype' || normalized === 'contact type') return 'contact_type';
+  return normalized;
 }
 
 function parseTimeRange(value, question = '') {
@@ -15,12 +48,16 @@ function parseTimeRange(value, question = '') {
   if (source.includes('yesterday')) return { key: 'yesterday', days: 1, offsetDays: 1, label: 'Yesterday' };
   if (source.includes('last 7') || source.includes('past 7') || source.includes('this week')) return { key: 'last_7_days', days: 7, label: 'Last 7 days' };
   if (source.includes('last 90') || source.includes('past 90') || source.includes('quarter')) return { key: 'last_90_days', days: 90, label: 'Last 90 days' };
-  if (source.includes('year')) return { key: 'last_180_days', days: 180, label: 'Last 180 days' };
+  if (source.includes('last 60') || source.includes('past 60')) return { key: 'last_60_days', days: 60, label: 'Last 60 days' };
+  if (source.includes('year') || source.includes('annual')) return { key: 'last_180_days', days: 180, label: 'Last 180 days' };
   return { key: 'last_30_days', days: 30, label: 'Last 30 days' };
 }
 
 function inferMetric(question, requestedMetrics = []) {
-  const normalized = requestedMetrics.map(lower).map(metric => METRIC_ALIASES[metric] || metric).filter(metric => METRIC_DEFINITIONS[metric]);
+  const normalized = requestedMetrics
+    .map(lower)
+    .map(metric => METRIC_ALIASES[metric] || metric)
+    .filter(metric => METRIC_DEFINITIONS[metric]);
   if (normalized.length > 0) return normalized[0];
 
   const q = lower(question);
@@ -31,32 +68,40 @@ function inferMetric(question, requestedMetrics = []) {
 
   if (q.includes('pipeline')) return 'pipeline_value';
   if (q.includes('deal')) return q.includes('won') ? 'deals_won' : 'deals_created';
-  if (q.includes('response')) return 'first_response_minutes';
-  if (q.includes('sla')) return 'sla_breach_rate';
-  if (q.includes('satisfaction') || q.includes('csat')) return 'csat';
-  if (q.includes('automation')) return 'automation_success_rate';
-  if (q.includes('handoff')) return 'handoff_rate';
-  if (q.includes('ai')) return 'ai_resolution_rate';
+  if (q.includes('response')) return q.includes('survey') ? 'survey_response_rate' : 'first_response_minutes';
+  if (q.includes('resolution')) return q.includes('first call') ? 'first_call_resolution_rate' : 'resolution_hours';
+  if (q.includes('csat') || q.includes('satisfaction')) return 'csat';
+  if (q.includes('voice') || q.includes('call')) return q.includes('missed') ? 'missed_calls' : 'total_calls';
+  if (q.includes('automation') || q.includes('journey')) return 'automation_success_rate';
+  if (q.includes('intent')) return 'intent_volume';
   return 'conversations';
 }
 
 function inferDimension(question, requestedDimensions = []) {
-  const explicit = requestedDimensions.map(lower).find(Boolean);
+  const explicit = requestedDimensions.map(canonicalDimension).find(Boolean);
   if (explicit) return explicit;
+
   const q = lower(question);
   if (q.includes('agent') || q.includes('advisor')) return 'agent';
   if (q.includes('team')) return 'team';
   if (q.includes('channel')) return 'channel';
+  if (q.includes('intent')) return 'intent';
+  if (q.includes('stage') || q.includes('funnel')) return 'stage';
+  if (q.includes('status') || q.includes('bottleneck')) return 'status';
+  if (q.includes('handoff reason') || q.includes('reason')) return 'reason';
+  if (q.includes('new vs returning') || q.includes('contact type') || q.includes('returning contacts')) return 'contact_type';
+  if (q.includes('inbound') || q.includes('outbound') || q.includes('direction')) return 'direction';
+  if (q.includes('hour') || q.includes('time of day')) return 'hour';
   return null;
 }
 
 function inferGrain(question, requestedGrain) {
-  const explicit = lower(requestedGrain);
+  const explicit = canonicalDimension(requestedGrain);
   if (['date', 'day', 'week', 'month'].includes(explicit)) return explicit === 'day' ? 'date' : explicit;
   const q = lower(question);
   if (q.includes('by week') || q.includes('weekly')) return 'week';
   if (q.includes('by month') || q.includes('monthly')) return 'month';
-  if (q.includes('trend') || q.includes('over time') || q.includes('by day') || q.includes('daily')) return 'date';
+  if (q.includes('trend') || q.includes('over time') || q.includes('how has') || q.includes('changed') || q.includes('by day') || q.includes('daily')) return 'date';
   return null;
 }
 
@@ -82,17 +127,18 @@ function inferLimit(question, requestedLimit) {
 
 function normalizeFilters(filters = {}, context = {}) {
   const normalized = {};
-  if (filters.team) {
-    normalized.team = Array.isArray(filters.team) ? filters.team : [filters.team];
-  }
-  if (filters.channel) {
-    normalized.channel = Array.isArray(filters.channel) ? filters.channel.map(lower) : [lower(filters.channel)];
-  }
+  Object.entries(filters).forEach(([key, value]) => {
+    const dimension = canonicalDimension(key);
+    const items = Array.isArray(value) ? value : [value];
+    normalized[dimension] = items.filter(Boolean).map(item => String(item).trim());
+  });
+
   if (context.role !== 'admin' && Array.isArray(context.scopedTeams) && context.scopedTeams.length > 0) {
     normalized.team = normalized.team
       ? normalized.team.filter(team => context.scopedTeams.includes(team))
       : [...context.scopedTeams];
   }
+
   return normalized;
 }
 
@@ -102,28 +148,39 @@ function getDateBounds(rows) {
 }
 
 function filterRowsByTime(rows, timeRange) {
+  if (!rows.length || !timeRange) return rows;
   const end = getDateBounds(rows);
   const offset = Number(timeRange.offsetDays || 0);
   const endTs = end.getTime() - (offset * 24 * 60 * 60 * 1000);
   const startTs = endTs - ((timeRange.days - 1) * 24 * 60 * 60 * 1000);
-  return rows.filter(row => {
+  return rows.filter((row) => {
+    if (!row.date) return true;
     const ts = new Date(`${row.date}T00:00:00Z`).getTime();
     return ts >= startTs && ts <= endTs;
   });
 }
 
+function rowValueForDimension(row, dimension) {
+  const field = DIMENSION_FIELD_MAP[dimension];
+  return field ? row[field] : undefined;
+}
+
 function filterRows(rows, filters = {}) {
   return rows.filter((row) => {
-    if (filters.team && !filters.team.includes(row.team)) return false;
-    if (filters.channel && row.channel && !filters.channel.includes(lower(row.channel))) return false;
-    return true;
+    return Object.entries(filters).every(([dimension, values]) => {
+      if (!values || !values.length) return true;
+      const rowValue = rowValueForDimension(row, dimension);
+      return values.map(lower).includes(lower(rowValue));
+    });
   });
 }
 
 function bucketForRow(row, dimension, grain) {
-  if (dimension === 'team') return row.team;
-  if (dimension === 'channel') return row.channel;
-  if (dimension === 'agent') return row.agent;
+  if (dimension) {
+    const value = rowValueForDimension(row, dimension);
+    return value == null ? 'Unknown' : String(value);
+  }
+
   if (grain === 'month') return row.date.slice(0, 7);
   if (grain === 'week') {
     const date = new Date(`${row.date}T00:00:00Z`);
@@ -137,74 +194,27 @@ function bucketForRow(row, dimension, grain) {
   return 'all';
 }
 
-function aggregateMetric(metric, rows) {
-  if (!rows.length) return 0;
+function getMetricValue(meta, rows) {
+  if (!rows.length || !meta) return 0;
   const sum = (key) => rows.reduce((acc, row) => acc + Number(row[key] || 0), 0);
 
-  switch (metric) {
-    case 'conversations': return sum('conversations');
-    case 'tickets_created': return sum('ticketsCreated');
-    case 'tickets_resolved': return sum('ticketsResolved');
-    case 'sla_breaches': return sum('slaBreaches');
-    case 'deals_created': return sum('dealsCreated');
-    case 'deals_won': return sum('dealsWon');
-    case 'pipeline_value': return sum('pipelineValue');
-    case 'conversations_handled': return sum('conversationsHandled');
-    case 'first_response_minutes': {
-      const total = rows.reduce((acc, row) => acc + (Number(row.firstResponseMinutes || 0) * Number(row.ticketsCreated || row.conversationsHandled || 1)), 0);
-      const denom = rows.reduce((acc, row) => acc + Number(row.ticketsCreated || row.conversationsHandled || 1), 0);
+  switch (meta.aggregate) {
+    case 'sum':
+      return sum(meta.sourceKey);
+    case 'max':
+      return rows.reduce((max, row) => Math.max(max, Number(row[meta.sourceKey] || 0)), 0);
+    case 'weighted_average': {
+      const total = rows.reduce((acc, row) => acc + (Number(row[meta.sourceKey] || 0) * Number(row[meta.weightKey] || 0)), 0);
+      const denom = rows.reduce((acc, row) => acc + Number(row[meta.weightKey] || 0), 0);
       return denom ? total / denom : 0;
     }
-    case 'resolution_hours': {
-      const total = rows.reduce((acc, row) => acc + (Number(row.resolutionHours || 0) * Number(row.ticketsResolved || 1)), 0);
-      const denom = rows.reduce((acc, row) => acc + Number(row.ticketsResolved || 1), 0);
-      return denom ? total / denom : 0;
-    }
-    case 'csat':
-    case 'agent_csat': {
-      const total = rows.reduce((acc, row) => acc + (Number(row.csatScore || 0) * Number(row.csatResponses || row.conversationsHandled || 1)), 0);
-      const denom = rows.reduce((acc, row) => acc + Number(row.csatResponses || row.conversationsHandled || 1), 0);
-      return denom ? total / denom : 0;
-    }
-    case 'sla_breach_rate': {
-      const numerator = sum('slaBreaches');
-      const denominator = sum('ticketsCreated');
+    case 'ratio': {
+      const numerator = sum(meta.numeratorKey);
+      const denominator = sum(meta.denominatorKey);
       return denominator ? numerator / denominator : 0;
     }
-    case 'ai_assist_rate': {
-      const numerator = sum('aiAssistCount');
-      const denominator = sum('ticketsCreated');
-      return denominator ? numerator / denominator : 0;
-    }
-    case 'ai_resolution_rate': {
-      const numerator = sum('aiResolvedCount');
-      const denominator = sum('ticketsCreated');
-      return denominator ? numerator / denominator : 0;
-    }
-    case 'handoff_rate': {
-      const numerator = sum('handoffCount');
-      const denominator = sum('ticketsCreated');
-      return denominator ? numerator / denominator : 0;
-    }
-    case 'automation_success_rate': {
-      const numerator = sum('automationSuccessCount');
-      const denominator = sum('automationRuns');
-      return denominator ? numerator / denominator : 0;
-    }
-    case 'win_rate': {
-      const numerator = sum('dealsWon');
-      const denominator = sum('dealsCreated');
-      return denominator ? numerator / denominator : 0;
-    }
-    case 'avg_deal_size': {
-      const denominator = sum('dealsWon') || sum('dealsCreated');
-      return denominator ? sum('pipelineValue') / denominator : 0;
-    }
-    case 'sales_cycle_days': {
-      const total = rows.reduce((acc, row) => acc + (Number(row.salesCycleDays || 0) * Number(row.dealsCreated || 1)), 0);
-      const denom = rows.reduce((acc, row) => acc + Number(row.dealsCreated || 1), 0);
-      return denom ? total / denom : 0;
-    }
+    case 'difference':
+      return sum(meta.numeratorKey) - sum(meta.denominatorKey);
     default:
       return 0;
   }
@@ -215,116 +225,154 @@ function formatMetricValue(metric, value) {
   if (meta.kind === 'rate') return `${(value * 100).toFixed(1)}%`;
   if (meta.kind === 'score') return value.toFixed(2);
   if (meta.kind === 'currency') return `€${Math.round(value).toLocaleString('en-US')}`;
-  if (metric === 'first_response_minutes') return `${value.toFixed(1)} min`;
-  if (metric === 'resolution_hours') return `${value.toFixed(1)} h`;
-  if (metric === 'sales_cycle_days') return `${value.toFixed(1)} d`;
+  if (meta.kind === 'duration_minutes') return `${value.toFixed(1)} min`;
+  if (meta.kind === 'duration_hours') return `${value.toFixed(1)} h`;
+  if (meta.kind === 'duration_days') return `${value.toFixed(1)} d`;
   return Math.round(value).toLocaleString('en-US');
 }
 
 function compareValue(metric, current, previous) {
+  const meta = METRIC_DEFINITIONS[metric] || {};
   if (previous === 0) return null;
-  if ((METRIC_DEFINITIONS[metric] || {}).kind === 'rate' || metric === 'csat') {
+  if (meta.kind === 'rate' || meta.kind === 'score') {
     return current - previous;
   }
   return (current - previous) / Math.abs(previous);
 }
 
-function buildSummaryHints(metric, resultType, querySpec, data) {
+function getSortedRows(rows, dimension) {
+  if (dimension === 'hour') {
+    return [...rows].sort((a, b) => Number(a.label) - Number(b.label));
+  }
+  return [...rows].sort((a, b) => b.value - a.value);
+}
+
+function buildSummaryHints(metric, resultType, querySpec, data, context = {}) {
+  const meta = METRIC_DEFINITIONS[metric] || {};
   return {
-    metricLabel: METRIC_DEFINITIONS[metric]?.label || metric,
+    metricLabel: meta.label || metric,
     resultType,
-    preferredVisualization: resultType === 'timeseries' ? 'line' : resultType === 'ranking' ? 'bar' : resultType === 'table' ? 'table' : null,
+    preferredVisualization: meta.preferredChart || (resultType === 'timeseries' ? 'line' : resultType === 'table' ? 'table' : 'bar'),
     timeframeLabel: querySpec.timeRange?.label || 'Selected period',
     dimensionLabel: querySpec.dimension || null,
     dataPoints: Array.isArray(data?.points) ? data.points.length : Array.isArray(data?.rows) ? data.rows.length : 1,
+    visibleDashboardMetrics: context.dashboardContext?.visibleWidgetTitles || [],
   };
 }
 
 function buildPresentation(metric, resultType, querySpec, data) {
+  const meta = METRIC_DEFINITIONS[metric] || {};
   if (resultType === 'metric') return null;
+
   if (resultType === 'timeseries') {
     return {
       kind: 'timeseries',
-      title: `${METRIC_DEFINITIONS[metric]?.label || metric} trend`,
+      layout: 'wide',
+      title: `${meta.label || metric} trend`,
       series: data.points,
       metric,
-      chartType: 'line',
+      chartType: meta.preferredChart === 'bar' ? 'bar' : 'line',
     };
   }
-  if (resultType === 'ranking') {
+
+  if (resultType === 'distribution') {
     return {
-      kind: 'ranking',
-      title: `${METRIC_DEFINITIONS[metric]?.label || metric} by ${querySpec.dimension}`,
+      kind: 'distribution',
+      title: `${meta.label || metric} split`,
       metric,
       rows: data.rows,
     };
   }
+
   if (resultType === 'table') {
     return {
       kind: 'table',
-      title: `${METRIC_DEFINITIONS[metric]?.label || metric} breakdown`,
+      layout: 'wide',
+      title: `${meta.label || metric} breakdown`,
       metric,
       rows: data.rows,
       dimension: querySpec.dimension,
     };
   }
+
+  if (resultType === 'ranking') {
+    return {
+      kind: 'ranking',
+      layout: data.rows.length > 5 ? 'wide' : 'standard',
+      title: `${meta.label || metric} by ${querySpec.dimension || 'breakdown'}`,
+      metric,
+      rows: data.rows,
+    };
+  }
+
   return null;
 }
 
 function executeSemanticQuery(querySpec, context) {
   const dataset = buildSyntheticDataset(context.customerProfile || {}, context);
-  const metric = querySpec.metric;
-  const sourceRows = querySpec.dimension === 'agent' || METRIC_DEFINITIONS[metric]?.entity === 'agent_daily'
-    ? dataset.agentDaily
-    : dataset.teamDaily;
-
+  const meta = METRIC_DEFINITIONS[querySpec.metric];
+  const sourceRows = dataset[ENTITY_ROW_MAP[querySpec.entity || meta?.entity]] || [];
   const filtered = filterRows(filterRowsByTime(sourceRows, querySpec.timeRange), querySpec.filters);
   const previousRows = querySpec.comparison === 'previous_period'
     ? filterRows(filterRowsByTime(sourceRows, { ...querySpec.timeRange, offsetDays: querySpec.timeRange.days }), querySpec.filters)
     : [];
-
-  const bucketMap = new Map();
-  filtered.forEach((row) => {
-    const key = bucketForRow(row, querySpec.dimension, querySpec.grain);
-    if (!bucketMap.has(key)) bucketMap.set(key, []);
-    bucketMap.get(key).push(row);
-  });
-
-  const currentValue = aggregateMetric(metric, filtered);
-  const previousValue = previousRows.length ? aggregateMetric(metric, previousRows) : null;
+  const currentValue = getMetricValue(meta, filtered);
+  const previousValue = previousRows.length ? getMetricValue(meta, previousRows) : null;
 
   if (querySpec.grain) {
+    const bucketMap = new Map();
+    filtered.forEach((row) => {
+      const key = bucketForRow(row, null, querySpec.grain);
+      if (!bucketMap.has(key)) bucketMap.set(key, []);
+      bucketMap.get(key).push(row);
+    });
     const points = [...bucketMap.entries()]
-      .map(([label, rows]) => ({ label, value: aggregateMetric(metric, rows) }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .map(([label, rows]) => ({ label, value: getMetricValue(meta, rows) }))
+      .sort((a, b) => String(a.label).localeCompare(String(b.label), undefined, { numeric: true }))
+      .map(point => ({ ...point, displayValue: formatMetricValue(querySpec.metric, point.value) }));
+
     return {
       querySpec,
       resultType: 'timeseries',
-      data: {
-        points: points.map(point => ({ ...point, displayValue: formatMetricValue(metric, point.value) })),
-      },
+      data: { points },
       comparison: previousValue == null ? null : {
         current: currentValue,
         previous: previousValue,
-        delta: compareValue(metric, currentValue, previousValue),
+        delta: compareValue(querySpec.metric, currentValue, previousValue),
       },
     };
   }
 
   if (querySpec.dimension) {
-    const rows = [...bucketMap.entries()]
-      .map(([label, groupRows]) => ({ label, value: aggregateMetric(metric, groupRows) }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, querySpec.limit || 5)
-      .map(row => ({ ...row, displayValue: formatMetricValue(metric, row.value) }));
+    const bucketMap = new Map();
+    filtered.forEach((row) => {
+      const key = bucketForRow(row, querySpec.dimension, null);
+      if (!bucketMap.has(key)) bucketMap.set(key, []);
+      bucketMap.get(key).push(row);
+    });
+
+    const rows = getSortedRows(
+      [...bucketMap.entries()].map(([label, groupRows]) => ({
+        label,
+        value: getMetricValue(meta, groupRows),
+      })),
+      querySpec.dimension
+    )
+      .slice(0, querySpec.limit || 6)
+      .map(row => ({ ...row, displayValue: formatMetricValue(querySpec.metric, row.value) }));
+
+    const wantsDistribution = meta.preferredChart === 'doughnut' && rows.length > 1 && rows.length <= 5;
+    const wantsTimeseriesBars = querySpec.dimension === 'hour';
     return {
       querySpec,
-      resultType: rows.length <= 4 ? 'ranking' : 'table',
-      data: { rows },
+      resultType: wantsTimeseriesBars ? 'timeseries' : wantsDistribution ? 'distribution' : (rows.length > 5 || meta.preferredChart === 'table' ? 'table' : 'ranking'),
+      data: wantsTimeseriesBars
+        ? { points: rows.map(row => ({ label: row.label, value: row.value, displayValue: row.displayValue })) }
+        : { rows },
       comparison: previousValue == null ? null : {
         current: currentValue,
         previous: previousValue,
-        delta: compareValue(metric, currentValue, previousValue),
+        delta: compareValue(querySpec.metric, currentValue, previousValue),
       },
     };
   }
@@ -334,12 +382,12 @@ function executeSemanticQuery(querySpec, context) {
     resultType: 'metric',
     data: {
       value: currentValue,
-      displayValue: formatMetricValue(metric, currentValue),
+      displayValue: formatMetricValue(querySpec.metric, currentValue),
     },
     comparison: previousValue == null ? null : {
       current: currentValue,
       previous: previousValue,
-      delta: compareValue(metric, currentValue, previousValue),
+      delta: compareValue(querySpec.metric, currentValue, previousValue),
     },
   };
 }
@@ -347,20 +395,22 @@ function executeSemanticQuery(querySpec, context) {
 function planSemanticQuery(payload = {}, context = {}) {
   const question = payload.question || '';
   const metric = inferMetric(question, payload.metrics || []);
-  const dimension = inferDimension(question, payload.dimensions || []);
+  const explicitDimension = inferDimension(question, payload.dimensions || []);
   const grain = inferGrain(question, payload.grain);
+  const meta = METRIC_DEFINITIONS[metric] || {};
+  const dimension = explicitDimension || (!grain ? meta.defaultDimension || null : null);
   const comparison = inferComparison(question, payload.comparison);
   const timeRange = parseTimeRange(payload.timeRange, question);
   const filters = normalizeFilters(payload.filters || {}, context);
   const limit = inferLimit(question, payload.limit);
 
-  const needsClarification = !dimension && /(which|who|best|worst|top)/i.test(question) && !grain
-    ? 'Do you want that broken down by team, channel, or agent?'
+  const needsClarification = !dimension && !grain && /(which|who|best|worst|top|where)/i.test(question)
+    ? 'Do you want that broken down by team, channel, agent, or over time?'
     : null;
 
   return {
     querySpec: {
-      entity: METRIC_DEFINITIONS[metric]?.entity || 'team_daily',
+      entity: meta.entity || 'team_daily',
       metric,
       dimension,
       filters,
@@ -370,7 +420,7 @@ function planSemanticQuery(payload = {}, context = {}) {
       limit,
     },
     needsClarification,
-    confidence: needsClarification ? 0.72 : 0.9,
+    confidence: needsClarification ? 0.74 : 0.92,
   };
 }
 
@@ -384,15 +434,16 @@ function inspectCapability(payload = {}, context = {}) {
   };
 }
 
-function summarizeQueryResult(payload = {}) {
+function summarizeQueryResult(payload = {}, context = {}) {
   const querySpec = payload.querySpec || {};
   const result = payload.result || {};
   const metric = querySpec.metric || 'conversations';
   const resultType = result.resultType || 'metric';
   const data = result.data || {};
+
   return {
     resultType,
-    summaryHints: buildSummaryHints(metric, resultType, querySpec, data),
+    summaryHints: buildSummaryHints(metric, resultType, querySpec, data, context),
     presentation: buildPresentation(metric, resultType, querySpec, data),
     caveats: ['Prototype synthetic analytics data; use for directional feedback rather than exact business decisions.'],
     confidence: resultType === 'metric' ? 0.92 : 0.88,
@@ -421,7 +472,7 @@ export async function handleAnalyticsQuery(body = {}) {
     return executeSemanticQuery(body.querySpec, context);
   }
   if (action === 'summarize') {
-    return summarizeQueryResult(body);
+    return summarizeQueryResult(body, context);
   }
   return { error: 'unknown action' };
 }
