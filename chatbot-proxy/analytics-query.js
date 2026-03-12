@@ -313,6 +313,8 @@ function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
   const meta = METRIC_DEFINITIONS[metric] || {};
   if (resultType === 'metric') return null;
 
+  const hint = lower(extras.chartHint || '');
+
   const shared = {
     metric,
     metricKind: meta.kind || 'count',
@@ -322,12 +324,13 @@ function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
   };
 
   if (resultType === 'timeseries') {
+    const wantsBar = hint === 'bar' || (meta.preferredChart === 'bar' && hint !== 'line');
     return {
       kind: 'timeseries',
       layout: 'wide',
       title: `${meta.label || metric} trend`,
       series: data.points,
-      chartType: meta.preferredChart === 'bar' ? 'bar' : 'line',
+      chartType: wantsBar ? 'bar' : 'line',
       ...shared,
     };
   }
@@ -342,6 +345,24 @@ function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
   }
 
   if (resultType === 'table') {
+    // Hint can promote a table to ranking or distribution when row count is low
+    if ((hint === 'ranking' || hint === 'bar') && data.rows?.length <= 10) {
+      return {
+        kind: 'ranking',
+        layout: data.rows.length > 5 ? 'wide' : 'standard',
+        title: `${meta.label || metric} by ${querySpec.dimension || 'breakdown'}`,
+        rows: data.rows,
+        ...shared,
+      };
+    }
+    if ((hint === 'donut' || hint === 'distribution' || hint === 'pie') && data.rows?.length <= 6) {
+      return {
+        kind: 'distribution',
+        title: `${meta.label || metric} split`,
+        rows: data.rows,
+        ...shared,
+      };
+    }
     return {
       kind: 'table',
       layout: 'wide',
@@ -353,6 +374,15 @@ function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
   }
 
   if (resultType === 'ranking') {
+    // Honour donut/distribution hint when row count allows it
+    if ((hint === 'donut' || hint === 'distribution' || hint === 'pie') && data.rows?.length <= 6) {
+      return {
+        kind: 'distribution',
+        title: `${meta.label || metric} split`,
+        rows: data.rows,
+        ...shared,
+      };
+    }
     return {
       kind: 'ranking',
       layout: data.rows.length > 5 ? 'wide' : 'standard',
@@ -379,6 +409,8 @@ function buildDerivedTrendPresentation(metric, querySpec, context = {}, extras =
     return null;
   }
 
+  const hint = lower(extras.chartHint || '');
+  const wantsBar = hint === 'bar' || (meta.preferredChart === 'bar' && hint !== 'line');
   return {
     kind: 'timeseries',
     layout: 'wide',
@@ -386,7 +418,7 @@ function buildDerivedTrendPresentation(metric, querySpec, context = {}, extras =
     series: trendResult.data.points,
     metric,
     metricKind: meta.kind || 'count',
-    chartType: meta.preferredChart === 'bar' ? 'bar' : 'line',
+    chartType: wantsBar ? 'bar' : 'line',
     ...extras,
   };
 }
@@ -584,10 +616,24 @@ function summarizeQueryResult(payload = {}, context = {}) {
       }
     : null;
 
+  // Resolve chart hint — explicit param takes priority, then infer from question text
+  const explicitHint = lower(payload.chartHint || '');
+  const inferredHint = (() => {
+    if (explicitHint) return explicitHint;
+    const q = lower(payload.question || '');
+    if (q.includes('bar chart') || q.includes('bar graph') || q.includes('as a bar') || q.includes('as bar')) return 'bar';
+    if (q.includes('donut') || q.includes('doughnut') || q.includes('pie chart') || q.includes('as a pie')) return 'donut';
+    if (q.includes('line chart') || q.includes('line graph') || q.includes('as a line') || q.includes('trend line')) return 'line';
+    if (q.includes('as a table') || q.includes('table view') || q.includes('show table')) return 'table';
+    if (q.includes('ranking') || q.includes('horizontal bar') || q.includes('ranked')) return 'ranking';
+    return '';
+  })();
+
   const extras = {
     aggregate,
     comparison: comparisonData,
     timeframeLabel: querySpec.timeRange?.label || 'Selected period',
+    chartHint: inferredHint || null,
   };
 
   const derivedTrendPresentation = resultType === 'metric'
@@ -598,7 +644,7 @@ function summarizeQueryResult(payload = {}, context = {}) {
     resultType,
     summaryHints: buildSummaryHints(metric, resultType, querySpec, data, context),
     presentation: buildPresentation(metric, resultType, querySpec, data, extras) || derivedTrendPresentation,
-    caveats: ['Prototype synthetic analytics data; use for directional feedback rather than exact business decisions.'],
+    caveats: [],
     confidence: resultType === 'metric' ? 0.92 : 0.88,
   };
 }

@@ -1049,7 +1049,7 @@ function getSemanticSchema(customerProfile = {}, context = {}) {
     availableChannels: dataset.channels,
     defaultTimeRange: 'last_30_days',
     notes: [
-      'Prototype synthetic analytics data with customer overlays.',
+      'Analytics data with customer-specific overlays.',
       'Covers visible dashboard topics plus nearby supporting data that is not always shown in the dashboard.',
     ],
   };

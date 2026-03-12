@@ -3221,12 +3221,49 @@ body[data-panel="wide"] .ai-setup-overlay {
   gap: 10px;
   margin-top: 4px;
   max-width: 100%;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Passive quick-reply chips don't need the container card */
+.ai-setup-options.ai-setup-passive-quick-replies {
+  background: none;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Options nested inside already-styled containers don't need double card */
+.ai-setup-tab-proposal > .ai-setup-options,
+.ai-setup-team-matrix > .ai-setup-options,
+.ai-setup-boolean > .ai-setup-options {
+  background: none;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 0;
+  margin-top: 4px;
 }
 
 .ai-setup-options.style-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
+}
+
+/* Prompt text and confirm button span all columns in card grid */
+.ai-setup-options.style-cards > .ai-setup-inline-prompt,
+.ai-setup-options.style-cards > .ai-setup-option-confirm {
+  grid-column: 1 / -1;
+}
+
+/* In flex (chips) layout, prompt takes full width */
+.ai-setup-options.style-chips > .ai-setup-inline-prompt {
+  flex-basis: 100%;
 }
 
 .ai-setup-tab-proposal-summary {
@@ -4670,13 +4707,46 @@ body[data-panel="wide"] .assistant-panel {
   text-align: center;
 }
 
+.assistant-data-chart-area {
+  position: relative;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(111,205,191,0.06) 0%, rgba(111,205,191,0.01) 100%);
+  border: 1px solid rgba(111,205,191,0.10);
+  overflow: visible;
+}
+
 .assistant-data-chart-svg {
   width: 100%;
   height: 120px;
   display: block;
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(111,205,191,0.06) 0%, rgba(111,205,191,0.01) 100%);
-  border: 1px solid rgba(111,205,191,0.10);
+}
+
+.assistant-data-chart-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.assistant-data-chart-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6fcdbf;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(111,205,191,0.3);
+  transform: translate(-50%, -50%);
+}
+
+.assistant-data-chart-pt {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gray-700, #374151);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
 }
 
 .assistant-data-yaxis {

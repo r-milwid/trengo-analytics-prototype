@@ -257,7 +257,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'inspect_data_capability',
-      description: 'Inspect the available prototype analytics data before answering a data question. Use this silently when you need to understand what can be queried.',
+      description: 'Inspect the available analytics data before answering a data question. Use this silently when you need to understand what can be queried.',
       input_schema: {
         type: 'object',
         properties: {
@@ -285,7 +285,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'run_semantic_query',
-      description: 'Run a semantic analytics query and return normalized prototype data results.',
+      description: 'Run a semantic analytics query and return normalized analytics data results.',
       input_schema: {
         type: 'object',
         properties: {
@@ -296,13 +296,14 @@ const AdminAssistant = (() => {
     },
     {
       name: 'summarize_query_result',
-      description: 'Convert query results into summary hints and an optional inline result block for chat. Use this after running a semantic query.',
+      description: 'Convert query results into a rich inline visualization rendered directly in chat. Produces line charts, bar charts, ranking charts with horizontal bars, donut/distribution charts, or data tables depending on the data shape. Always call this after running a semantic query — the UI renders the chart automatically.',
       input_schema: {
         type: 'object',
         properties: {
           question: { type: 'string' },
           querySpec: { type: 'object' },
-          result: { type: 'object' }
+          result: { type: 'object' },
+          chartHint: { type: 'string', enum: ['line', 'bar', 'ranking', 'donut', 'table'], description: 'Optional hint to override the default chart type. Use when the user explicitly requests a specific visualization.' }
         },
         required: ['question', 'querySpec', 'result']
       }
@@ -395,7 +396,15 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - Understand the customer well enough to make strong configuration decisions with minimal effort from the user.
 - The target outcome is a good dashboard proposal, not a long interview.
 - Be helpful and easy to engage with. A light conversational tone should make the user feel supported, without becoming verbose.
+- Behave like a real product assistant, not a prototype explainer.
 </primary_goal>
+
+<product_framing>
+- Do not describe this experience, its data, or its behavior as a prototype, mock, synthetic, or placeholder.
+- Do not volunteer implementation caveats like "this is a prototype limitation" or direct the user to the Prototype Guide.
+- If something is unavailable, say so in normal product language and focus on the best next answer or action.
+- The Prototype Guide is the only surface that should explicitly discuss prototype framing.
+</product_framing>
 
 <conversation_style>
 - Default to very short answers, usually 1-2 sentences. Add a third only when it clearly improves understanding or decision quality.
@@ -579,7 +588,9 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 - Use the same data path for questions about visible dashboard metrics and deeper questions that go beyond the current charts.
 - Ask one clarification only if the question materially changes the query, for example scope, timeframe, comparison, or success metric.
 - Do not invent numbers. Only state values returned by the semantic query result.
-- If summarize_query_result returns a presentation block, let the UI show it and keep your text answer concise.
+- The summarize_query_result tool renders rich inline charts in the chat panel: line charts for trends, bar charts for periodic data, horizontal bar rankings for breakdowns, donut charts for distributions (≤5 categories), and data tables for detailed breakdowns. You CAN and SHOULD show charts — always use the full pipeline (plan → run → summarize) for any data or visualization request.
+- If the user asks for a specific chart type (e.g., "as a bar chart", "show as a donut"), pass the chartHint parameter to summarize_query_result with one of: "line", "bar", "ranking", "donut", or "table". This overrides the default visualization. You do NOT need to re-plan or re-run the query — just pass chartHint when calling summarize.
+- When summarize_query_result renders a chart, keep your text answer to 1–2 sentences of insight. NEVER repeat the data as a markdown table, bullet list, or numbered breakdown — the chart already shows it. Do not restate the exact numbers the chart displays.
 - Keep the same user-made-vs-AI-made confirmation rule in this mode.
 </assistant_mode>`;
     }
@@ -1224,12 +1235,12 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   function buildAssistantOpeningMessage() {
     const companyName = _customerData?.company ? ` for ${_customerData.company}` : '';
     if (_role === 'supervisor') {
-      return `Hi — I can help refine the dashboard${companyName}, especially tabs, teams, widgets, and team-scoped questions. I can also help analyze the prototype data when you want to dig deeper.`;
+      return `Hi — I can help refine the dashboard${companyName}, especially tabs, teams, widgets, and team-scoped questions. I can also help analyze the data when you want to dig deeper.`;
     }
     if (_role === 'agent') {
-      return `Hi — I can help tailor your view${companyName}, adjust what you see, and answer deeper questions using the prototype data when useful.`;
+      return `Hi — I can help tailor your view${companyName}, adjust what you see, and answer deeper questions using the data when useful.`;
     }
-    return `Hi — I can help refine the dashboard${companyName}, adjust tabs, teams, and widgets, and answer deeper questions using the prototype data when useful.`;
+    return `Hi — I can help refine the dashboard${companyName}, adjust tabs, teams, and widgets, and answer deeper questions using the data when useful.`;
   }
 
   function ensureAssistantDisplayThread() {
@@ -1692,58 +1703,95 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     const max = Math.max(...values, 1);
     const min = Math.min(...values);
 
-    // Bar chart variant
+    // Bar chart variant — use pixel heights (max bar = 80px)
     if (presentation.chartType === 'bar') {
+      const barMaxPx = 80;
       wrap.innerHTML = `
         <div class="assistant-data-bar-series">
-          ${series.slice(0, 12).map((point, i) => `
+          ${series.slice(0, 12).map((point, i) => {
+            const barH = Math.max(6, Math.round((Number(point.value || 0) / max) * barMaxPx));
+            return `
             <div class="assistant-data-bar-series-col">
               <span class="assistant-data-bar-series-value">${escapeHtml(point.displayValue || '')}</span>
-              <span class="assistant-data-bar-series-bar" style="height:${Math.max(10, (Number(point.value || 0) / max) * 100)}%; background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></span>
+              <span class="assistant-data-bar-series-bar" style="height:${barH}px; background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></span>
               <span class="assistant-data-bar-series-label">${escapeHtml(shortDateLabel(String(point.label)))}</span>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       `;
       return wrap;
     }
 
-    // Line chart — SVG
+    // Line chart — SVG with data-point overlays
     const svgH = 80;
     const padTop = 8;
     const padBot = 12;
     const chartH = svgH - padTop - padBot;
     const step = series.length > 1 ? 100 / (series.length - 1) : 100;
-    const points = series.map((point, index) => {
-      const x = index * step;
-      const y = padTop + chartH - ((Number(point.value || 0) / max) * chartH);
-      return `${x},${y}`;
-    }).join(' ');
 
-    // Auto-fit X-axis labels
+    // Compute x,y for each point (used for polyline AND overlays)
+    const pointCoords = series.map((point, index) => {
+      const v = Number(point.value || 0);
+      const x = index * step;
+      const y = padTop + chartH - ((v / max) * chartH);
+      return { x, y, value: v, displayValue: point.displayValue || formatCompactNumber(v), label: point.label };
+    });
+    const polyPoints = pointCoords.map(p => `${p.x},${p.y}`).join(' ');
+
+    // Auto-fit x-axis label positions
     const maxLabels = Math.min(series.length, 7);
     const labelStep = Math.max(1, Math.floor((series.length - 1) / (maxLabels - 1)));
-    const axisLabels = [];
-    for (let i = 0; i < series.length; i += labelStep) axisLabels.push(series[i]);
-    if (axisLabels.length > 0 && axisLabels[axisLabels.length - 1] !== series[series.length - 1]) {
-      axisLabels.push(series[series.length - 1]);
+    const labelIndices = [];
+    for (let i = 0; i < series.length; i += labelStep) labelIndices.push(i);
+    if (labelIndices.length > 0 && labelIndices[labelIndices.length - 1] !== series.length - 1) {
+      labelIndices.push(series.length - 1);
     }
 
+    // Value labels — show fewer than dots to avoid crowding
+    const maxValueLabels = Math.min(series.length, 6);
+    const valStep = series.length <= 6 ? 1 : Math.max(2, Math.ceil((series.length - 1) / (maxValueLabels - 1)));
+    const valueIndices = [];
+    for (let i = 0; i < series.length; i += valStep) valueIndices.push(i);
+    if (valueIndices.length > 0 && valueIndices[valueIndices.length - 1] !== series.length - 1) {
+      valueIndices.push(series.length - 1);
+    }
+
+    // Build data-point value overlay spans (positioned % from left, % from top)
+    const valueOverlays = valueIndices.map(i => {
+      const p = pointCoords[i];
+      const leftPct = p.x;
+      const topPct = ((max - p.value) / max) * 100;
+      // Adjust alignment for edge labels to avoid clipping
+      const align = i === 0 ? 'transform:none' : i === series.length - 1 ? 'transform:translateX(-100%)' : 'transform:translateX(-50%)';
+      return `<span class="assistant-data-chart-pt" style="left:${leftPct.toFixed(1)}%;top:calc(${topPct.toFixed(1)}% - 18px);${align}">${escapeHtml(p.displayValue)}</span>`;
+    }).join('');
+
+    // Build dot markers as small positioned dots
+    const dotOverlays = pointCoords.map(p => {
+      const leftPct = p.x;
+      const bottomPct = ((max - p.value) / max) * 100;
+      return `<span class="assistant-data-chart-dot" style="left:${leftPct.toFixed(1)}%;top:${bottomPct.toFixed(1)}%"></span>`;
+    }).join('');
+
     wrap.innerHTML = `
-      <svg viewBox="0 0 100 ${svgH}" preserveAspectRatio="none" class="assistant-data-chart-svg">
-        <defs>
-          <linearGradient id="assistant-chart-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="${TEAL_RGBA(0.18)}"></stop>
-            <stop offset="100%" stop-color="${TEAL_RGBA(0.02)}"></stop>
-          </linearGradient>
-        </defs>
-        <path d="M0,${svgH - padBot} L${points} L100,${svgH - padBot} Z" fill="url(#assistant-chart-fill)"></path>
-        <polyline points="${points}" fill="none" stroke="${TEAL}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      </svg>
-      <span class="assistant-data-yaxis assistant-data-yaxis--max">${formatCompactNumber(max)}</span>
-      <span class="assistant-data-yaxis assistant-data-yaxis--min">${min > 0 ? formatCompactNumber(min) : '0'}</span>
-      <div class="assistant-data-axis" style="grid-template-columns:repeat(${axisLabels.length},1fr)">
-        ${axisLabels.map(point => `<span>${escapeHtml(shortDateLabel(String(point.label)))}</span>`).join('')}
+      <div class="assistant-data-chart-area">
+        <svg viewBox="0 0 100 ${svgH}" preserveAspectRatio="none" class="assistant-data-chart-svg">
+          <defs>
+            <linearGradient id="assistant-chart-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="${TEAL_RGBA(0.18)}"></stop>
+              <stop offset="100%" stop-color="${TEAL_RGBA(0.02)}"></stop>
+            </linearGradient>
+          </defs>
+          <path d="M0,${svgH - padBot} L${polyPoints} L100,${svgH - padBot} Z" fill="url(#assistant-chart-fill)"></path>
+          <polyline points="${polyPoints}" fill="none" stroke="${TEAL}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        </svg>
+        <div class="assistant-data-chart-overlay">
+          ${dotOverlays}
+          ${valueOverlays}
+        </div>
+      </div>
+      <div class="assistant-data-axis" style="grid-template-columns:repeat(${labelIndices.length},1fr)">
+        ${labelIndices.map(i => `<span>${escapeHtml(shortDateLabel(String(series[i].label)))}</span>`).join('')}
       </div>
     `;
     return wrap;
