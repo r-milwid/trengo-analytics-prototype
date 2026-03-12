@@ -139,6 +139,12 @@ const AssistantStorage = (() => {
     session.updatedAt = new Date().toISOString();
   }
 
+  function appendArtifact(session, artifact) {
+    if (!session) return;
+    session.messages.push({ role: 'assistant_artifact', content: artifact });
+    session.updatedAt = new Date().toISOString();
+  }
+
   // ── Structured state updates ─────────────────────────────
   function updateFacts(session, facts) {
     if (!session) return;
@@ -297,6 +303,7 @@ const AssistantStorage = (() => {
     appendMessage,
     appendToolUse,
     appendToolResult,
+    appendArtifact,
     updateFacts,
     setTeamAssignments,
     addGoal,

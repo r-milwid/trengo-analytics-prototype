@@ -230,6 +230,58 @@ const AdminAssistant = (() => {
       }
     },
     {
+      name: 'inspect_data_capability',
+      description: 'Inspect the available prototype analytics data before answering a data question. Use this silently when you need to understand what can be queried.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          question: { type: 'string' }
+        }
+      }
+    },
+    {
+      name: 'plan_semantic_query',
+      description: 'Turn a data question into a semantic analytics query spec. Use this for questions about metrics, trends, comparisons, rankings, channels, teams, or agents.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          question: { type: 'string' },
+          metrics: { type: 'array', items: { type: 'string' } },
+          dimensions: { type: 'array', items: { type: 'string' } },
+          filters: { type: 'object' },
+          timeRange: { type: 'string' },
+          grain: { type: 'string' },
+          comparison: { type: 'string' },
+          limit: { type: 'number' }
+        },
+        required: ['question']
+      }
+    },
+    {
+      name: 'run_semantic_query',
+      description: 'Run a semantic analytics query and return normalized prototype data results.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          querySpec: { type: 'object' }
+        },
+        required: ['querySpec']
+      }
+    },
+    {
+      name: 'summarize_query_result',
+      description: 'Convert query results into summary hints and an optional inline result block for chat. Use this after running a semantic query.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          question: { type: 'string' },
+          querySpec: { type: 'object' },
+          result: { type: 'object' }
+        },
+        required: ['question', 'querySpec', 'result']
+      }
+    },
+    {
       name: 'complete_onboarding',
       description: 'Signal that onboarding is complete. Transitions to admin assistant mode. Call this when the user seems satisfied or says they are done.',
       input_schema: {
@@ -244,8 +296,8 @@ const AdminAssistant = (() => {
   // ── Role → tool scoping ────────────────────────────────────
   const ROLE_TOOLS = {
     admin: ALL_TOOLS.map(t => t.name),
-    supervisor: ['set_lens', 'set_team_usecases', 'configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'complete_onboarding'],
-    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'complete_onboarding'],
+    supervisor: ['set_lens', 'set_team_usecases', 'configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
+    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
   };
 
   function getToolsForRole(role, mode) {
@@ -436,6 +488,13 @@ ASSISTANT MODE
 - Respond to the request first. Ask clarifying questions only when necessary to avoid a weak or incorrect change.
 - Still use clickable/editor UI tools when they are easier than making the user type several words or manually describe a structure.
 - Prefer show_boolean_choice, show_options, show_team_assignment_matrix, show_tab_proposal_choice, show_tab_editor, and show_source_input when they make configuration faster.
+- For data questions, use the semantic analytics tools rather than reasoning from visible charts alone.
+- Do not ask the user what data is available. Inspect capability silently, plan the query, run it, and summarize the result.
+- For most data questions, the correct sequence is: inspect_data_capability -> plan_semantic_query -> run_semantic_query -> summarize_query_result.
+- Use the same data path for questions about visible dashboard metrics and deeper questions that go beyond the current charts.
+- Ask one clarification only if the question materially changes the query, for example scope, timeframe, comparison, or success metric.
+- Do not invent numbers. Only state values returned by the semantic query result.
+- If summarize_query_result returns a presentation block, let the UI show it and keep your text answer concise.
 - Keep the same user-made-vs-AI-made confirmation rule in this mode.`;
     }
 
@@ -472,6 +531,14 @@ ASSISTANT MODE
         return handleShowTabProposalChoice(toolInput);
       case 'show_source_input':
         return handleShowSourceInput(toolInput);
+      case 'inspect_data_capability':
+        return handleInspectDataCapability(toolInput);
+      case 'plan_semantic_query':
+        return handlePlanSemanticQuery(toolInput);
+      case 'run_semantic_query':
+        return handleRunSemanticQuery(toolInput);
+      case 'summarize_query_result':
+        return handleSummarizeQueryResult(toolInput);
       case 'complete_onboarding':
         return handleCompleteOnboarding(toolInput);
       default:
@@ -964,6 +1031,74 @@ ASSISTANT MODE
     });
   }
 
+  function getVisibleWidgetTitles() {
+    return state.tabs.flatMap((tab) => {
+      const ids = state.tabWidgets && state.tabWidgets[tab.id]
+        ? [...state.tabWidgets[tab.id]]
+        : (WIDGETS[tab.id] || []).map(widget => widget.id);
+      return ids
+        .map(id => WIDGET_BY_ID[id])
+        .filter(Boolean)
+        .map(widget => widget.title);
+    });
+  }
+
+  function getAnalyticsContext() {
+    const scopedTeams = typeof window.getRoleScopedPrototypeTeams === 'function'
+      ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
+      : getKnownTeamNames();
+
+    return {
+      customerProfile: _customerData || {},
+      role: _role || 'admin',
+      scopedTeams,
+      dashboardContext: {
+        visibleTabs: state.tabs.map(tab => tab.label),
+        visibleWidgetTitles: getVisibleWidgetTitles(),
+      },
+    };
+  }
+
+  async function queryAnalytics(action, payload = {}) {
+    const resp = await fetch(`${PROXY_URL}/analytics/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        ...payload,
+        ...getAnalyticsContext(),
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data?.error) {
+      throw new Error(data?.message || data?.error || 'Analytics query failed');
+    }
+    return data;
+  }
+
+  async function handleInspectDataCapability({ question }) {
+    return queryAnalytics('inspect', { question });
+  }
+
+  async function handlePlanSemanticQuery(input) {
+    return queryAnalytics('plan', input);
+  }
+
+  async function handleRunSemanticQuery({ querySpec }) {
+    return queryAnalytics('run', { querySpec });
+  }
+
+  async function handleSummarizeQueryResult(input) {
+    const result = await queryAnalytics('summarize', input);
+    if (result?.presentation) {
+      renderAnalyticsArtifact(result.presentation, {
+        caveats: result.caveats || [],
+        summaryHints: result.summaryHints || {},
+      });
+    }
+    return result;
+  }
+
   async function handleCompleteOnboarding({ summary }) {
     AssistantStorage.setMode(_session, 'assistant');
     AssistantStorage.save(_session);
@@ -1127,6 +1262,130 @@ ASSISTANT MODE
     bubble.innerHTML = renderMarkdown(text);
     container.appendChild(bubble);
     scrollToBottom(container);
+  }
+
+  function renderAnalyticsArtifact(presentation, meta = {}, options = {}) {
+    const container = getMessagesContainer();
+    if (!container || !presentation) return;
+
+    const block = document.createElement('div');
+    block.className = 'assistant-data-result';
+
+    const header = document.createElement('div');
+    header.className = 'assistant-data-result-header';
+    header.innerHTML = `
+      <span class="assistant-data-result-title">${escapeHtml(presentation.title || 'Analysis result')}</span>
+      ${presentation.metric ? `<span class="assistant-data-result-metric">${escapeHtml(formatMetricChip(presentation.metric))}</span>` : ''}
+    `;
+    block.appendChild(header);
+
+    if (presentation.kind === 'timeseries') {
+      block.appendChild(buildTimeseriesResult(presentation));
+    } else if (presentation.kind === 'ranking') {
+      block.appendChild(buildRankingResult(presentation));
+    } else if (presentation.kind === 'table') {
+      block.appendChild(buildTableResult(presentation));
+    }
+
+    if (Array.isArray(meta.caveats) && meta.caveats.length > 0) {
+      const caveat = document.createElement('div');
+      caveat.className = 'assistant-data-result-caveat';
+      caveat.textContent = meta.caveats[0];
+      block.appendChild(caveat);
+    }
+
+    container.appendChild(block);
+    if (!options.skipPersist) {
+      AssistantStorage.appendArtifact(_session, {
+        type: 'analytics_result',
+        presentation,
+        meta,
+      });
+      AssistantStorage.save(_session);
+    }
+    scrollToBottom(container);
+  }
+
+  function formatMetricChip(metric) {
+    return String(metric || '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }
+
+  function buildTimeseriesResult(presentation) {
+    const wrap = document.createElement('div');
+    wrap.className = 'assistant-data-chart';
+    const series = Array.isArray(presentation.series) ? presentation.series : [];
+    const values = series.map(point => Number(point.value || 0));
+    const max = Math.max(...values, 1);
+    const step = series.length > 1 ? 100 / (series.length - 1) : 100;
+    const points = series.map((point, index) => {
+      const x = index * step;
+      const y = 64 - ((Number(point.value || 0) / max) * 52);
+      return `${x},${y}`;
+    }).join(' ');
+
+    wrap.innerHTML = `
+      <svg viewBox="0 0 100 72" preserveAspectRatio="none" class="assistant-data-chart-svg">
+        <defs>
+          <linearGradient id="assistant-chart-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="rgba(59,130,246,0.22)"></stop>
+            <stop offset="100%" stop-color="rgba(59,130,246,0.02)"></stop>
+          </linearGradient>
+        </defs>
+        <path d="M0,64 L${points} L100,64 Z" fill="url(#assistant-chart-fill)"></path>
+        <polyline points="${points}" fill="none" stroke="#3b82f6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>
+      <div class="assistant-data-axis">
+        ${series.slice(0, 5).map(point => `<span>${escapeHtml(point.label)}</span>`).join('')}
+      </div>
+    `;
+    return wrap;
+  }
+
+  function buildRankingResult(presentation) {
+    const wrap = document.createElement('div');
+    wrap.className = 'assistant-data-ranking';
+    const rows = Array.isArray(presentation.rows) ? presentation.rows : [];
+    const max = Math.max(...rows.map(row => Number(row.value || 0)), 1);
+    rows.forEach((row, index) => {
+      const item = document.createElement('div');
+      item.className = 'assistant-data-ranking-row';
+      item.innerHTML = `
+        <div class="assistant-data-ranking-head">
+          <span class="assistant-data-ranking-label">${index + 1}. ${escapeHtml(row.label)}</span>
+          <span class="assistant-data-ranking-value">${escapeHtml(row.displayValue || String(row.value))}</span>
+        </div>
+        <div class="assistant-data-ranking-bar"><span style="width:${Math.max(12, (Number(row.value || 0) / max) * 100)}%"></span></div>
+      `;
+      wrap.appendChild(item);
+    });
+    return wrap;
+  }
+
+  function buildTableResult(presentation) {
+    const wrap = document.createElement('div');
+    wrap.className = 'assistant-data-table-wrap';
+    const rows = Array.isArray(presentation.rows) ? presentation.rows : [];
+    wrap.innerHTML = `
+      <table class="assistant-data-table">
+        <thead>
+          <tr>
+            <th>${escapeHtml(presentation.dimension || 'Breakdown')}</th>
+            <th>${escapeHtml(formatMetricChip(presentation.metric))}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr>
+              <td>${escapeHtml(row.label)}</td>
+              <td>${escapeHtml(row.displayValue || String(row.value))}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    return wrap;
   }
 
   function renderErrorBubble(text) {
@@ -2814,7 +3073,10 @@ ASSISTANT MODE
     const container = getMessagesContainer();
     if (!container) return;
     container.innerHTML = '';
-    const uiOnlyTools = new Set(['show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input']);
+    const uiOnlyTools = new Set([
+      'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input',
+      'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result',
+    ]);
 
     messages.forEach(msg => {
       if (msg.role === 'user') {
@@ -2822,6 +3084,10 @@ ASSISTANT MODE
           renderUserBubble(msg.content);
         }
         // Skip tool_result messages in replay (they were just data for the AI)
+      } else if (msg.role === 'assistant_artifact') {
+        if (msg.content?.type === 'analytics_result') {
+          renderAnalyticsArtifact(msg.content.presentation, msg.content.meta || {}, { skipPersist: true });
+        }
       } else if (msg.role === 'assistant') {
         const content = Array.isArray(msg.content) ? msg.content : [msg.content];
         content.forEach(block => {
@@ -3109,6 +3375,9 @@ ASSISTANT MODE
       _customerId = active.customerId;
       _role = active.role || 'admin';
       _session = AssistantStorage.loadOrCreate(_customerId, _role);
+    }
+    if (!_customerData && _customerId && window.CustomerProfilesStore?.getById) {
+      _customerData = window.CustomerProfilesStore.getById(_customerId);
     }
     AssistantStorage.setMode(_session, 'assistant');
 

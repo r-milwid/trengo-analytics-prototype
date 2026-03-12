@@ -1,3 +1,5 @@
+import { handleAnalyticsQuery } from './analytics-query.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, PUT, DELETE, OPTIONS',
@@ -332,6 +334,18 @@ export default {
         return json({ text, title, url });
       } catch (e) {
         return json({ error: 'extraction failed', message: e.message }, 500);
+      }
+    }
+
+    // ── POST /analytics/query — semantic analytics query ────
+    if (path === '/analytics/query' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const result = await handleAnalyticsQuery(body);
+        const status = result?.error ? 400 : 200;
+        return json(result, status);
+      } catch (e) {
+        return json({ error: 'analytics query failed', message: e.message }, 500);
       }
     }
 
