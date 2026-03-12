@@ -4441,11 +4441,11 @@ body[data-panel="wide"] .assistant-fab {
 /* ── Assistant chat panel ──────────────────────────────────── */
 .assistant-panel {
   position: fixed;
-  bottom: 88px;
+  bottom: 24px;
   right: calc(var(--panel-chat-w) + 30px + 24px);
   width: 380px;
   max-width: min(620px, calc(100vw - 120px));
-  height: 520px;
+  height: calc(100vh - 48px);
   background: var(--white);
   border-radius: 16px;
   box-shadow: 0 12px 40px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06);
