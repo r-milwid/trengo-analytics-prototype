@@ -120,10 +120,11 @@ const AdminAssistant = (() => {
     },
     {
       name: 'show_options',
-      description: 'Display clickable option cards, chips, or a list to the user. Use when clicking is faster than typing. Single-select choices resolve immediately on click. Multi-select should only be used when the user genuinely needs to choose several items.',
+      description: 'Display clickable option cards, chips, or a list to the user. Use when clicking is faster than typing. Single-select choices resolve immediately on click. Multi-select should only be used when the user genuinely needs to choose several items. When the options answer a specific question, include that question in prompt.',
       input_schema: {
         type: 'object',
         properties: {
+          prompt: { type: 'string', description: 'Optional question or short instruction shown above the choices' },
           options: {
             type: 'array',
             items: {
@@ -449,6 +450,7 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 <tool_choice>
 - Use show_boolean_choice for yes/no questions.
 - Use show_options for simple single-choice or short multi-select decisions.
+- When using show_options or show_boolean_choice to ask a question, put the question itself in the tool prompt so it appears with the choices.
 - Use show_team_assignment_matrix when the user needs to classify teams as support, sales, or both.
 - Use show_tab_editor when direct editing is faster than conversational back-and-forth.
 - Use show_tab_proposal_choice when presenting a tab proposal. The choices should be: accept proposals, refine further, or keep defaults.
@@ -1048,11 +1050,11 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     return { success: true };
   }
 
-  function handleShowOptions({ options, multiSelect, style }) {
+  function handleShowOptions({ prompt, options, multiSelect, style }) {
     // This is a "blocking" UI tool — we render the options and pause the loop
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      void renderOptionsUI(options, multiSelect || false, style || 'cards', resolve);
+      void renderOptionsUI(prompt, options, multiSelect || false, style || 'cards', resolve);
     });
   }
 
@@ -1164,6 +1166,8 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
   async function handleCompleteOnboarding({ summary }) {
     AssistantStorage.setMode(_session, 'assistant');
+    AssistantStorage.setAssistantThreadInitialized(_session, false);
+    AssistantStorage.setAssistantDisplayStartIndex(_session, null);
     AssistantStorage.save(_session);
     localStorage.setItem(AI_SETUP_MODE_KEY, 'assistant');
     if (window.setGuideOnboardingState) {
@@ -1175,6 +1179,26 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     showFAB({ pulse: true });
     showConfigChange(`Setup complete!`);
     return { success: true, summary };
+  }
+
+  function buildAssistantOpeningMessage() {
+    const companyName = _customerData?.company ? ` for ${_customerData.company}` : '';
+    if (_role === 'supervisor') {
+      return `Hi — I can help refine the dashboard${companyName}, especially tabs, teams, widgets, and team-scoped questions. I can also help analyze the prototype data when you want to dig deeper.`;
+    }
+    if (_role === 'agent') {
+      return `Hi — I can help tailor your view${companyName}, adjust what you see, and answer deeper questions using the prototype data when useful.`;
+    }
+    return `Hi — I can help refine the dashboard${companyName}, adjust tabs, teams, and widgets, and answer deeper questions using the prototype data when useful.`;
+  }
+
+  function ensureAssistantDisplayThread() {
+    if (!_session) return;
+    if (AssistantStorage.getAssistantThreadInitialized(_session)) return;
+    AssistantStorage.setAssistantDisplayStartIndex(_session, AssistantStorage.getMessages(_session).length);
+    AssistantStorage.setAssistantThreadInitialized(_session, true);
+    AssistantStorage.appendToolUse(_session, [{ type: 'text', text: buildAssistantOpeningMessage() }]);
+    AssistantStorage.save(_session);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1717,12 +1741,19 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   }
 
   // ── Options UI (rendered when AI calls show_options) ───────
-  async function renderOptionsUI(options, multiSelect, style, resolve) {
+  async function renderOptionsUI(prompt, options, multiSelect, style, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
     const wrapper = document.createElement('div');
     wrapper.className = `ai-setup-options style-${style}`;
+
+    if (prompt) {
+      const promptEl = document.createElement('div');
+      promptEl.className = 'ai-setup-inline-prompt';
+      promptEl.textContent = prompt;
+      wrapper.appendChild(promptEl);
+    }
 
     const selected = new Set();
 
@@ -3877,9 +3908,10 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       _customerData = window.CustomerProfilesStore.getById(_customerId);
     }
     AssistantStorage.setMode(_session, 'assistant');
+    ensureAssistantDisplayThread();
 
     // Replay messages into assistant panel
-    const messages = AssistantStorage.getMessages(_session);
+    const messages = AssistantStorage.getAssistantDisplayMessages(_session);
     const container = document.getElementById('assistant-panel-messages');
     if (container) {
       container.innerHTML = '';
@@ -3904,8 +3936,11 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   function retryLastMessage() {
     if (!_session || _loopRunning) return;
     const messages = AssistantStorage.getMessages(_session);
+    const startIndex = (AssistantStorage.getMode(_session) === 'assistant')
+      ? (AssistantStorage.getAssistantDisplayStartIndex(_session) ?? 0)
+      : 0;
     // Find last user text message
-    for (let i = messages.length - 1; i >= 0; i--) {
+    for (let i = messages.length - 1; i >= startIndex; i--) {
       if (messages[i].role === 'user' && typeof messages[i].content === 'string') {
         // Remove everything after this message to retry
         _session.messages = messages.slice(0, i);

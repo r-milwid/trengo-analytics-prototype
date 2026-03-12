@@ -38,6 +38,8 @@ const AssistantStorage = (() => {
           lastUpdatedAt: null,
         },
         pendingProposalSource: null, // 'ai' | 'user' | null
+        assistantThreadInitialized: false,
+        assistantDisplayStartIndex: null,
       },
 
       messages: [], // Anthropic messages format (role + content)
@@ -216,6 +218,33 @@ const AssistantStorage = (() => {
     session.structured.pendingProposalSource = source || null;
   }
 
+  function getAssistantThreadInitialized(session) {
+    return !!session?.structured?.assistantThreadInitialized;
+  }
+
+  function setAssistantThreadInitialized(session, initialized) {
+    if (!session) return;
+    session.structured.assistantThreadInitialized = !!initialized;
+  }
+
+  function getAssistantDisplayStartIndex(session) {
+    if (!session) return null;
+    const value = session.structured.assistantDisplayStartIndex;
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+
+  function setAssistantDisplayStartIndex(session, index) {
+    if (!session) return;
+    session.structured.assistantDisplayStartIndex = Number.isInteger(index) && index >= 0 ? index : null;
+  }
+
+  function getAssistantDisplayMessages(session) {
+    if (!session) return [];
+    const startIndex = getAssistantDisplayStartIndex(session);
+    if (startIndex == null) return [];
+    return session.messages.slice(startIndex);
+  }
+
   // ── Reset ────────────────────────────────────────────────
   function clearAll() {
     // Remove all assistant-related localStorage keys
@@ -316,6 +345,11 @@ const AssistantStorage = (() => {
     setPendingTabDraft,
     setSourceStatus,
     setPendingProposalSource,
+    getAssistantThreadInitialized,
+    setAssistantThreadInitialized,
+    getAssistantDisplayStartIndex,
+    setAssistantDisplayStartIndex,
+    getAssistantDisplayMessages,
     clearAll,
     clearSession,
     buildPromptContext,
