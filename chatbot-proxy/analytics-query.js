@@ -16,6 +16,13 @@ const ENTITY_ROW_MAP = {
   workflow_status_daily: 'workflowStatusDaily',
   handoff_reason_daily: 'handoffReasonDaily',
   contact_type_daily: 'contactTypeDaily',
+  aging_band_daily: 'agingBandDaily',
+  sla_risk_daily: 'slaRiskDaily',
+  satisfaction_theme_daily: 'satisfactionThemeDaily',
+  reopen_reason_daily: 'reopenReasonDaily',
+  lead_source_daily: 'leadSourceDaily',
+  call_outcome_daily: 'callOutcomeDaily',
+  ai_confidence_daily: 'aiConfidenceDaily',
 };
 
 const DIMENSION_FIELD_MAP = {
@@ -29,6 +36,12 @@ const DIMENSION_FIELD_MAP = {
   reason: 'reason',
   contact_type: 'contactType',
   direction: 'direction',
+  age_band: 'ageBand',
+  risk_band: 'riskBand',
+  theme: 'theme',
+  source: 'source',
+  outcome: 'outcome',
+  confidence_band: 'confidenceBand',
   date: 'date',
 };
 
@@ -39,6 +52,9 @@ function lower(value) {
 function canonicalDimension(value) {
   const normalized = lower(value);
   if (normalized === 'contacttype' || normalized === 'contact type') return 'contact_type';
+  if (normalized === 'ageband' || normalized === 'age band' || normalized === 'backlog age') return 'age_band';
+  if (normalized === 'riskband' || normalized === 'risk band' || normalized === 'breach risk') return 'risk_band';
+  if (normalized === 'confidenceband' || normalized === 'confidence band' || normalized === 'confidence bucket') return 'confidence_band';
   return normalized;
 }
 
@@ -49,6 +65,8 @@ function parseTimeRange(value, question = '') {
     const days = Math.max(1, Math.min(180, Number(daysMatch[1])));
     return { key: `last_${days}_days`, days, label: `Last ${days} days` };
   }
+  if (source.includes('this month')) return { key: 'last_30_days', days: 30, label: 'This month' };
+  if (source.includes('last month')) return { key: 'last_month', days: 30, offsetDays: 30, label: 'Last month' };
   if (source.includes('today')) return { key: 'today', days: 1, label: 'Today' };
   if (source.includes('yesterday')) return { key: 'yesterday', days: 1, offsetDays: 1, label: 'Yesterday' };
   if (source.includes('last 7') || source.includes('past 7') || source.includes('this week')) return { key: 'last_7_days', days: 7, label: 'Last 7 days' };
@@ -66,6 +84,16 @@ function inferMetric(question, requestedMetrics = []) {
   if (normalized.length > 0) return normalized[0];
 
   const q = lower(question);
+  if (q.includes('reopen') && (q.includes('why') || q.includes('reason'))) return 'reopen_reason_count';
+  if (q.includes('csat') && (q.includes('theme') || q.includes('driver') || q.includes('lower') || q.includes('down'))) {
+    return 'satisfaction_theme_detractors';
+  }
+  if (q.includes('call') && (q.includes('ending') || q.includes('outcome') || q.includes('end'))) return 'call_outcome_count';
+  if (q.includes('lead source') && q.includes('win rate')) return 'lead_source_win_rate';
+  if (q.includes('lead source') && q.includes('pipeline')) return 'lead_source_pipeline_value';
+  if (q.includes('lead source')) return 'lead_source_count';
+  if (q.includes('near breach') && (q.includes('how many') || q.includes('tickets'))) return 'near_breach_tickets';
+
   const ranked = Object.entries(METRIC_ALIASES)
     .filter(([alias]) => alias && q.includes(alias))
     .sort((a, b) => b[0].length - a[0].length);
@@ -96,6 +124,12 @@ function inferDimension(question, requestedDimensions = []) {
   if (q.includes('handoff reason') || q.includes('reason')) return 'reason';
   if (q.includes('new vs returning') || q.includes('contact type') || q.includes('returning contacts')) return 'contact_type';
   if (q.includes('inbound') || q.includes('outbound') || q.includes('direction')) return 'direction';
+  if (q.includes('age band') || q.includes('aging bucket') || q.includes('backlog age') || q.includes('older than')) return 'age_band';
+  if (q.includes('risk band') || q.includes('risk bucket') || q.includes('breach risk') || q.includes('near breach')) return 'risk_band';
+  if (q.includes('theme') || q.includes('driver')) return 'theme';
+  if (q.includes('source')) return 'source';
+  if (q.includes('call outcome') || q.includes('outcome')) return 'outcome';
+  if (q.includes('confidence band') || q.includes('confidence bucket')) return 'confidence_band';
   if (q.includes('hour') || q.includes('time of day')) return 'hour';
   return null;
 }
@@ -104,6 +138,7 @@ function inferGrain(question, requestedGrain) {
   const explicit = normalizeGrain(requestedGrain);
   if (explicit) return explicit;
   const q = lower(question);
+  if (q.includes('rising') || q.includes('falling') || q.includes('increasing') || q.includes('decreasing') || q.includes('trajectory')) return 'date';
   if (q.includes('by week') || q.includes('weekly')) return 'week';
   if (q.includes('by month') || q.includes('monthly')) return 'month';
   if (q.includes('trend') || q.includes('over time') || q.includes('how has') || q.includes('changed') || q.includes('by day') || q.includes('daily')) return 'date';
@@ -322,9 +357,33 @@ function buildPresentation(metric, resultType, querySpec, data) {
   return null;
 }
 
-function normalizeQuerySpec(querySpec = {}, context = {}) {
-  const metric = inferMetric('', [querySpec.metric].filter(Boolean));
+function buildDerivedTrendPresentation(metric, querySpec, context = {}) {
   const meta = METRIC_DEFINITIONS[metric] || {};
+  if (!metric || !meta || querySpec?.grain || querySpec?.dimension) return null;
+  if (!querySpec?.timeRange?.days || querySpec.timeRange.days < 2) return null;
+
+  const trendResult = executeSemanticQuery({
+    ...querySpec,
+    grain: querySpec.timeRange.days <= 90 ? 'date' : 'week',
+  }, context);
+
+  if (trendResult?.resultType !== 'timeseries' || !Array.isArray(trendResult?.data?.points) || trendResult.data.points.length <= 1) {
+    return null;
+  }
+
+  return {
+    kind: 'timeseries',
+    layout: 'wide',
+    title: `${meta.label || metric} trend`,
+    series: trendResult.data.points,
+    metric,
+    chartType: meta.preferredChart === 'bar' ? 'bar' : 'line',
+  };
+}
+
+function normalizeQuerySpec(querySpec = {}, context = {}) {
+  let metric = inferMetric('', [querySpec.metric].filter(Boolean));
+  let meta = METRIC_DEFINITIONS[metric] || {};
   let dimension = canonicalDimension(querySpec.dimension);
   let grain = normalizeGrain(querySpec.grain);
 
@@ -335,6 +394,11 @@ function normalizeQuerySpec(querySpec = {}, context = {}) {
 
   if (!grain && !dimension && meta.defaultDimension) {
     dimension = meta.defaultDimension;
+  }
+
+  if (dimension === 'risk_band' && metric === 'near_breach_tickets') {
+    metric = 'sla_risk_count';
+    meta = METRIC_DEFINITIONS[metric] || meta;
   }
 
   const timeRange = querySpec.timeRange?.days
@@ -444,9 +508,12 @@ function executeSemanticQuery(querySpec, context) {
 
 function planSemanticQuery(payload = {}, context = {}) {
   const question = payload.question || '';
-  const metric = inferMetric(question, payload.metrics || []);
+  let metric = inferMetric(question, payload.metrics || []);
   const explicitDimension = inferDimension(question, payload.dimensions || []);
   const grain = inferGrain(question, payload.grain);
+  if (explicitDimension === 'risk_band' && metric === 'near_breach_tickets') {
+    metric = 'sla_risk_count';
+  }
   const meta = METRIC_DEFINITIONS[metric] || {};
   const dimension = explicitDimension || (!grain ? meta.defaultDimension || null : null);
   const comparison = inferComparison(question, payload.comparison);
@@ -490,11 +557,14 @@ function summarizeQueryResult(payload = {}, context = {}) {
   const metric = querySpec.metric || 'conversations';
   const resultType = result.resultType || 'metric';
   const data = result.data || {};
+  const derivedTrendPresentation = resultType === 'metric'
+    ? buildDerivedTrendPresentation(metric, querySpec, context)
+    : null;
 
   return {
     resultType,
     summaryHints: buildSummaryHints(metric, resultType, querySpec, data, context),
-    presentation: buildPresentation(metric, resultType, querySpec, data),
+    presentation: buildPresentation(metric, resultType, querySpec, data) || derivedTrendPresentation,
     caveats: ['Prototype synthetic analytics data; use for directional feedback rather than exact business decisions.'],
     confidence: resultType === 'metric' ? 0.92 : 0.88,
   };

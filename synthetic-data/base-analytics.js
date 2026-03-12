@@ -31,6 +31,13 @@ const DEFAULT_SALES_INTENTS = [
   'Expansion request',
   'Partner inquiry',
 ];
+const DEFAULT_BACKLOG_BANDS = ['0-1 days', '2-3 days', '4-7 days', '8+ days'];
+const DEFAULT_SLA_RISK_BANDS = ['On track', 'At risk', 'Near breach', 'Breached'];
+const DEFAULT_SATISFACTION_THEMES = ['Speed', 'Clarity', 'Resolution quality', 'Empathy', 'Self-serve content'];
+const DEFAULT_REOPEN_REASONS = ['Knowledge gap', 'Incorrect resolution', 'Cross-team handoff', 'Waiting on customer', 'Policy edge case'];
+const DEFAULT_LEAD_SOURCES = ['Website', 'Paid search', 'Referral', 'Partner', 'Outbound'];
+const DEFAULT_CALL_OUTCOMES = ['Connected', 'Missed', 'Callback requested', 'Voicemail', 'Escalated on call'];
+const DEFAULT_AI_CONFIDENCE_BANDS = ['High', 'Medium', 'Low', 'Very low'];
 
 const SUPPORT_CHANNEL_WEIGHTS = {
   email: 1.0,
@@ -64,17 +71,22 @@ const METRIC_DEFINITIONS = {
   assigned_tickets: { entity: 'team_daily', label: 'Assigned tickets', kind: 'count', aggregate: 'sum', sourceKey: 'assignedTickets' },
   reopened_tickets: { entity: 'team_daily', label: 'Reopened tickets', kind: 'count', aggregate: 'sum', sourceKey: 'reopenedTickets' },
   reopen_rate: { entity: 'team_daily', label: 'Reopen rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'reopenedTickets', denominatorKey: 'ticketsResolved' },
+  aged_backlog_tickets: { entity: 'team_daily', label: 'Backlog older than 7 days', kind: 'count', aggregate: 'sum', sourceKey: 'backlogOlderThan7Days' },
   first_response_minutes: { entity: 'team_daily', label: 'First response time', kind: 'duration_minutes', aggregate: 'weighted_average', sourceKey: 'firstResponseMinutes', weightKey: 'ticketsCreated' },
   resolution_hours: { entity: 'team_daily', label: 'Resolution time', kind: 'duration_hours', aggregate: 'weighted_average', sourceKey: 'resolutionHours', weightKey: 'ticketsResolved' },
   sla_breaches: { entity: 'team_daily', label: 'SLA breaches', kind: 'count', aggregate: 'sum', sourceKey: 'slaBreaches' },
   sla_breach_rate: { entity: 'team_daily', label: 'SLA breach rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'slaBreaches', denominatorKey: 'ticketsCreated' },
+  near_breach_tickets: { entity: 'team_daily', label: 'Tickets near breach', kind: 'count', aggregate: 'sum', sourceKey: 'nearBreachTickets' },
   csat: { entity: 'team_daily', label: 'CSAT', kind: 'score', aggregate: 'weighted_average', sourceKey: 'csatScore', weightKey: 'surveyResponses' },
   survey_responses: { entity: 'team_daily', label: 'Survey responses', kind: 'count', aggregate: 'sum', sourceKey: 'surveyResponses', preferredChart: 'bar' },
   survey_response_rate: { entity: 'team_daily', label: 'Response rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'surveyResponses', denominatorKey: 'surveysSent' },
+  detractor_responses: { entity: 'team_daily', label: 'Detractor responses', kind: 'count', aggregate: 'sum', sourceKey: 'detractorResponses' },
+  promoter_responses: { entity: 'team_daily', label: 'Promoter responses', kind: 'count', aggregate: 'sum', sourceKey: 'promoterResponses' },
   ai_tickets: { entity: 'team_daily', label: 'AI tickets', kind: 'count', aggregate: 'sum', sourceKey: 'aiTickets' },
   ai_assist_rate: { entity: 'team_daily', label: 'AI assistance rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'aiAssistCount', denominatorKey: 'ticketsCreated' },
   ai_resolution_rate: { entity: 'team_daily', label: 'AI resolution rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'aiResolvedCount', denominatorKey: 'ticketsCreated' },
   ai_open_ticket_rate: { entity: 'team_daily', label: 'Open ticket rate (AI)', kind: 'rate', aggregate: 'ratio', numeratorKey: 'aiOpenTickets', denominatorKey: 'aiTickets' },
+  low_confidence_ai_tickets: { entity: 'team_daily', label: 'Low-confidence AI tickets', kind: 'count', aggregate: 'sum', sourceKey: 'lowConfidenceAiTickets' },
   handoff_rate: { entity: 'team_daily', label: 'Handoff rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'handoffCount', denominatorKey: 'aiTickets' },
   escalation_rate: { entity: 'team_daily', label: 'Escalation rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'handoffCount', denominatorKey: 'ticketsCreated' },
   automation_success_rate: { entity: 'team_daily', label: 'Journeys success ratio', kind: 'rate', aggregate: 'ratio', numeratorKey: 'automationSuccessCount', denominatorKey: 'automationRuns' },
@@ -95,6 +107,7 @@ const METRIC_DEFINITIONS = {
   avg_wait_minutes: { entity: 'team_daily', label: 'Average wait time', kind: 'duration_minutes', aggregate: 'weighted_average', sourceKey: 'avgWaitMinutes', weightKey: 'totalCalls' },
   longest_wait_minutes: { entity: 'team_daily', label: 'Longest wait time', kind: 'duration_minutes', aggregate: 'max', sourceKey: 'longestWaitMinutes' },
   callback_requests: { entity: 'team_daily', label: 'Callback requests', kind: 'count', aggregate: 'sum', sourceKey: 'callbackRequests' },
+  callback_completion_rate: { entity: 'team_daily', label: 'Callback completion rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'callbackCompletedCount', denominatorKey: 'callbackRequests' },
   avg_call_duration_minutes: { entity: 'team_daily', label: 'Call duration', kind: 'duration_minutes', aggregate: 'weighted_average', sourceKey: 'avgCallDurationMinutes', weightKey: 'totalCalls' },
   first_call_resolution_rate: { entity: 'team_daily', label: 'First call resolution', kind: 'rate', aggregate: 'ratio', numeratorKey: 'firstCallResolutionCount', denominatorKey: 'inboundCalls' },
   call_to_ticket_rate: { entity: 'team_daily', label: 'Call-to-ticket rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'callToTicketCount', denominatorKey: 'totalCalls' },
@@ -106,6 +119,8 @@ const METRIC_DEFINITIONS = {
   capacity_hours: { entity: 'team_daily', label: 'Capacity hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'capacityHours' },
   demand_hours: { entity: 'team_daily', label: 'Demand hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'demandHours' },
   capacity_gap_hours: { entity: 'team_daily', label: 'Capacity gap', kind: 'duration_hours', aggregate: 'difference', numeratorKey: 'demandHours', denominatorKey: 'capacityHours' },
+  after_hours_volume: { entity: 'team_daily', label: 'After-hours volume', kind: 'count', aggregate: 'sum', sourceKey: 'afterHoursVolume' },
+  queue_overflow_tickets: { entity: 'team_daily', label: 'Queue overflow tickets', kind: 'count', aggregate: 'sum', sourceKey: 'queueOverflowTickets' },
   conversations_handled: { entity: 'agent_daily', label: 'Conversations handled', kind: 'count', aggregate: 'sum', sourceKey: 'conversationsHandled' },
   agent_csat: { entity: 'agent_daily', label: 'Agent CSAT', kind: 'score', aggregate: 'weighted_average', sourceKey: 'csatScore', weightKey: 'surveyResponses' },
   agent_open_tickets: { entity: 'agent_daily', label: 'Assigned open tickets', kind: 'count', aggregate: 'sum', sourceKey: 'assignedOpenTickets' },
@@ -117,6 +132,17 @@ const METRIC_DEFINITIONS = {
   status_count: { entity: 'workflow_status_daily', label: 'Ticket count by status', kind: 'count', aggregate: 'sum', sourceKey: 'count', defaultDimension: 'status', preferredChart: 'bar' },
   handoff_reason_count: { entity: 'handoff_reason_daily', label: 'Automation handoff reasons', kind: 'count', aggregate: 'sum', sourceKey: 'handoffCount', defaultDimension: 'reason', preferredChart: 'bar' },
   contact_count: { entity: 'contact_type_daily', label: 'Contacts', kind: 'count', aggregate: 'sum', sourceKey: 'contactCount', defaultDimension: 'contact_type', preferredChart: 'doughnut' },
+  backlog_age_count: { entity: 'aging_band_daily', label: 'Backlog aging', kind: 'count', aggregate: 'sum', sourceKey: 'ticketCount', defaultDimension: 'age_band', preferredChart: 'bar' },
+  sla_risk_count: { entity: 'sla_risk_daily', label: 'SLA risk mix', kind: 'count', aggregate: 'sum', sourceKey: 'ticketCount', defaultDimension: 'risk_band', preferredChart: 'bar' },
+  satisfaction_theme_count: { entity: 'satisfaction_theme_daily', label: 'Satisfaction themes', kind: 'count', aggregate: 'sum', sourceKey: 'responseCount', defaultDimension: 'theme', preferredChart: 'bar' },
+  satisfaction_theme_detractors: { entity: 'satisfaction_theme_daily', label: 'Detractor themes', kind: 'count', aggregate: 'sum', sourceKey: 'detractorCount', defaultDimension: 'theme', preferredChart: 'bar' },
+  reopen_reason_count: { entity: 'reopen_reason_daily', label: 'Reopen reasons', kind: 'count', aggregate: 'sum', sourceKey: 'reopenCount', defaultDimension: 'reason', preferredChart: 'bar' },
+  lead_source_count: { entity: 'lead_source_daily', label: 'Lead sources', kind: 'count', aggregate: 'sum', sourceKey: 'leadCount', defaultDimension: 'source', preferredChart: 'bar' },
+  lead_source_win_rate: { entity: 'lead_source_daily', label: 'Lead source win rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'dealsWon', denominatorKey: 'dealsCreated', defaultDimension: 'source', preferredChart: 'bar' },
+  lead_source_pipeline_value: { entity: 'lead_source_daily', label: 'Pipeline by lead source', kind: 'currency', aggregate: 'sum', sourceKey: 'pipelineValue', defaultDimension: 'source', preferredChart: 'bar' },
+  call_outcome_count: { entity: 'call_outcome_daily', label: 'Call outcomes', kind: 'count', aggregate: 'sum', sourceKey: 'outcomeCount', defaultDimension: 'outcome', preferredChart: 'bar' },
+  ai_confidence_count: { entity: 'ai_confidence_daily', label: 'AI confidence mix', kind: 'count', aggregate: 'sum', sourceKey: 'ticketCount', defaultDimension: 'confidence_band', preferredChart: 'bar' },
+  ai_confidence_handoffs: { entity: 'ai_confidence_daily', label: 'Handoffs by AI confidence', kind: 'count', aggregate: 'sum', sourceKey: 'handoffCount', defaultDimension: 'confidence_band', preferredChart: 'bar' },
   new_contacts: { entity: 'team_daily', label: 'New contacts', kind: 'count', aggregate: 'sum', sourceKey: 'newContacts' },
   returning_contacts: { entity: 'team_daily', label: 'Returning contacts', kind: 'count', aggregate: 'sum', sourceKey: 'returningContacts' },
   hourly_ticket_count: { entity: 'hourly_daily', label: 'Tickets by hour', kind: 'count', aggregate: 'sum', sourceKey: 'ticketCount', defaultDimension: 'hour', preferredChart: 'bar' },
@@ -140,6 +166,9 @@ const METRIC_ALIASES = {
   'assigned tickets': 'assigned_tickets',
   'reopened tickets': 'reopened_tickets',
   'reopen rate': 'reopen_rate',
+  'aged backlog': 'aged_backlog_tickets',
+  'old backlog': 'aged_backlog_tickets',
+  'backlog older than 7 days': 'aged_backlog_tickets',
   frt: 'first_response_minutes',
   'first response': 'first_response_minutes',
   'first response time': 'first_response_minutes',
@@ -147,9 +176,22 @@ const METRIC_ALIASES = {
   'sla breaches': 'sla_breaches',
   'sla breach rate': 'sla_breach_rate',
   'sla compliance': 'sla_breach_rate',
+  'near breach tickets': 'near_breach_tickets',
+  'tickets near breach': 'near_breach_tickets',
+  'sla risk': 'sla_risk_count',
+  'breach risk': 'sla_risk_count',
+  'sla risk mix': 'sla_risk_count',
   sla: 'sla_breach_rate',
   csat: 'csat',
   satisfaction: 'csat',
+  detractors: 'detractor_responses',
+  'detractor responses': 'detractor_responses',
+  promoters: 'promoter_responses',
+  'promoter responses': 'promoter_responses',
+  'csat themes': 'satisfaction_theme_count',
+  'satisfaction themes': 'satisfaction_theme_count',
+  'detractor themes': 'satisfaction_theme_detractors',
+  'why is csat down': 'satisfaction_theme_detractors',
   'response rate': 'survey_response_rate',
   'survey response rate': 'survey_response_rate',
   'surveys received': 'survey_responses',
@@ -161,6 +203,11 @@ const METRIC_ALIASES = {
   'ai resolution rate': 'ai_resolution_rate',
   'open ticket rate': 'ai_open_ticket_rate',
   'open ticket rate (ai)': 'ai_open_ticket_rate',
+  'low confidence ai tickets': 'low_confidence_ai_tickets',
+  'low confidence': 'ai_confidence_count',
+  'ai confidence': 'ai_confidence_count',
+  'ai confidence mix': 'ai_confidence_count',
+  'handoffs by confidence': 'ai_confidence_handoffs',
   'handoff rate': 'handoff_rate',
   handoffs: 'handoff_reason_count',
   'handoff reasons': 'handoff_reason_count',
@@ -193,6 +240,14 @@ const METRIC_ALIASES = {
   'longest wait time': 'longest_wait_minutes',
   'callback requests': 'callback_requests',
   callbacks: 'callback_requests',
+  'callback completion rate': 'callback_completion_rate',
+  'after hours volume': 'after_hours_volume',
+  'after-hours volume': 'after_hours_volume',
+  'queue overflow': 'queue_overflow_tickets',
+  'overflow tickets': 'queue_overflow_tickets',
+  'call outcomes': 'call_outcome_count',
+  'how calls end': 'call_outcome_count',
+  'call result': 'call_outcome_count',
   'call duration': 'avg_call_duration_minutes',
   'first call resolution': 'first_call_resolution_rate',
   'call-to-ticket rate': 'call_to_ticket_rate',
@@ -208,6 +263,11 @@ const METRIC_ALIASES = {
   'unknown / unclassified intents': 'unknown_intents',
   'opportunities backlog': 'opportunity_count',
   opportunities: 'opportunity_count',
+  'backlog age': 'backlog_age_count',
+  'aging buckets': 'backlog_age_count',
+  'age bands': 'backlog_age_count',
+  'reopen reasons': 'reopen_reason_count',
+  'why tickets reopen': 'reopen_reason_count',
   'capacity vs demand': 'capacity_gap_hours',
   'capacity gap': 'capacity_gap_hours',
   'over capacity': 'capacity_gap_hours',
@@ -225,6 +285,10 @@ const METRIC_ALIASES = {
   'funnel': 'stage_count',
   'sales funnel': 'stage_count',
   'pipeline funnel': 'stage_count',
+  'lead sources': 'lead_source_count',
+  'best lead source': 'lead_source_win_rate',
+  'lead source win rate': 'lead_source_win_rate',
+  'pipeline by source': 'lead_source_pipeline_value',
   'channel x stage': 'stage_count',
   'ticket counts per status': 'status_count',
   bottlenecks: 'status_count',
@@ -373,6 +437,13 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
   const workflowStatusDaily = [];
   const handoffReasonDaily = [];
   const contactTypeDaily = [];
+  const agingBandDaily = [];
+  const slaRiskDaily = [];
+  const satisfactionThemeDaily = [];
+  const reopenReasonDaily = [];
+  const leadSourceDaily = [];
+  const callOutcomeDaily = [];
+  const aiConfidenceDaily = [];
   const agentStatusSnapshot = [];
 
   teams.forEach((team, teamIndex) => {
@@ -397,6 +468,8 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         openTickets: 0,
         assignedTickets: 0,
         reopenedTickets: 0,
+        backlogOlderThan7Days: 0,
+        slaBreaches: 0,
         pipelineValue: 0,
         wonRevenue: 0,
         dealsCreated: 0,
@@ -407,8 +480,11 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         missedCalls: 0,
         abandonmentCount: 0,
         callbackRequests: 0,
+        callbackCompletedCount: 0,
         surveysSent: 0,
         surveyResponses: 0,
+        detractorResponses: 0,
+        promoterResponses: 0,
         knowledgeGapCount: 0,
         unknownIntents: 0,
         opportunityCount: 0,
@@ -422,10 +498,14 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         aiResolvedCount: 0,
         aiAssistCount: 0,
         aiOpenTickets: 0,
+        lowConfidenceAiTickets: 0,
         callToTicketCount: 0,
         firstCallResolutionCount: 0,
         demandHours: 0,
         capacityHours: teamCapacityBase * weekdayFactor,
+        afterHoursVolume: 0,
+        nearBreachTickets: 0,
+        queueOverflowTickets: 0,
         channelRows: [],
       };
 
@@ -448,17 +528,28 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         const openTickets = Math.max(2, Math.round(ticketsCreated * (0.38 + localRand() * 0.16)));
         const assignedTickets = Math.max(1, Math.round(openTickets * (0.76 + localRand() * 0.12)));
         const reopenedTickets = Math.round(ticketsResolved * (supportLike ? 0.06 + localRand() * 0.03 : 0.03 + localRand() * 0.02));
+        const backlogOlderThan7Days = Math.round(openTickets * clamp(0.12 + localRand() * 0.12, 0.04, 0.44));
         const firstResponseMinutes = round((supportLike ? 24 : 18) * (channel === 'voice' ? 0.52 : 1) * (0.9 + localRand() * 0.24), 1);
         const resolutionHours = round((supportLike ? 13 : 34) * (0.86 + localRand() * 0.28), 1);
         const slaBreaches = Math.round(ticketsCreated * (supportLike ? 0.06 : 0.03) * (0.84 + localRand() * 0.42));
+        const nearBreachTickets = Math.round(Math.max(openTickets, ticketsCreated * 0.4) * clamp(0.12 + localRand() * 0.12, 0.04, 0.34));
         const surveysSent = Math.round(Math.max(1, ticketsResolved * (0.46 + localRand() * 0.12)));
         const surveyResponses = Math.round(Math.max(1, surveysSent * (0.28 + localRand() * 0.12)));
+        const detractorResponses = Math.min(
+          surveyResponses,
+          Math.round(surveyResponses * clamp(0.1 + localRand() * 0.1, 0.03, 0.34))
+        );
+        const promoterResponses = Math.min(
+          surveyResponses - detractorResponses,
+          Math.round(surveyResponses * clamp(0.42 + localRand() * 0.18, 0.16, 0.78))
+        );
         const csatScore = round(clamp((supportLike ? 4.25 : 4.08) * overlay.csatBias * (0.97 + localRand() * 0.05), 3.45, 4.92), 2);
         const aiTickets = Math.round(ticketsCreated * clamp((supportLike ? 0.56 : 0.34) * overlay.aiBias * (0.92 + localRand() * 0.16), 0.08, 0.82));
         const aiAssistCount = Math.round(ticketsCreated * clamp((supportLike ? 0.44 : 0.28) * overlay.aiBias * (0.9 + localRand() * 0.18), 0.08, 0.74));
         const aiResolvedCount = Math.round(aiTickets * clamp((supportLike ? 0.38 : 0.24) * (0.88 + localRand() * 0.18), 0.05, 0.68));
         const handoffCount = Math.round(aiTickets * clamp((supportLike ? 0.22 : 0.16) * (0.9 + localRand() * 0.18), 0.04, 0.42));
         const aiOpenTickets = Math.max(0, aiTickets - aiResolvedCount - Math.round(handoffCount * 0.45));
+        const lowConfidenceAiTickets = Math.round(aiTickets * clamp(0.16 + localRand() * 0.16, 0.04, 0.48));
         const automationRuns = Math.round(ticketsCreated * clamp((supportLike ? 0.28 : 0.18) * overlay.automationBias * (0.9 + localRand() * 0.2), 0.05, 0.56));
         const automationSuccessCount = Math.round(automationRuns * clamp(0.68 + localRand() * 0.18, 0.44, 0.93));
         const journeysEscalations = Math.round(automationRuns * clamp(0.08 + localRand() * 0.06, 0.02, 0.24));
@@ -476,6 +567,7 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         const missedCalls = Math.round(inboundCalls * clamp(0.06 + localRand() * 0.06, 0.02, 0.24));
         const abandonmentCount = Math.round(inboundCalls * clamp(0.05 + localRand() * 0.05, 0.02, 0.22));
         const callbackRequests = Math.round(abandonmentCount * clamp(0.34 + localRand() * 0.28, 0.12, 0.82));
+        const callbackCompletedCount = Math.round(callbackRequests * clamp(0.44 + localRand() * 0.28, 0.14, 0.92));
         const avgWaitMinutes = round((supportLike ? 2.8 : 1.9) * overlay.queueBias * (0.88 + localRand() * 0.22), 1);
         const longestWaitMinutes = round(avgWaitMinutes * (3.2 + localRand() * 2.1), 1);
         const avgCallDurationMinutes = round((supportLike ? 7.8 : 5.9) * (0.88 + localRand() * 0.24), 1);
@@ -489,6 +581,8 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         const returningContacts = Math.max(0, conversations - newContacts);
         const demandHours = round((ticketsCreated * 0.11) + ((totalCalls * avgCallDurationMinutes) / 60) + (dealsCreated * 0.35), 1);
         const capacityHours = round(teamCapacityBase * weekdayFactor * (conversations / Math.max(1, baseVolume * channels.length * 0.9)), 1);
+        const afterHoursVolume = Math.round(conversations * clamp((channel === 'whatsapp' ? 0.14 : channel === 'voice' ? 0.1 : 0.07) * (0.9 + localRand() * 0.16), 0.02, 0.28));
+        const queueOverflowTickets = Math.round(ticketsCreated * clamp(0.03 + localRand() * 0.04, 0.01, 0.18));
 
         const row = {
           date: formatDate(dateTs),
@@ -503,16 +597,21 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
           openTickets,
           assignedTickets,
           reopenedTickets,
+          backlogOlderThan7Days,
           firstResponseMinutes,
           resolutionHours,
           slaBreaches,
+          nearBreachTickets,
           surveysSent,
           surveyResponses,
+          detractorResponses,
+          promoterResponses,
           csatScore,
           aiTickets,
           aiAssistCount,
           aiResolvedCount,
           aiOpenTickets,
+          lowConfidenceAiTickets,
           handoffCount,
           automationRuns,
           automationSuccessCount,
@@ -530,6 +629,7 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
           outboundCalls,
           abandonmentCount,
           callbackRequests,
+          callbackCompletedCount,
           avgWaitMinutes,
           longestWaitMinutes,
           avgCallDurationMinutes,
@@ -543,6 +643,8 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
           returningContacts,
           capacityHours,
           demandHours,
+          afterHoursVolume,
+          queueOverflowTickets,
         };
 
         teamDaily.push(row);
@@ -553,6 +655,8 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         teamTotals.openTickets += openTickets;
         teamTotals.assignedTickets += assignedTickets;
         teamTotals.reopenedTickets += reopenedTickets;
+        teamTotals.backlogOlderThan7Days += backlogOlderThan7Days;
+        teamTotals.slaBreaches += slaBreaches;
         teamTotals.pipelineValue += pipelineValue;
         teamTotals.wonRevenue += wonRevenue;
         teamTotals.dealsCreated += dealsCreated;
@@ -563,8 +667,11 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         teamTotals.missedCalls += missedCalls;
         teamTotals.abandonmentCount += abandonmentCount;
         teamTotals.callbackRequests += callbackRequests;
+        teamTotals.callbackCompletedCount += callbackCompletedCount;
         teamTotals.surveysSent += surveysSent;
         teamTotals.surveyResponses += surveyResponses;
+        teamTotals.detractorResponses += detractorResponses;
+        teamTotals.promoterResponses += promoterResponses;
         teamTotals.knowledgeGapCount += knowledgeGapCount;
         teamTotals.unknownIntents += unknownIntents;
         teamTotals.opportunityCount += opportunityCount;
@@ -578,9 +685,13 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         teamTotals.aiResolvedCount += aiResolvedCount;
         teamTotals.aiAssistCount += aiAssistCount;
         teamTotals.aiOpenTickets += aiOpenTickets;
+        teamTotals.lowConfidenceAiTickets += lowConfidenceAiTickets;
         teamTotals.callToTicketCount += callToTicketCount;
         teamTotals.firstCallResolutionCount += firstCallResolutionCount;
         teamTotals.demandHours += demandHours;
+        teamTotals.afterHoursVolume += afterHoursVolume;
+        teamTotals.nearBreachTickets += nearBreachTickets;
+        teamTotals.queueOverflowTickets += queueOverflowTickets;
         teamTotals.channelRows.push(row);
       });
 
@@ -660,6 +771,145 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         { date, team: team.name, contactType: 'New', contactCount: newContacts },
         { date, team: team.name, contactType: 'Returning', contactCount: returningContacts },
       );
+
+      const backlogBuckets = {
+        '8+ days': teamTotals.backlogOlderThan7Days,
+      };
+      const youngerBacklog = Math.max(0, teamTotals.openTickets - teamTotals.backlogOlderThan7Days);
+      backlogBuckets['4-7 days'] = Math.round(youngerBacklog * 0.28);
+      backlogBuckets['2-3 days'] = Math.round(youngerBacklog * 0.34);
+      backlogBuckets['0-1 days'] = Math.max(0, youngerBacklog - backlogBuckets['4-7 days'] - backlogBuckets['2-3 days']);
+      DEFAULT_BACKLOG_BANDS.forEach((ageBand) => {
+        agingBandDaily.push({
+          date,
+          team: team.name,
+          ageBand,
+          ticketCount: Math.max(0, backlogBuckets[ageBand] || 0),
+        });
+      });
+
+      const workloadAtRisk = Math.max(teamTotals.openTickets, Math.round(teamTotals.ticketsCreated * 0.78));
+      const breachedCount = Math.min(teamTotals.slaBreaches, workloadAtRisk);
+      const nearBreachCount = Math.min(teamTotals.nearBreachTickets, Math.max(0, workloadAtRisk - breachedCount));
+      const riskBuckets = {
+        Breached: breachedCount,
+        'Near breach': nearBreachCount,
+      };
+      const unresolvedRisk = Math.max(0, workloadAtRisk - breachedCount - nearBreachCount);
+      riskBuckets['At risk'] = Math.round(unresolvedRisk * 0.24);
+      riskBuckets['On track'] = Math.max(0, unresolvedRisk - riskBuckets['At risk']);
+      DEFAULT_SLA_RISK_BANDS.forEach((riskBand) => {
+        slaRiskDaily.push({
+          date,
+          team: team.name,
+          riskBand,
+          ticketCount: Math.max(0, riskBuckets[riskBand] || 0),
+        });
+      });
+
+      let remainingResponses = Math.max(1, teamTotals.surveyResponses);
+      let remainingDetractors = Math.max(0, teamTotals.detractorResponses);
+      DEFAULT_SATISFACTION_THEMES.forEach((theme, themeIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:${theme}:${dayIndex}`));
+        const responseCount = themeIndex === DEFAULT_SATISFACTION_THEMES.length - 1
+          ? remainingResponses
+          : Math.max(1, Math.round(remainingResponses * (0.16 + ((DEFAULT_SATISFACTION_THEMES.length - themeIndex) * 0.04)) * (0.76 + localRand() * 0.28)));
+        remainingResponses = Math.max(0, remainingResponses - responseCount);
+        const detractorCount = themeIndex === DEFAULT_SATISFACTION_THEMES.length - 1
+          ? remainingDetractors
+          : Math.min(responseCount, Math.max(0, Math.round(responseCount * (0.12 + localRand() * 0.16))));
+        remainingDetractors = Math.max(0, remainingDetractors - detractorCount);
+        satisfactionThemeDaily.push({
+          date,
+          team: team.name,
+          theme,
+          responseCount,
+          detractorCount,
+        });
+      });
+
+      let remainingReopens = Math.max(1, teamTotals.reopenedTickets);
+      DEFAULT_REOPEN_REASONS.forEach((reason, reasonIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:reopen:${reason}:${dayIndex}`));
+        const reopenCount = reasonIndex === DEFAULT_REOPEN_REASONS.length - 1
+          ? remainingReopens
+          : Math.max(0, Math.round(remainingReopens * (0.18 + ((DEFAULT_REOPEN_REASONS.length - reasonIndex) * 0.03)) * (0.8 + localRand() * 0.24)));
+        remainingReopens = Math.max(0, remainingReopens - reopenCount);
+        reopenReasonDaily.push({
+          date,
+          team: team.name,
+          reason,
+          reopenCount,
+        });
+      });
+
+      let remainingLeads = Math.max(0, teamTotals.leadsCreated);
+      let remainingDealsCreated = Math.max(0, teamTotals.dealsCreated);
+      let remainingDealsWon = Math.max(0, teamTotals.dealsWon);
+      let remainingPipeline = Math.max(0, teamTotals.pipelineValue);
+      DEFAULT_LEAD_SOURCES.forEach((source, sourceIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:source:${source}:${dayIndex}`));
+        const leadCount = sourceIndex === DEFAULT_LEAD_SOURCES.length - 1
+          ? remainingLeads
+          : Math.max(0, Math.round(remainingLeads * (0.16 + ((DEFAULT_LEAD_SOURCES.length - sourceIndex) * 0.04)) * (0.78 + localRand() * 0.28)));
+        remainingLeads = Math.max(0, remainingLeads - leadCount);
+        const dealsCreated = sourceIndex === DEFAULT_LEAD_SOURCES.length - 1
+          ? remainingDealsCreated
+          : Math.min(leadCount, Math.max(0, Math.round(remainingDealsCreated * (0.18 + ((DEFAULT_LEAD_SOURCES.length - sourceIndex) * 0.03)) * (0.8 + localRand() * 0.22))));
+        remainingDealsCreated = Math.max(0, remainingDealsCreated - dealsCreated);
+        const dealsWon = sourceIndex === DEFAULT_LEAD_SOURCES.length - 1
+          ? remainingDealsWon
+          : Math.min(dealsCreated, Math.max(0, Math.round(remainingDealsWon * (0.18 + ((DEFAULT_LEAD_SOURCES.length - sourceIndex) * 0.03)) * (0.82 + localRand() * 0.2))));
+        remainingDealsWon = Math.max(0, remainingDealsWon - dealsWon);
+        const pipelineValue = sourceIndex === DEFAULT_LEAD_SOURCES.length - 1
+          ? remainingPipeline
+          : Math.max(0, Math.round(remainingPipeline * (0.14 + ((DEFAULT_LEAD_SOURCES.length - sourceIndex) * 0.04)) * (0.8 + localRand() * 0.24)));
+        remainingPipeline = Math.max(0, remainingPipeline - pipelineValue);
+        leadSourceDaily.push({
+          date,
+          team: team.name,
+          source,
+          leadCount,
+          dealsCreated,
+          dealsWon,
+          pipelineValue,
+        });
+      });
+
+      const outcomeBuckets = {
+        Missed: teamTotals.missedCalls,
+        'Callback requested': teamTotals.callbackRequests,
+        'Escalated on call': Math.round(teamTotals.totalCalls * 0.08),
+      };
+      const residualVoice = Math.max(0, teamTotals.totalCalls - outcomeBuckets.Missed - outcomeBuckets['Callback requested'] - outcomeBuckets['Escalated on call']);
+      outcomeBuckets.Voicemail = Math.round(residualVoice * 0.16);
+      outcomeBuckets.Connected = Math.max(0, residualVoice - outcomeBuckets.Voicemail);
+      DEFAULT_CALL_OUTCOMES.forEach((outcome) => {
+        callOutcomeDaily.push({
+          date,
+          team: team.name,
+          outcome,
+          outcomeCount: Math.max(0, outcomeBuckets[outcome] || 0),
+        });
+      });
+
+      const confidenceBuckets = {
+        'Very low': Math.round(teamTotals.lowConfidenceAiTickets * 0.38),
+        Low: Math.max(0, teamTotals.lowConfidenceAiTickets - Math.round(teamTotals.lowConfidenceAiTickets * 0.38)),
+      };
+      const higherConfidence = Math.max(0, teamTotals.aiTickets - teamTotals.lowConfidenceAiTickets);
+      confidenceBuckets.Medium = Math.round(higherConfidence * 0.44);
+      confidenceBuckets.High = Math.max(0, higherConfidence - confidenceBuckets.Medium);
+      DEFAULT_AI_CONFIDENCE_BANDS.forEach((confidenceBand) => {
+        const bandCount = Math.max(0, confidenceBuckets[confidenceBand] || 0);
+        aiConfidenceDaily.push({
+          date,
+          team: team.name,
+          confidenceBand,
+          ticketCount: bandCount,
+          handoffCount: Math.round(bandCount * (confidenceBand === 'Very low' ? 0.44 : confidenceBand === 'Low' ? 0.24 : confidenceBand === 'Medium' ? 0.12 : 0.05)),
+        });
+      });
 
       for (let hour = 0; hour < 24; hour += 1) {
         const profile = hour >= 8 && hour <= 10 ? 1.2
@@ -755,6 +1005,13 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
     workflowStatusDaily,
     handoffReasonDaily,
     contactTypeDaily,
+    agingBandDaily,
+    slaRiskDaily,
+    satisfactionThemeDaily,
+    reopenReasonDaily,
+    leadSourceDaily,
+    callOutcomeDaily,
+    aiConfidenceDaily,
     agentStatusSnapshot,
   };
 }
@@ -773,8 +1030,15 @@ function getSemanticSchema(customerProfile = {}, context = {}) {
       { id: 'workflow_status_daily', label: 'Workflow status distribution', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'workflow_status_daily') },
       { id: 'handoff_reason_daily', label: 'Automation handoff reasons', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'handoff_reason_daily') },
       { id: 'contact_type_daily', label: 'New vs returning contacts', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'contact_type_daily') },
+      { id: 'aging_band_daily', label: 'Backlog aging buckets', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'aging_band_daily') },
+      { id: 'sla_risk_daily', label: 'SLA risk buckets', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'sla_risk_daily') },
+      { id: 'satisfaction_theme_daily', label: 'Satisfaction themes and detractors', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'satisfaction_theme_daily') },
+      { id: 'reopen_reason_daily', label: 'Reopen reasons', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'reopen_reason_daily') },
+      { id: 'lead_source_daily', label: 'Lead source quality and value', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'lead_source_daily') },
+      { id: 'call_outcome_daily', label: 'Voice call outcomes', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'call_outcome_daily') },
+      { id: 'ai_confidence_daily', label: 'AI confidence mix', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'ai_confidence_daily') },
     ],
-    dimensions: ['team', 'channel', 'agent', 'date', 'week', 'month', 'intent', 'stage', 'hour', 'status', 'reason', 'contact_type', 'direction'],
+    dimensions: ['team', 'channel', 'agent', 'date', 'week', 'month', 'intent', 'stage', 'hour', 'status', 'reason', 'contact_type', 'direction', 'age_band', 'risk_band', 'theme', 'source', 'outcome', 'confidence_band'],
     metrics: Object.entries(METRIC_DEFINITIONS).map(([id, meta]) => ({ id, ...meta })),
     aliases: METRIC_ALIASES,
     availableTeams: dataset.teams.map(team => ({ name: team.name, focus: team.focus })),
