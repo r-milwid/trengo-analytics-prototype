@@ -4232,12 +4232,22 @@ if (manageWidgetsBtn) {
 const settingsNav = document.getElementById('settings-nav');
 const userPopout = document.getElementById('user-popout');
 const userPopoutClose = document.getElementById('user-popout-close');
+const settingsOnboardingBlock = document.getElementById('settings-onboarding-block');
+
+function syncSettingsOnboardingVisibility() {
+  if (!settingsOnboardingBlock) return;
+  settingsOnboardingBlock.style.display = isFeatureEnabled('ai-onboarding') ? '' : 'none';
+}
+
+syncSettingsOnboardingVisibility();
+
 if (settingsNav && userPopout) {
   settingsNav.addEventListener('click', (e) => {
     e.stopPropagation();
     if (settingsNav.dataset.disabled === 'true') {
       return;
     }
+    syncSettingsOnboardingVisibility();
     if (userPopout.style.display === 'block') {
       userPopout.classList.remove('open');
       setTimeout(() => { userPopout.style.display = 'none'; }, 200);
@@ -4365,6 +4375,7 @@ function renderFlagList() {
           // When disabling, hide any active onboarding UI
           if (typeof AdminAssistant !== 'undefined') AdminAssistant.resetAll();
         }
+        syncSettingsOnboardingVisibility();
       }
     });
   });
