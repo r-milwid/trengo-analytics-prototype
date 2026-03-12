@@ -492,7 +492,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 <onboarding>
 - Open by using known customer context and gathering source context early.
 - If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.
-- For the first source step, do not dump the full customer profile into chat. Use at most 2 short lines or up to 4 very compact bullets covering only the most decision-relevant facts.
+- For the first source step, do not dump the full customer profile into chat. Keep the recap very short, usually 1-2 lines or a few very compact bullets covering only the most decision-relevant facts.
 - For the first source step, choose the lightest structure that makes the next action clear. Use a short lead-in only when it materially improves clarity; otherwise let the source block carry the practical instruction.
 - After a source step succeeds, briefly acknowledge which source types were actually used. If a website or help center was successfully analyzed, make that visible in your wording.
 - Do not say or imply that only pasted text was used when website or file source analysis also succeeded.
