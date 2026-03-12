@@ -33,6 +33,7 @@ const AdminAssistant = (() => {
   let _previewRevealGeneration = 0;
   let _previewRevealTimers = [];
   let _threadRevealGeneration = 0;
+  let _threadScrollSequence = null;
 
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
@@ -378,16 +379,20 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - Prefer one focused question per turn. Only ask more than one when a tightly paired clarification is genuinely necessary.
 - Sound natural, compact, and conversational. No filler, hype, or repetitive acknowledgements.
 - Do not repeat facts the user already confirmed or that are already clear from customer data or source material.
+- Make each new message earn its place. If it does not add new information, a clearer next step, or a better transition, do not send it.
 - Avoid explaining visible preview changes unless you have very high confidence that one short orientation line is needed to avoid confusion or a jarring jump.
 - Optimize for vertical space as well as brevity. Prefer short paragraphs and compact bullets only when they save space and improve scanning.
 - Do not produce long recaps. If summarizing known context, keep it to the few most decision-relevant points, not every available field.
 - When a UI block already shows details visibly, mention that briefly instead of restating the full contents in chat.
+- Avoid restating the same point across consecutive messages or between a message and the block that follows it.
+- Prefer one strong line over two partially overlapping lines.
 - If you use bullets, keep them compact: no blank lines between bullets, no more than 4 bullets unless the user asked for a longer list, and keep each bullet to one line where possible.
 - Less is more. Give only the information the user needs to act or understand the next step. It is fine if the user asks a follow-up clarification question.
 </conversation_style>
 
 <ui_presentation>
 - Treat interactive UI blocks as their own communication surface, not just attachments to long chat messages.
+- Treat an adjacent chat bubble plus interactive block as one combined reading experience. Optimize the pair together, not each piece independently.
 - Decide whether a short lead-in message is actually helpful. Use one only when it adds clarity that would not fit well as a concise block header or subtext.
 - If the instructional copy is directly about how to use the block, prefer putting it in the block prompt/header rather than as a separate chat message.
 - Avoid saying the same thing in both a chat bubble and the block itself.
@@ -395,6 +400,12 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - Do not create extra separation just to imitate conversation. Prefer the clearest and most compact presentation for the user.
 - If a follow-up question would be easy to miss at the end of a longer summary, recap, or series of informational blocks, ask it as a separate short turn or present it through a choice UI instead of burying it in the last paragraph.
 - If a follow-up question naturally completes a short message and is unlikely to be missed, it can stay inline.
+- After a substantial summary, proposal, or overview, prefer separating the next question from the summary unless it is genuinely short and hard to miss.
+- When a message is immediately followed by an interactive block, decide which information belongs in the message and which belongs in the block. Do not duplicate context, instructions, or rationale across both.
+- If the block already tells the user what they can add, edit, skip, or choose, the preceding message should not repeat that.
+- Use the preceding message for orientation or decision-relevant context, and use the block for action-specific instruction.
+- Before producing a message followed by a block, check for overlap across the pair. If the block prompt can stand on its own, keep the message to orientation only or omit it.
+- Do not let the message and the block both say that the user can add sources, skip, edit, or provide context. Say that once, in the clearer place.
 </ui_presentation>
 
 <source_trust_boundary>
@@ -443,6 +454,7 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - Use show_source_input when source material would help and the user has not already provided enough.
 - When there are only a few likely answers or next actions, lean toward clickable choices instead of free text, especially after a proposal, summary, or final check-in.
 - Prefer chips or other compact clickable choices when 2-4 likely responses would make the user's next step faster and clearer.
+- After summarizing a proposed setup or asking whether anything should change, strongly prefer compact clickable choices if the likely responses are things like yes/no, good to go, adjust, refine, or review.
 - Prefer the smallest tool or tool sequence that can answer well or move the workflow forward. Do not chain tools just because they are available.
 </tool_choice>
 
@@ -495,7 +507,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       prompt += `
 
 <onboarding>
-- At the true start of a new onboarding session, a brief greeting and orientation usually helps. Keep it light and non-scripted. A pattern like "Hi, I'm here to help you get set up. So far I know..." is good when useful, but only as an example rather than fixed wording.
+- At the true start of a new onboarding session, prefer a brief greeting and orientation in chat before the first interactive step. Keep it light and non-scripted. A pattern like "Hi, I'm here to help you get set up. So far I know..." is good when useful, but only as an example rather than fixed wording.
 - If the user is clearly resuming, do not re-greet or re-explain unnecessarily.
 - Open by using known customer context and gathering source context early.
 - If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.
@@ -1224,6 +1236,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const content = data.content || [];
       const textBlocks = content.filter(b => b.type === 'text');
       const toolUseBlocks = content.filter(b => b.type === 'tool_use');
+      const threadSequenceToken = beginThreadRevealSequence();
 
       // Render any text
       if (textBlocks.length > 0) {
@@ -1240,6 +1253,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
       // If no tool use, we're done
       if (toolUseBlocks.length === 0 || data.stop_reason === 'end_turn') {
+        endThreadRevealSequence(threadSequenceToken);
         break;
       }
 
@@ -1270,16 +1284,74 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       AssistantStorage.save(_session);
 
       if (injectQueuedUserMessage()) {
+        endThreadRevealSequence(threadSequenceToken);
         continue;
       }
 
       if (interruptedByUser) {
+        endThreadRevealSequence(threadSequenceToken);
         break;
       }
+
+      endThreadRevealSequence(threadSequenceToken);
     }
 
     if (iterations >= MAX_LOOP_ITERATIONS) {
-      renderAssistantBubble("I've reached my processing limit for this turn. Let me know if you'd like to continue.");
+      await recoverFromProcessingLimit(generation);
+    }
+  }
+
+  async function recoverFromProcessingLimit(generation) {
+    if (generation !== _runGeneration) return;
+
+    const mode = AssistantStorage.getMode(_session) || 'onboarding';
+    const fallbackText = mode === 'onboarding'
+      ? 'Let’s simplify this. What is the most important thing this dashboard should help with next?'
+      : 'Let’s simplify this. What would you like to focus on next?';
+
+    showTypingIndicator();
+
+    try {
+      const resp = await fetch(`${PROXY_URL}/onboarding/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: `${buildSystemPrompt()}
+
+<recovery_turn>
+- You hit the internal step limit for this turn.
+- Reset your plan and choose a simpler next step.
+- Do not mention internal limits, processing errors, or tool-chain issues to the user.
+- Do not call tools in this recovery turn.
+- Based on the current state, either ask the single best next question or provide the single clearest next step.
+- Keep it to 1-2 sentences and avoid recap unless it is necessary for clarity.
+</recovery_turn>`,
+          messages: AssistantStorage.getMessages(_session),
+        }),
+      });
+
+      const data = await resp.json();
+      if (generation !== _runGeneration) return;
+      hideTypingIndicator();
+
+      if (!resp.ok || data?.error) {
+        await renderAssistantTurn(fallbackText, { generation });
+        AssistantStorage.appendToolUse(_session, [{ type: 'text', text: fallbackText }]);
+        AssistantStorage.save(_session);
+        return;
+      }
+
+      const textBlocks = (data.content || []).filter(block => block.type === 'text');
+      const recoveryText = textBlocks.map(block => block.text).join('\n\n').trim() || fallbackText;
+      await renderAssistantTurn(recoveryText, { generation });
+      AssistantStorage.appendToolUse(_session, [{ type: 'text', text: recoveryText }]);
+      AssistantStorage.save(_session);
+    } catch (error) {
+      if (generation !== _runGeneration) return;
+      hideTypingIndicator();
+      await renderAssistantTurn(fallbackText, { generation });
+      AssistantStorage.appendToolUse(_session, [{ type: 'text', text: fallbackText }]);
+      AssistantStorage.save(_session);
     }
   }
 
@@ -1312,7 +1384,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     bubble.className = 'ai-setup-bubble assistant';
     bubble.innerHTML = renderMarkdown(text);
     container.appendChild(bubble);
-    scrollToBottom(container);
+    scrollThreadRevealIntoView(container, bubble);
     return bubble;
   }
 
@@ -1425,7 +1497,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       });
       AssistantStorage.save(_session);
     }
-    scrollToBottom(container);
+    scrollThreadRevealIntoView(container, block);
   }
 
   function formatMetricChip(metric) {
@@ -1519,7 +1591,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       <button class="ai-setup-retry-btn" onclick="AdminAssistant.retryLastMessage()">Retry</button>`;
     container.appendChild(bubble);
     animateThreadElement(bubble);
-    scrollToBottom(container);
+    scrollThreadRevealIntoView(container, bubble);
   }
 
   function showTypingIndicator() {
@@ -1531,7 +1603,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     typing.className = 'ai-setup-typing';
     typing.innerHTML = '<span class="ai-setup-typing-dot"></span><span class="ai-setup-typing-dot"></span><span class="ai-setup-typing-dot"></span>';
     container.appendChild(typing);
-    scrollToBottom(container);
+    scrollThreadRevealIntoView(container, typing);
   }
 
   function hideTypingIndicator() {
@@ -1548,7 +1620,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     pill.textContent = text;
     container.appendChild(pill);
     animateThreadElement(pill);
-    scrollToBottom(container);
+    scrollThreadRevealIntoView(container, pill);
   }
 
   async function mountInteractiveThreadBlock(wrapper, { delayMs = THREAD_REVEAL_DELAY_MS, onMounted, generation = _runGeneration } = {}) {
@@ -1574,7 +1646,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       wrapper.style.transform = '';
       wrapper.style.pointerEvents = '';
       animateThreadElement(wrapper);
-      scrollToBottom(currentContainer);
+      scrollThreadRevealIntoView(currentContainer, wrapper);
       if (typeof onMounted === 'function') onMounted(wrapper, currentContainer);
     });
   }
@@ -2344,12 +2416,6 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
     await mountInteractiveThreadBlock(wrapper, {
       onMounted: (mountedWrapper, currentContainer) => {
-        scrollToBottom(currentContainer);
-        mountedWrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
-        setTimeout(() => {
-          scrollToBottom(currentContainer);
-          mountedWrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
-        }, 80);
         wireFileInteractions(mountedWrapper);
       },
     });
@@ -2530,7 +2596,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     el.className = 'ai-setup-processing';
     el.innerHTML = `<div class="spinner"></div><span class="ai-setup-processing-text">${escapeHtml(text)}</span>`;
     container.appendChild(el);
-    scrollToBottom(container);
+    scrollThreadRevealIntoView(container, el);
     return el;
   }
 
@@ -2959,6 +3025,50 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  function isNearBottom(container, threshold = 64) {
+    if (!container) return true;
+    return (container.scrollHeight - (container.scrollTop + container.clientHeight)) <= threshold;
+  }
+
+  function beginThreadRevealSequence(container = getMessagesContainer()) {
+    if (!container) return null;
+    const token = Symbol('thread-sequence');
+    _threadScrollSequence = {
+      token,
+      startedNearBottom: isNearBottom(container),
+      startScrollHeight: container.scrollHeight,
+      maxAutoScrollHeight: Math.max(260, Math.floor(container.clientHeight * 0.9)),
+    };
+    return token;
+  }
+
+  function endThreadRevealSequence(token) {
+    if (!_threadScrollSequence) return;
+    if (!token || _threadScrollSequence.token === token) {
+      _threadScrollSequence = null;
+    }
+  }
+
+  function scrollThreadRevealIntoView(container, element) {
+    if (!container) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const state = _threadScrollSequence;
+        if (!state) {
+          container.scrollTop = container.scrollHeight;
+          return;
+        }
+        if (!state.startedNearBottom) {
+          return;
+        }
+        const totalAddedHeight = Math.max(0, container.scrollHeight - state.startScrollHeight);
+        if (totalAddedHeight <= state.maxAutoScrollHeight) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+    });
+  }
+
   function joinWithAnd(items) {
     if (!Array.isArray(items) || items.length === 0) return '';
     if (items.length === 1) return items[0];
@@ -3151,7 +3261,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         : [];
 
       // Initial message with context
-      let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please start by checking what is already known, ask for any website or files that would help, then ask the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
+      let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please begin with a short hello and one-line orientation for a new user, then check what is already known, ask for any website or files that would help, and ask only the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
       if (_role === 'supervisor') {
         initialUserMsg += ` This should stay scoped to the teams this supervisor oversees${scopedTeams.length ? `: ${scopedTeams.join(', ')}` : ''}.`;
       } else if (_role === 'agent') {
@@ -3196,6 +3306,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const content = data.content || [];
       const textBlocks = content.filter(b => b.type === 'text');
       const toolUseBlocks = content.filter(b => b.type === 'tool_use');
+      const threadSequenceToken = beginThreadRevealSequence();
 
       if (textBlocks.length > 0) {
         await renderAssistantTurn(textBlocks.map(b => b.text).join('\n\n'), {
@@ -3228,15 +3339,20 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         AssistantStorage.appendToolResult(_session, toolResults);
         AssistantStorage.save(_session);
         if (injectQueuedUserMessage()) {
+          endThreadRevealSequence(threadSequenceToken);
           await runAgenticLoop();
           return;
         }
         if (interruptedByUser) {
+          endThreadRevealSequence(threadSequenceToken);
           return;
         }
         // Continue loop if there were tool calls
+        endThreadRevealSequence(threadSequenceToken);
         await runAgenticLoop();
+        return;
       }
+      endThreadRevealSequence(threadSequenceToken);
     } catch (e) {
       if (generation !== _runGeneration) return;
       hideTypingIndicator();
