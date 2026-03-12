@@ -391,6 +391,102 @@ function ensureUniqueCustomerIds(profiles = []) {
   });
 }
 
+const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
+  {
+    id: 'northstar-health',
+    company: 'Northstar Health',
+    industry: 'Healthcare SaaS',
+    productSummary: 'Patient engagement platform for clinics, hospitals, and specialty practices. Handles appointment scheduling, patient communication, and care coordination across multiple channels.',
+    website: 'https://www.northstarhealth.io',
+    helpCenterUrl: 'https://help.northstarhealth.io',
+    knownTeams: [
+      { name: 'Patient Support', likelyFocus: 'resolve', size: 12, description: 'Handles patient inquiries, appointment issues, and billing questions' },
+      { name: 'Sales', likelyFocus: 'convert', size: 6, description: 'Inbound demo requests and outbound outreach to clinics' },
+      { name: 'Onboarding', likelyFocus: 'resolve', size: 4, description: 'Guides new clinic partners through platform setup and training' },
+      { name: 'Enterprise CS', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for hospital network accounts' }
+    ],
+    channels: ['email', 'whatsapp', 'live-chat', 'voice', 'sms'],
+    plan: 'Scale',
+    estimatedAgents: 25,
+    terminologyHints: {
+      customer: 'patient',
+      ticket: 'case',
+      deal: 'partnership',
+      agent: 'care coordinator',
+      resolution: 'case closure'
+    },
+    currentSetup: {
+      primaryUseCase: 'Patient communication and support triage',
+      busiestChannels: ['whatsapp', 'voice'],
+      avgMonthlyConversations: 8500,
+      topPainPoints: ['Long first-response times on weekends', 'Difficulty tracking escalated cases across teams']
+    },
+    suggestedPreviewContext: 'Focus on patient case resolution metrics, cross-team escalation tracking, and first-response time optimization.'
+  },
+  {
+    id: 'luma-commerce',
+    company: 'Luma Commerce',
+    industry: 'E-commerce',
+    productSummary: 'Premium home goods and lifestyle brand selling direct-to-consumer across Europe. Operates both online store and wholesale B2B channel.',
+    website: 'https://www.lumacommerce.eu',
+    helpCenterUrl: 'https://support.lumacommerce.eu',
+    knownTeams: [
+      { name: 'Customer Care', likelyFocus: 'resolve', size: 18, description: 'Handles order inquiries, returns, shipping issues, and product questions' },
+      { name: 'Sales & Partnerships', likelyFocus: 'convert', size: 8, description: 'B2B wholesale inquiries, retail partnerships, and bulk orders' },
+      { name: 'VIP Support', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for loyalty program members and high-value customers' },
+      { name: 'Social Commerce', likelyFocus: 'convert', size: 5, description: 'Manages Instagram, Facebook, and WhatsApp shopping conversations' }
+    ],
+    channels: ['email', 'whatsapp', 'instagram', 'facebook-messenger', 'live-chat'],
+    plan: 'Enterprise',
+    estimatedAgents: 34,
+    terminologyHints: {
+      customer: 'customer',
+      ticket: 'inquiry',
+      deal: 'order',
+      agent: 'advisor',
+      resolution: 'resolution'
+    },
+    currentSetup: {
+      primaryUseCase: 'Omnichannel customer support with social commerce conversion',
+      busiestChannels: ['email', 'whatsapp', 'instagram'],
+      avgMonthlyConversations: 15200,
+      topPainPoints: ['Social channels have low conversion tracking', 'B2B and B2C inquiries mixed in same queues']
+    },
+    suggestedPreviewContext: 'Focus on channel-level performance, conversion tracking across social commerce, and separating B2B from B2C support metrics.'
+  },
+  {
+    id: 'orbit-mobility',
+    company: 'Orbit Mobility',
+    industry: 'Logistics & Mobility',
+    productSummary: 'Urban mobility platform offering shared e-bikes, e-scooters, and last-mile delivery services across 12 European cities. Both consumer app and B2B fleet management.',
+    website: 'https://www.orbitmobility.com',
+    helpCenterUrl: 'https://help.orbitmobility.com',
+    knownTeams: [
+      { name: 'Rider Support', likelyFocus: 'resolve', size: 22, description: 'App issues, payment disputes, damaged vehicles, safety incidents' },
+      { name: 'Fleet Operations', likelyFocus: 'resolve', size: 6, description: 'Coordinates with maintenance, city ops, and reports on vehicle availability' },
+      { name: 'B2B Sales', likelyFocus: 'convert', size: 5, description: 'Corporate fleet deals, city partnerships, and delivery service contracts' },
+      { name: 'City Expansion', likelyFocus: 'convert', size: 3, description: 'New market launches, regulatory applications, and local partner outreach' }
+    ],
+    channels: ['email', 'whatsapp', 'live-chat', 'voice'],
+    plan: 'Scale',
+    estimatedAgents: 36,
+    terminologyHints: {
+      customer: 'rider',
+      ticket: 'issue',
+      deal: 'contract',
+      agent: 'support specialist',
+      resolution: 'issue resolved'
+    },
+    currentSetup: {
+      primaryUseCase: 'High-volume rider support with fast resolution SLAs',
+      busiestChannels: ['live-chat', 'whatsapp'],
+      avgMonthlyConversations: 28000,
+      topPainPoints: ['SLA compliance drops during peak hours', 'No visibility into which cities need more support capacity']
+    },
+    suggestedPreviewContext: 'Focus on SLA compliance, capacity planning by city/team, first-response time during peak hours, and B2B pipeline tracking.'
+  }
+]);
+
 function readStoredCustomerProfiles() {
   try {
     const raw = localStorage.getItem(CUSTOMER_PROFILES_KEY);
@@ -420,7 +516,7 @@ async function seedCustomerProfilesFromFixtures() {
     }));
     return ensureUniqueCustomerIds(profiles);
   } catch {
-    return [];
+    return cloneJson(BUILT_IN_CUSTOMER_PROFILES);
   }
 }
 
@@ -473,7 +569,13 @@ async function loadCustomerProfiles() {
 function getStoredCustomerProfilesSync() {
   if (_customerProfilesCache) return cloneJson(_customerProfilesCache);
   const stored = readStoredCustomerProfiles();
-  return [];
+  if (stored) {
+    const merged = mergeCustomerProfiles(BUILT_IN_CUSTOMER_PROFILES, stored);
+    _customerProfilesCache = cloneJson(merged);
+    return cloneJson(merged);
+  }
+  _customerProfilesCache = cloneJson(BUILT_IN_CUSTOMER_PROFILES);
+  return cloneJson(BUILT_IN_CUSTOMER_PROFILES);
 }
 
 function getCustomerProfileById(id) {
