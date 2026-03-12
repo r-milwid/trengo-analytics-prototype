@@ -77,7 +77,7 @@ const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
   'northstar-health': {
-    legacyWebsite: 'https://www.northstarhealth.io',
+    legacyWebsites: ['https://www.northstarhealth.io'],
     next: {
       website: 'https://connect.doctolib.com/',
       helpCenterUrl: 'https://connect.doctolib.com/nl/helpcentrum',
@@ -86,7 +86,7 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
     },
   },
   'luma-commerce': {
-    legacyWebsite: 'https://www.lumacommerce.eu',
+    legacyWebsites: ['https://www.lumacommerce.eu', 'https://www.westwing.com/home/'],
     next: {
       website: 'https://prestashop.com/',
       helpCenterUrl: 'https://help-center.prestashop.com/',
@@ -95,7 +95,7 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
     },
   },
   'orbit-mobility': {
-    legacyWebsite: 'https://www.orbitmobility.com',
+    legacyWebsites: ['https://www.orbitmobility.com'],
     next: {
       website: 'https://www.voi.com/',
       helpCenterUrl: '',
@@ -455,14 +455,14 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
     id: 'luma-commerce',
     company: 'Luma Commerce',
     industry: 'E-commerce',
-    productSummary: 'Premium home and living retailer selling direct-to-consumer across Europe, with a curated assortment and a growing B2B design service.',
-    website: 'https://www.westwing.com/home/',
-    helpCenterUrl: 'https://support.westwing.com/hc',
+    productSummary: 'Commerce enablement company supporting design-led and specialty retailers across Europe, with merchant operations, partner onboarding, and a growing B2B commerce service.',
+    website: 'https://prestashop.com/',
+    helpCenterUrl: 'https://help-center.prestashop.com/',
     knownTeams: [
-      { name: 'Customer Care', likelyFocus: 'resolve', size: 18, description: 'Handles order inquiries, returns, shipping issues, and product questions' },
-      { name: 'Sales & Partnerships', likelyFocus: 'convert', size: 8, description: 'B2B wholesale inquiries, retail partnerships, and bulk orders' },
-      { name: 'VIP Support', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for loyalty program members and high-value customers' },
-      { name: 'Social Commerce', likelyFocus: 'convert', size: 5, description: 'Manages Instagram, Facebook, and WhatsApp shopping conversations' }
+      { name: 'Merchant Care', likelyFocus: 'resolve', size: 18, description: 'Handles merchant setup issues, storefront questions, and operational support' },
+      { name: 'Sales & Partnerships', likelyFocus: 'convert', size: 8, description: 'Owns partner growth, agency relationships, and enterprise commerce deals' },
+      { name: 'VIP Support', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for strategic merchants and high-touch accounts' },
+      { name: 'Growth Commerce', likelyFocus: 'convert', size: 5, description: 'Supports social, campaign, and conversion-led commerce initiatives' }
     ],
     channels: ['email', 'whatsapp', 'instagram', 'facebook-messenger', 'live-chat'],
     plan: 'Enterprise',
@@ -475,12 +475,12 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
       resolution: 'resolution'
     },
     currentSetup: {
-      primaryUseCase: 'Omnichannel customer support with design-led commerce conversion',
+      primaryUseCase: 'Merchant support and partner-led commerce conversion',
       busiestChannels: ['email', 'whatsapp', 'instagram'],
       avgMonthlyConversations: 15200,
-      topPainPoints: ['Social channels have low conversion tracking', 'B2B and B2C inquiries mixed in same queues']
+      topPainPoints: ['Low visibility into which channels drive merchant conversion', 'Partner and support conversations are mixed in the same queues']
     },
-    suggestedPreviewContext: 'Focus on channel-level performance, conversion tracking across inspirational commerce journeys, and separating B2B from B2C support metrics.'
+    suggestedPreviewContext: 'Focus on channel-level performance, merchant support health, and separating partner-growth work from operational support metrics.'
   },
   {
     id: 'orbit-mobility',
@@ -524,7 +524,11 @@ function readStoredCustomerProfiles() {
     const migrated = parsed.map((profile) => {
       const migration = LEGACY_CUSTOMER_PROFILE_MIGRATIONS[profile?.id];
       if (!migration) return profile;
-      if (String(profile?.website || '').trim() !== migration.legacyWebsite) return profile;
+      const currentWebsite = String(profile?.website || '').trim();
+      const legacyWebsites = Array.isArray(migration.legacyWebsites)
+        ? migration.legacyWebsites
+        : [migration.legacyWebsite].filter(Boolean);
+      if (!legacyWebsites.includes(currentWebsite)) return profile;
       return {
         ...profile,
         ...migration.next,
