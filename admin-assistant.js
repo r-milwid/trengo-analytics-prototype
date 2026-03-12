@@ -27,6 +27,8 @@ const AdminAssistant = (() => {
   let _loopRunning = false;
   let _pendingResolve = null; // for blocking UI tools (show_options, show_source_input, etc)
   let _queuedUserMessage = null;
+  let _startingOnboarding = false;
+  let _runGeneration = 0;
 
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
@@ -240,8 +242,8 @@ const AdminAssistant = (() => {
   // ── Role → tool scoping ────────────────────────────────────
   const ROLE_TOOLS = {
     admin: ALL_TOOLS.map(t => t.name),
-    supervisor: ['set_lens', 'set_team_usecases', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'complete_onboarding'],
-    agent: ['set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_source_input', 'complete_onboarding'],
+    supervisor: ['set_lens', 'set_team_usecases', 'configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'complete_onboarding'],
+    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'complete_onboarding'],
   };
 
   function getToolsForRole(role, mode) {
@@ -278,12 +280,22 @@ const AdminAssistant = (() => {
     };
 
     // Available teams
-    const availableTeams = typeof window.getPrototypeTeams === 'function'
+    const availableTeams = typeof window.getRoleScopedPrototypeTeams === 'function'
+      ? window.getRoleScopedPrototypeTeams(role)
+      : typeof window.getPrototypeTeams === 'function'
+        ? window.getPrototypeTeams()
+        : TEAMS_DATA;
+    const allTeams = typeof window.getPrototypeTeams === 'function'
       ? window.getPrototypeTeams()
       : TEAMS_DATA;
     const teamsInfo = availableTeams.map(t =>
       `- ${t.name} (${(t.members || []).length} members${(t.members || []).length ? `: ${(t.members || []).join(', ')}` : ''})`
     ).join('\n');
+    const roleScopeText = role === 'admin'
+      ? 'Admin scope: ask and propose across the full company view. Consider all teams, shared structure, and cross-team needs.'
+      : role === 'supervisor'
+        ? `Supervisor scope: limit questions and proposals to the teams this supervisor oversees. Do not ask about other teams unless the user explicitly broadens the scope. Overseen teams: ${availableTeams.map(team => team.name).join(', ') || 'none configured — fall back carefully'}. Assume some company-wide defaults may already have been set by an admin, so focus on the team-level view unless the user asks for broader structural changes.`
+        : `Agent scope: focus on the individual contributor view, not the whole company. First narrow to the agent's own team or operating context if it is not already clear. Assume broader defaults may already exist. Favour a simpler personal navigation and only include sections or widgets that help the agent see what they are working on, what needs attention, and how they are doing. Do not include company-wide or admin-heavy sections by default, and treat Automate as uncommon for agents unless there is a clear personal use case.`;
 
     // Structured context from memory
     const memoryContext = AssistantStorage.buildPromptContext(_session);
@@ -357,11 +369,17 @@ APPLY VS PROPOSE
 
 SCOPE (${role})
 ${role === 'admin' ? 'Full access: lens, tabs (rename/reorder/add/remove), widget visibility, team usecases, company profile.' :
-  role === 'supervisor' ? 'Team usecases (own team), widget visibility, lens.' :
-  'Widget visibility for personal view only.'}
+  role === 'supervisor' ? 'Team-scoped tabs, widget visibility, team usecases, lens.' :
+  'Personal tabs and widget visibility for the individual contributor view.'}
+
+ROLE-SPECIFIC BEHAVIOR
+${roleScopeText}
 
 TEAMS
 ${teamsInfo}
+
+${role === 'admin' ? `ALL TEAMS IN PROTOTYPE
+${allTeams.map(t => `- ${t.name}`).join('\n')}` : ''}
 
 WIDGETS
 ${widgetSummary}
@@ -387,6 +405,10 @@ ONBOARDING
 - Your goal is to collect enough context to propose an initial dashboard draft, including tab names/order/number and a sensible starting widget set.
 - Do not treat the starter widget set as high-confidence unless the current context is enough to justify the included widgets against the other available options.
 - Each starter widget choice should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic widgets just because they exist.
+- Let the chosen role materially change the flow:
+  - Admin: ask about company-wide structure, shared navigation, cross-team priorities, and what leadership needs to monitor.
+  - Supervisor: ask only about the supervised teams in scope and how that supervisor judges those teams. Do not turn this into company-wide discovery unless asked.
+  - Agent: keep the flow notably simpler. Narrow quickly to the agent's team and personal work, then propose a reduced personal view rather than a full company navigation.
 - Once you have enough for a credible draft, move to the proposal. Do not continue questioning just because more detail could be gathered.
 - Do not ask the user to invent tab names, tab order, or starter widgets from scratch if you can infer a strong first proposal.
 - When team classification is needed, prefer show_team_assignment_matrix over generic cards.
@@ -453,11 +475,19 @@ ASSISTANT MODE
     if (Array.isArray(savedNames) && savedNames.length > 0) {
       return savedNames;
     }
-    const liveTeams = typeof window.getPrototypeTeams === 'function'
-      ? window.getPrototypeTeams().map(team => team.name)
+    const liveTeams = typeof window.getRoleScopedPrototypeTeams === 'function'
+      ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
+      : typeof window.getPrototypeTeams === 'function'
+        ? window.getPrototypeTeams().map(team => team.name)
       : [];
     if (_customerData?.knownTeams?.length) {
-      return _customerData.knownTeams.map(team => team.name);
+      const scoped = new Set(liveTeams.map(name => name.toLowerCase()));
+      const known = _customerData.knownTeams.map(team => team.name);
+      if ((_role || 'admin') === 'supervisor' && scoped.size > 0) {
+        const filtered = known.filter(name => scoped.has(String(name || '').toLowerCase()));
+        if (filtered.length > 0) return filtered;
+      }
+      return known;
     }
     if (liveTeams.length > 0) return liveTeams;
     return TEAMS_DATA.map(team => team.name);
@@ -762,6 +792,9 @@ ASSISTANT MODE
     state.personaRole = role;
     state.role = role;
     document.body.dataset.role = role;
+    if (typeof window.updateTeamFilterOptions === 'function') {
+      window.updateTeamFilterOptions();
+    }
     document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.role === (state.personaRole || role));
     });
@@ -962,9 +995,11 @@ ASSISTANT MODE
   }
 
   async function runAgenticLoop() {
+    const generation = _runGeneration;
     let iterations = 0;
 
     while (iterations < MAX_LOOP_ITERATIONS) {
+      if (generation !== _runGeneration) return;
       iterations++;
       showTypingIndicator();
 
@@ -982,11 +1017,13 @@ ASSISTANT MODE
         });
         data = await resp.json();
       } catch (e) {
+        if (generation !== _runGeneration) return;
         hideTypingIndicator();
         renderErrorBubble('Network error — please check your connection.');
         return;
       }
 
+      if (generation !== _runGeneration) return;
       hideTypingIndicator();
 
       if (data.error) {
@@ -2438,7 +2475,7 @@ ASSISTANT MODE
 
   function initRoleSelection() {
     document.querySelectorAll('.ai-setup-role-card').forEach(card => {
-      card.addEventListener('click', () => {
+      card.onclick = () => {
         _role = card.dataset.role;
         state.personaRole = _role;
         // Set the app state role
@@ -2448,9 +2485,12 @@ ASSISTANT MODE
           state.role = _role;
         }
         document.body.dataset.role = state.role;
+        if (typeof window.updateTeamFilterOptions === 'function') {
+          window.updateTeamFilterOptions();
+        }
 
         startOnboardingChat();
-      });
+      };
     });
   }
 
@@ -2459,6 +2499,9 @@ ASSISTANT MODE
   // ═══════════════════════════════════════════════════════════
 
   function startOnboardingChat() {
+    if (_startingOnboarding) return;
+    _startingOnboarding = true;
+
     // Initialize session
     _session = AssistantStorage.loadOrCreate(_customerId, _role);
     AssistantStorage.setMode(_session, 'onboarding');
@@ -2476,9 +2519,12 @@ ASSISTANT MODE
     const messages = AssistantStorage.getMessages(_session);
     if (messages.length > 0) {
       replayMessages(messages);
+      _startingOnboarding = false;
     } else {
       // Send initial empty context to get AI's welcome message
-      triggerWelcome();
+      void triggerWelcome().finally(() => {
+        _startingOnboarding = false;
+      });
     }
 
     // Wire up chat input
@@ -2486,15 +2532,26 @@ ASSISTANT MODE
   }
 
   async function triggerWelcome() {
+    const generation = _runGeneration;
     _loopRunning = true;
     showTypingIndicator();
 
     try {
       const systemPrompt = buildSystemPrompt();
       const tools = getToolsForRole(_role, 'onboarding');
+      const scopedTeams = typeof window.getRoleScopedPrototypeTeams === 'function'
+        ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
+        : [];
 
       // Initial message with context
       let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please start by checking what is already known, ask for any website or files that would help, then ask the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
+      if (_role === 'supervisor') {
+        initialUserMsg += ` This should stay scoped to the teams this supervisor oversees${scopedTeams.length ? `: ${scopedTeams.join(', ')}` : ''}.`;
+      } else if (_role === 'agent') {
+        initialUserMsg += ' This should be a simpler personal view for an individual contributor, not a full company-wide setup.';
+      } else if (_role === 'admin') {
+        initialUserMsg += ' This is a company-wide setup, so shared structure and cross-team needs matter.';
+      }
       if (_customerData) {
         initialUserMsg += ` I'm from ${_customerData.company}.`;
         if (_customerData.website) {
@@ -2520,6 +2577,7 @@ ASSISTANT MODE
         }),
       });
       const data = await resp.json();
+      if (generation !== _runGeneration) return;
       hideTypingIndicator();
 
       if (data.error) {
@@ -2569,6 +2627,7 @@ ASSISTANT MODE
         await runAgenticLoop();
       }
     } catch (e) {
+      if (generation !== _runGeneration) return;
       hideTypingIndicator();
       console.error('[AdminAssistant] Welcome error:', e);
       renderErrorBubble('Could not connect to the AI. Please try refreshing.');
@@ -2615,7 +2674,7 @@ ASSISTANT MODE
     const sendBtn = document.getElementById('ai-setup-send');
     const skipBtn = document.getElementById('ai-setup-skip-btn');
 
-    if (input) {
+    if (input && !input.dataset.wired) {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -2624,14 +2683,17 @@ ASSISTANT MODE
       });
       // Auto-grow
       input.addEventListener('input', () => autoGrow(input));
+      input.dataset.wired = 'true';
     }
 
-    if (sendBtn) {
+    if (sendBtn && !sendBtn.dataset.wired) {
       sendBtn.addEventListener('click', handleSend);
+      sendBtn.dataset.wired = 'true';
     }
 
-    if (skipBtn) {
+    if (skipBtn && !skipBtn.dataset.wired) {
       skipBtn.addEventListener('click', handleSkip);
+      skipBtn.dataset.wired = 'true';
     }
   }
 
@@ -2639,7 +2701,7 @@ ASSISTANT MODE
     const input = document.getElementById('assistant-panel-input');
     const sendBtn = document.getElementById('assistant-panel-send');
 
-    if (input) {
+    if (input && !input.dataset.wired) {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -2647,10 +2709,12 @@ ASSISTANT MODE
         }
       });
       input.addEventListener('input', () => autoGrow(input));
+      input.dataset.wired = 'true';
     }
 
-    if (sendBtn) {
+    if (sendBtn && !sendBtn.dataset.wired) {
       sendBtn.addEventListener('click', handleSend);
+      sendBtn.dataset.wired = 'true';
     }
   }
 
@@ -2712,14 +2776,16 @@ ASSISTANT MODE
       return;
     }
 
-    showFAB({ hidden: true });
+    showFAB();
+    fab.style.opacity = '0';
+    fab.style.transform = 'translateY(8px) scale(0.86)';
+    fab.style.pointerEvents = 'none';
 
     const sourceRect = surface.getBoundingClientRect();
     const fabRect = fab.getBoundingClientRect();
     if (!sourceRect.width || !sourceRect.height || !fabRect.width || !fabRect.height) {
-      fab.style.display = 'none';
-      fab.style.visibility = '';
       fab.style.opacity = '';
+      fab.style.transform = '';
       fab.style.pointerEvents = '';
       return;
     }
@@ -2733,13 +2799,14 @@ ASSISTANT MODE
     const midpointScale = Math.min(0.48, Math.max(finalScale * 2.2, 0.22));
     const translateX = targetCenterX - sourceCenterX;
     const translateY = targetCenterY - sourceCenterY;
-    const duration = 680;
+    const duration = 1280;
 
     surface.style.transformOrigin = 'center center';
     overlay.style.pointerEvents = 'none';
 
     let surfaceAnimation = null;
     let overlayAnimation = null;
+    let fabAnimation = null;
 
     try {
       surfaceAnimation = surface.animate([
@@ -2751,45 +2818,87 @@ ASSISTANT MODE
           filter: 'blur(0px)',
         },
         {
-          offset: 0.62,
+          offset: 0.56,
           transform: `translate3d(${translateX * 0.74}px, ${translateY * 0.74}px, 0) scale(${midpointScale})`,
-          opacity: 0.9,
+          opacity: 0.74,
           borderRadius: '24px',
-          filter: 'blur(0px)',
+          filter: 'blur(0.4px)',
         },
         {
           offset: 1,
           transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${finalScale})`,
-          opacity: 0.14,
+          opacity: 0.04,
           borderRadius: '999px',
-          filter: 'blur(1.5px)',
+          filter: 'blur(2px)',
         },
       ], {
         duration,
-        easing: 'cubic-bezier(0.16, 0.84, 0.2, 1)',
+        easing: 'cubic-bezier(0.2, 0.82, 0.18, 1)',
         fill: 'forwards',
       });
 
       overlayAnimation = overlay.animate([
         { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
-        { offset: 0.72, backgroundColor: 'rgba(247, 247, 248, 0.24)' },
+        { offset: 0.62, backgroundColor: 'rgba(247, 247, 248, 0.14)' },
         { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
       ], {
         duration,
-        easing: 'ease-out',
+        easing: 'cubic-bezier(0.22, 0.78, 0.18, 1)',
         fill: 'forwards',
       });
 
-      await Promise.allSettled([surfaceAnimation.finished, overlayAnimation.finished]);
+      fabAnimation = fab.animate([
+        {
+          offset: 0,
+          opacity: 0,
+          transform: 'translateY(8px) scale(0.86)',
+        },
+        {
+          offset: 0.58,
+          opacity: 0.18,
+          transform: 'translateY(4px) scale(0.92)',
+        },
+        {
+          offset: 0.84,
+          opacity: 0.72,
+          transform: 'translateY(1px) scale(0.98)',
+        },
+        {
+          offset: 0.93,
+          opacity: 0.96,
+          transform: 'translateY(0) translateX(-2px) scale(1.01)',
+        },
+        {
+          offset: 0.97,
+          opacity: 1,
+          transform: 'translateY(0) translateX(2px) scale(1.01)',
+        },
+        {
+          offset: 1,
+          opacity: 1,
+          transform: 'translateY(0) scale(1)',
+        },
+      ], {
+        duration,
+        easing: 'cubic-bezier(0.2, 0.82, 0.18, 1)',
+        fill: 'forwards',
+      });
+
+      await Promise.allSettled([
+        surfaceAnimation.finished,
+        overlayAnimation.finished,
+        fabAnimation.finished,
+      ]);
     } finally {
       surfaceAnimation?.cancel();
       overlayAnimation?.cancel();
+      fabAnimation?.cancel();
       surface.style.transformOrigin = '';
       overlay.style.pointerEvents = '';
       overlay.style.backgroundColor = '';
-      fab.style.display = 'none';
+      fab.style.opacity = '1';
+      fab.style.transform = '';
       fab.style.visibility = '';
-      fab.style.opacity = '';
       fab.style.pointerEvents = '';
     }
   }
@@ -2924,6 +3033,7 @@ ASSISTANT MODE
 
     // Show overlay if walkthrough is already done
     if (localStorage.getItem('trengo_onboarding_done')) {
+      resetOnboardingUIToStart();
       showOnboarding();
     }
   }
@@ -2970,7 +3080,99 @@ ASSISTANT MODE
       return;
     }
     // First time — show the full-screen onboarding
+    resetOnboardingUIToStart();
+    initMetaStart();
+    initRoleSelection();
     showOnboarding();
+  }
+
+  function resetOnboardingUIToStart() {
+    const overlay = document.getElementById('ai-setup-overlay');
+    const meta = document.getElementById('ai-setup-meta');
+    const split = document.getElementById('ai-setup-split');
+    const customerStep = document.getElementById('ai-setup-customer-step');
+    const roleStep = document.getElementById('ai-setup-role-step');
+    const setupMessages = document.getElementById('ai-setup-messages');
+    const assistantMessages = document.getElementById('assistant-panel-messages');
+    const setupInput = document.getElementById('ai-setup-input');
+    const assistantInput = document.getElementById('assistant-panel-input');
+    const previewContent = document.getElementById('ai-setup-preview-content');
+
+    if (overlay) {
+      overlay.classList.remove('closing');
+      overlay.style.pointerEvents = '';
+      overlay.style.backgroundColor = '';
+    }
+    if (meta) meta.style.display = '';
+    if (split) {
+      split.style.display = 'none';
+      split.classList.remove('preview-ready');
+    }
+    if (customerStep) customerStep.style.display = '';
+    if (roleStep) roleStep.style.display = 'none';
+    if (setupMessages) setupMessages.innerHTML = '';
+    if (assistantMessages) assistantMessages.innerHTML = '';
+    if (previewContent) previewContent.innerHTML = '';
+    if (setupInput) {
+      setupInput.value = '';
+      setupInput.style.height = 'auto';
+    }
+    if (assistantInput) {
+      assistantInput.value = '';
+      assistantInput.style.height = 'auto';
+    }
+  }
+
+  async function resetAssistantState(options = {}) {
+    const { restartOnboarding = false } = options;
+    const shouldRestart = restartOnboarding
+      && (typeof isFeatureEnabled !== 'function' || isFeatureEnabled('ai-onboarding'));
+
+    hideTypingIndicator();
+    _runGeneration += 1;
+    _loopRunning = false;
+    _queuedUserMessage = null;
+    if (_pendingResolve) {
+      const resolve = _pendingResolve;
+      _pendingResolve = null;
+      try {
+        resolve({ skipped: true, reset: true });
+      } catch (error) {
+        console.warn('[AdminAssistant] Could not resolve pending onboarding UI during reset:', error);
+      }
+    }
+
+    AssistantStorage.clearAll();
+    localStorage.removeItem(AI_SETUP_MODE_KEY);
+    localStorage.removeItem('trengo_easy_setup_done');
+    _session = null;
+    _customerData = null;
+    _customerId = null;
+    _role = null;
+    _startingOnboarding = false;
+
+    resetOnboardingUIToStart();
+    hideOnboarding();
+
+    const fab = document.getElementById('assistant-fab');
+    const panel = document.getElementById('assistant-panel');
+    if (fab) {
+      fab.style.display = 'none';
+      fab.style.visibility = '';
+      fab.style.opacity = '';
+      fab.style.pointerEvents = '';
+      fab.classList.remove('pulse');
+    }
+    if (panel) panel.style.display = 'none';
+
+    await initMetaStart();
+    initRoleSelection();
+
+    if (shouldRestart) {
+      showOnboarding();
+    } else if (window.setGuideOnboardingState) {
+      window.setGuideOnboardingState(false);
+    }
   }
 
   /**
@@ -2978,22 +3180,11 @@ ASSISTANT MODE
    * Called from "Reset all" button.
    */
   function resetAll() {
-    AssistantStorage.clearAll();
-    localStorage.removeItem(AI_SETUP_MODE_KEY);
-    _session = null;
-    _customerData = null;
-    _customerId = null;
-    _role = null;
+    return resetAssistantState({ restartOnboarding: false });
+  }
 
-    // Hide UI elements
-    hideOnboarding();
-    const fab = document.getElementById('assistant-fab');
-    const panel = document.getElementById('assistant-panel');
-    if (fab) fab.style.display = 'none';
-    if (panel) panel.style.display = 'none';
-    if (window.setGuideOnboardingState) {
-      window.setGuideOnboardingState(false);
-    }
+  function resetOnboarding() {
+    return resetAssistantState({ restartOnboarding: true });
   }
 
   // ── Public API ─────────────────────────────────────────────
@@ -3001,6 +3192,7 @@ ASSISTANT MODE
     init,
     tryStartOnboarding,
     resetAll,
+    resetOnboarding,
     retryLastMessage,
     showFAB,
     showOnboarding,

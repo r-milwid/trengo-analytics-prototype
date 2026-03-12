@@ -161,6 +161,7 @@ function cloneTeamDefinitions(teams = []) {
     name: String(team?.name || '').trim(),
     usecase: normalizeTeamUsecase(team?.usecase),
     members: Array.isArray(team?.members) ? [...team.members] : [],
+    supervisorScope: normalizeSupervisorScope(team?.supervisorScope),
   }));
 }
 
@@ -172,11 +173,19 @@ function normalizeTeamUsecase(value) {
   return 'resolve';
 }
 
+function normalizeSupervisorScope(value) {
+  if (value === false) return false;
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'false' || normalized === 'no' || normalized === 'off' || normalized === '0') return false;
+  return true;
+}
+
 function buildBuiltInDefaultTeams() {
   return TEAMS_DATA.map(team => ({
     name: team.name,
     members: Array.isArray(team.members) ? [...team.members] : [],
     usecase: team.name === 'Sales team' ? 'convert' : 'resolve',
+    supervisorScope: true,
   }));
 }
 
@@ -228,6 +237,15 @@ function getPrototypeTeams() {
   return cloneTeamDefinitions(state.teams || []);
 }
 
+function getRoleScopedTeams(role = state.personaRole || state.role || 'supervisor') {
+  const teams = getPrototypeTeams();
+  if (role === 'supervisor') {
+    const scoped = teams.filter(team => normalizeSupervisorScope(team.supervisorScope));
+    return scoped.length ? scoped : teams;
+  }
+  return teams;
+}
+
 function persistPrototypeTeams(scope = 'user') {
   writeStoredTeams(scope === 'default' ? DEFAULT_TEAMS_KEY : USER_TEAMS_KEY, getPrototypeTeams());
 }
@@ -259,6 +277,7 @@ function syncTeamsState(teams, options = {}) {
 }
 
 window.getPrototypeTeams = getPrototypeTeams;
+window.getRoleScopedPrototypeTeams = getRoleScopedTeams;
 window.syncTeamsState = syncTeamsState;
 
 let _customerProfilesCache = null;
@@ -4136,6 +4155,7 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
     state.personaRole = btn.dataset.role;
     state.role = state.personaRole === 'admin' ? 'supervisor' : state.personaRole;
     document.body.dataset.role = state.role;
+    updateTeamFilterOptions();
     syncRoleToggleButtons();
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
@@ -4179,6 +4199,7 @@ function setViewEditMode(mode) {
   if (state.teamFilter && state.teamFilter !== 'All teams') {
     [...state.loadedSections].forEach(s => remountSection(s));
   }
+  applyTeamSettingsFlag();
 }
 
 // Default: View/Edit mode enabled on load
@@ -4247,6 +4268,7 @@ document.addEventListener('click', (e) => {
 });
 // Reset sub-navigation button
 const resetSubnavBtn = document.getElementById('reset-subnav-btn');
+const resetOnboardingSessionBtn = document.getElementById('reset-onboarding-session-btn');
 if (resetSubnavBtn) {
   resetSubnavBtn.addEventListener('click', async () => {
     resetSubnavBtn.disabled = true;
@@ -4270,13 +4292,33 @@ if (resetSubnavBtn) {
   });
 }
 
+if (resetOnboardingSessionBtn) {
+  resetOnboardingSessionBtn.addEventListener('click', async () => {
+    resetOnboardingSessionBtn.disabled = true;
+    resetOnboardingSessionBtn.textContent = 'Resetting…';
+
+    userPopout.classList.remove('open');
+    setTimeout(() => { userPopout.style.display = 'none'; }, 200);
+
+    if (typeof AdminAssistant !== 'undefined') {
+      await AdminAssistant.resetOnboarding();
+    }
+
+    resetOnboardingSessionBtn.textContent = 'Reset onboarding ✓';
+    setTimeout(() => {
+      resetOnboardingSessionBtn.disabled = false;
+      resetOnboardingSessionBtn.textContent = 'Reset onboarding';
+    }, 1200);
+  });
+}
+
 // Reset walkthrough + onboarding button
 const resetOnboardingBtn = document.getElementById('reset-onboarding-btn');
 if (resetOnboardingBtn) {
-  resetOnboardingBtn.addEventListener('click', () => {
+  resetOnboardingBtn.addEventListener('click', async () => {
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
-    if (typeof AdminAssistant !== 'undefined') AdminAssistant.resetAll();
+    if (typeof AdminAssistant !== 'undefined') await AdminAssistant.resetAll();
     resetOnboardingBtn.textContent = 'Reset complete ✓';
     setTimeout(() => { location.reload(); }, 800);
   });
@@ -4516,7 +4558,7 @@ const filterConfigs = {
 };
 
 function getTeamFilterOptions() {
-  return ['All teams', ...getTeamNames()];
+  return ['All teams', ...getRoleScopedTeams().map(team => team.name)];
 }
 
 function updateTeamFilterOptions() {
@@ -4544,6 +4586,7 @@ function updateTeamFilterOptions() {
 }
 
 updateTeamFilterOptions();
+window.updateTeamFilterOptions = updateTeamFilterOptions;
 
 // Chip click handlers — open/populate the dropdown only
 Object.keys(filterConfigs).forEach(filterId => {
@@ -4700,7 +4743,7 @@ let _teamSettingsMode = 'session'; // 'session' | 'default'
 
 function applyTeamSettingsFlag() {
   const btn = document.getElementById('team-display-settings-btn');
-  if (btn) btn.style.display = 'none';
+  if (btn) btn.style.display = _currentViewMode === 'edit' ? '' : 'none';
 }
 
 function buildTeamSettingsDraft(teams) {
@@ -4708,6 +4751,7 @@ function buildTeamSettingsDraft(teams) {
     name: team.name,
     members: [...team.members],
     usecase: normalizeTeamUsecase(team.usecase),
+    supervisorScope: normalizeSupervisorScope(team.supervisorScope),
     originalName: team.name,
   }));
 }
@@ -4723,7 +4767,7 @@ function teamSettingsModeMeta() {
   return {
     title: editingDefaults ? 'Edit default teams' : 'Manage teams',
     subtitle: editingDefaults
-      ? 'Update the prototype defaults used when a session has not customised teams.'
+      ? 'Update the prototype defaults used when a session has not customised teams, including which teams are in scope for supervisor onboarding.'
       : 'Update team names and whether each team is support, sales, or both for this session.',
   };
 }
@@ -4746,7 +4790,7 @@ function renderTeamSettingsModal() {
       ? 'No members assigned'
       : `${memberCount} member${memberCount === 1 ? '' : 's'} linked`;
 
-    return `<div class="team-settings-editor-row" data-index="${index}">
+    return `<div class="team-settings-editor-row ${editingDefaults ? 'editing-defaults' : ''}" data-index="${index}">
       <div class="team-settings-editor-main">
         <label class="team-settings-field-label" for="team-settings-name-${index}">Team name</label>
         <input
@@ -4771,6 +4815,24 @@ function renderTeamSettingsModal() {
           `).join('')}
         </div>
       </div>
+      ${editingDefaults ? `
+      <div class="team-settings-editor-scope">
+        <div class="team-settings-field-label">Supervisor onboarding</div>
+        <div class="team-settings-scope-toggle">
+          <button
+            class="team-settings-scope-btn ${normalizeSupervisorScope(team.supervisorScope) ? 'selected' : ''}"
+            data-index="${index}"
+            data-supervisor-scope="true"
+            type="button"
+          >Included</button>
+          <button
+            class="team-settings-scope-btn ${!normalizeSupervisorScope(team.supervisorScope) ? 'selected' : ''}"
+            data-index="${index}"
+            data-supervisor-scope="false"
+            type="button"
+          >Excluded</button>
+        </div>
+      </div>` : ''}
       <button class="team-settings-delete-btn" data-index="${index}" type="button">Delete</button>
     </div>`;
   }).join('');
@@ -4803,6 +4865,15 @@ function renderTeamSettingsModal() {
     });
   });
 
+  body.querySelectorAll('[data-supervisor-scope]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = Number(btn.dataset.index);
+      if (Number.isNaN(index) || !_teamSettingsDraft[index]) return;
+      _teamSettingsDraft[index].supervisorScope = btn.dataset.supervisorScope === 'true';
+      renderTeamSettingsModal();
+    });
+  });
+
   body.querySelectorAll('.team-settings-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const index = Number(btn.dataset.index);
@@ -4817,6 +4888,7 @@ function renderTeamSettingsModal() {
       name: '',
       members: [],
       usecase: 'resolve',
+      supervisorScope: true,
       originalName: null,
     });
     renderTeamSettingsModal();
@@ -4846,6 +4918,7 @@ function validateTeamSettingsDraft() {
       name,
       members: Array.isArray(team?.members) ? [...team.members] : [],
       usecase: normalizeTeamUsecase(team?.usecase),
+      supervisorScope: normalizeSupervisorScope(team?.supervisorScope),
     });
     if (team?.originalName && team.originalName !== name) {
       renameMap[team.originalName] = name;
@@ -6374,12 +6447,15 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   const stepsContainer = document.getElementById('onboarding-steps');
   const arrowsSvg     = document.getElementById('onboarding-arrows');
 
-  function arrowGeometry(x1, y1, x2, y2) {
+  function arrowGeometry(x1, y1, x2, y2, bendDirection = 1, curvatureScale = 1) {
     const dx = x2 - x1, dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const curvature = Math.min(dist * 0.3, 60);
-    const nx = -dy / dist * curvature;
-    const ny =  dx / dist * curvature;
+    if (!dist) {
+      return { mx: x1, my: y1, ux: 1, uy: 0, px: 0, py: 1 };
+    }
+    const curvature = Math.min(dist * 0.3, 60) * curvatureScale;
+    const nx = -dy / dist * curvature * bendDirection;
+    const ny =  dx / dist * curvature * bendDirection;
     const mx = (x1 + x2) / 2 + nx;
     const my = (y1 + y2) / 2 + ny;
     // Tangent direction at t=1 on quadratic bezier
@@ -6390,11 +6466,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     return { mx, my, ux, uy, px, py };
   }
 
-  function drawArrow(x1, y1, x2, y2) {
+  function drawArrow(x1, y1, x2, y2, options = {}) {
+    const { bendDirection = 1, curvatureScale = 1 } = options;
     const HEAD = 13;   // arrowhead length
     const WING = 0.38; // half-width ratio relative to HEAD
 
-    const { mx, my, ux, uy, px, py } = arrowGeometry(x1, y1, x2, y2);
+    const { mx, my, ux, uy, px, py } = arrowGeometry(x1, y1, x2, y2, bendDirection, curvatureScale);
 
     // Stop the path slightly before the tip so the stroke doesn't bleed through
     const pathEndX = x2 - ux * HEAD * 0.6;
@@ -6415,6 +6492,47 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     arrow.setAttribute('points', `${tipX},${tipY} ${p1x},${p1y} ${p2x},${p2y}`);
     arrowsSvg.appendChild(arrow);
+  }
+
+  function findVisibleWalkthroughWidgetTarget(cardLeft, cardTop) {
+    const candidates = [
+      ...document.querySelectorAll(`.section-content[data-section="${state.activeSection}"] .widget-card`),
+      ...document.querySelectorAll('.section-content .widget-card')
+    ];
+    const seen = new Set();
+    const unique = candidates.filter((el) => {
+      if (!el || seen.has(el)) return false;
+      seen.add(el);
+      return true;
+    });
+    if (unique.length === 0) return null;
+
+    const viewportTop = 96;
+    const viewportBottom = window.innerHeight - 32;
+    const visible = unique
+      .map((el) => ({ el, rect: el.getBoundingClientRect() }))
+      .filter(({ rect }) =>
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom > viewportTop &&
+        rect.top < viewportBottom
+      );
+
+    const pool = visible.length > 0 ? visible : unique.map((el) => ({ el, rect: el.getBoundingClientRect() }));
+    const preferredX = cardLeft - 120;
+    const preferredY = cardTop + 34;
+
+    pool.sort((a, b) => {
+      const aScore = Math.hypot((a.rect.right - 14) - preferredX, (a.rect.top + 14) - preferredY)
+        + (a.rect.right > cardLeft ? 400 : 0)
+        + (a.rect.top < viewportTop ? 200 : 0);
+      const bScore = Math.hypot((b.rect.right - 14) - preferredX, (b.rect.top + 14) - preferredY)
+        + (b.rect.right > cardLeft ? 400 : 0)
+        + (b.rect.top < viewportTop ? 200 : 0);
+      return aScore - bScore;
+    });
+
+    return pool[0]?.el || null;
   }
 
   function positionStep(index) {
@@ -6497,8 +6615,8 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
       const cardTopLeftX = cardLeft + 56;
       const cardTopLeftY = cardTop + 18;
-      const cardBottomLeftX = cardLeft + 28;
-      const cardBottomLeftY = cardTop + ch - 96;
+      const cardBottomLeftX = cardLeft + 18;
+      const cardBottomLeftY = cardTop + ch - 58;
 
       // Arrow 1: to the bottom-right of the tab navigation
       if (targets[0]) {
@@ -6512,13 +6630,15 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       }
 
       // Arrow 2: to the top-right corner of a widget card
-      if (targets[1]) {
-        const widgetRect = targets[1].getBoundingClientRect();
+      const widgetTarget = findVisibleWalkthroughWidgetTarget(cardLeft, cardTop) || targets[1];
+      if (widgetTarget) {
+        const widgetRect = widgetTarget.getBoundingClientRect();
         drawArrow(
           cardBottomLeftX,
           cardBottomLeftY,
           widgetRect.right - 14,
-          widgetRect.top + 14
+          widgetRect.top + 14,
+          { bendDirection: -1, curvatureScale: 0.62 }
         );
       }
     }

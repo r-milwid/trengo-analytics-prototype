@@ -1576,8 +1576,12 @@ body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + v
   border-radius: 14px;
   background: var(--gray-50);
 }
+.team-settings-editor-row.editing-defaults {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr) auto;
+}
 .team-settings-editor-main,
-.team-settings-editor-focus {
+.team-settings-editor-focus,
+.team-settings-editor-scope {
   min-width: 0;
 }
 .team-settings-field-label {
@@ -1610,6 +1614,33 @@ body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + v
   margin-top: 6px;
   font-size: 12px;
   color: var(--gray-500);
+}
+.team-settings-scope-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.team-settings-scope-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.team-settings-scope-btn:hover {
+  border-color: var(--gray-400);
+  background: var(--gray-100);
+}
+.team-settings-scope-btn.selected {
+  border-color: var(--gray-900);
+  background: var(--gray-900);
+  color: #fff;
 }
 .team-settings-delete-btn,
 .team-settings-add-btn {
@@ -1649,6 +1680,9 @@ body.drawer-open[data-panel="wide"] .main-content { margin-right: calc(320px + v
     align-items: flex-start;
   }
   .team-settings-editor-row {
+    grid-template-columns: 1fr;
+  }
+  .team-settings-editor-row.editing-defaults {
     grid-template-columns: 1fr;
   }
   .team-settings-delete-btn {

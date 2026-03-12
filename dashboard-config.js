@@ -21,6 +21,13 @@ const DashboardConfig = (() => {
     return 'resolve';
   }
 
+  function normalizeSupervisorScope(value) {
+    if (value === false) return false;
+    const normalized = String(value ?? '').trim().toLowerCase();
+    if (normalized === 'false' || normalized === 'no' || normalized === 'off' || normalized === '0') return false;
+    return true;
+  }
+
   // ── Serialize: state → config JSON ─────────────────────────
   function serialize(state, actor = 'ui') {
     // Convert tabWidgets Sets to arrays
@@ -44,6 +51,7 @@ const DashboardConfig = (() => {
           name: team.name,
           usecase: normalizeTeamUsecase(team.usecase || state.teamUsecases?.[team.name]),
           members: Array.isArray(team.members) ? [...team.members] : [],
+          supervisorScope: normalizeSupervisorScope(team.supervisorScope),
         }))
       : [];
 
@@ -89,6 +97,7 @@ const DashboardConfig = (() => {
         name: team.name,
         usecase: normalizeTeamUsecase(team.usecase),
         members: Array.isArray(team.members) ? [...team.members] : [],
+        supervisorScope: normalizeSupervisorScope(team.supervisorScope),
       }));
       state.teamUsecases = {};
       state.teams.forEach(team => {
@@ -108,6 +117,7 @@ const DashboardConfig = (() => {
           name: teamName,
           usecase,
           members: existingMembers.get(teamName) || [],
+          supervisorScope: true,
         };
       });
     }
