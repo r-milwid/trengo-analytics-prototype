@@ -29,6 +29,8 @@ const AdminAssistant = (() => {
   let _queuedUserMessage = null;
   let _startingOnboarding = false;
   let _runGeneration = 0;
+  let _previewRevealGeneration = 0;
+  let _previewRevealTimers = [];
 
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
@@ -321,6 +323,10 @@ CONVERSATION STYLE
 - Sound natural, compact, and conversational. No filler, hype, or repetitive acknowledgements.
 - Do not repeat facts the user already confirmed or that are already clear from customer data or source material.
 - Do not explain visible preview changes unless the user asks.
+- Optimize for vertical space as well as brevity. Prefer short paragraphs and compact bullets only when they save space and improve scanning.
+- Do not produce long recaps. If summarizing known context, keep it to the few most decision-relevant points, not every available field.
+- When a UI block already shows details visibly, mention that briefly instead of restating the full contents in chat.
+- If you use bullets, keep them compact: no blank lines between bullets, no more than 4 bullets unless the user asked for a longer list, and keep each bullet to one line where possible.
 
 DECISION POLICY
 - Infer where reasonable. Ask only when the missing information would materially change the tab structure, team focus, terminology, or starting widget choices.
@@ -348,6 +354,7 @@ HOW TO GATHER CONTEXT
 - Ask about operating reality, success measures, bottlenecks, ownership, or decision-making when those would materially improve the draft.
 - Prefer questions about decision-making and operating reality over questions about layout preferences.
 - Do not let the user do all the design work. Your job is to understand enough to make a strong proposal.
+- In the opening source/context step, keep the chat copy especially tight. The surrounding UI can carry the detail.
 
 TOOL CHOICE
 - Use show_boolean_choice for yes/no questions.
@@ -399,6 +406,8 @@ ${sourceTexts ? `SOURCE MATERIAL\n${sourceTexts}` : ''}`;
 ONBOARDING
 - Open by using known customer context and gathering source context early.
 - If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.
+- For the first source step, do not dump the full customer profile into chat. Use at most 2 short lines or up to 4 very compact bullets covering only the most decision-relevant facts.
+- Prefer a pattern like: brief acknowledgment of what is already known, one short sentence on what would sharpen the draft, then show_source_input.
 - In the opening phase, focus on enough understanding to make a draft, not on collecting every possible preference.
 - After the source/context step, do a real gap check before proposing.
 - Ask follow-up questions when they materially improve the likely tab proposal, team setup, terminology, or starter widget set.
@@ -1506,8 +1515,8 @@ ASSISTANT MODE
       },
       {
         id: 'keep_defaults',
-        label: 'Keep defaults',
-        description: 'Drop this proposal and stay with the baseline tabs.',
+        label: 'Reset to defaults',
+        description: 'Discard this proposal and switch back to the baseline tabs.',
       },
     ];
 
@@ -1797,7 +1806,7 @@ ASSISTANT MODE
 
     const helper = document.createElement('div');
     helper.className = 'ai-setup-source-helper';
-    helper.textContent = 'Any source context already known from the customer profile is shown here. Edit, remove, or add more before continuing.';
+    helper.textContent = 'Known source context is shown here. Edit it, remove it, or add more.';
     wrapper.appendChild(helper);
 
     const grid = document.createElement('div');
@@ -1830,7 +1839,7 @@ ASSISTANT MODE
       urlPanel.innerHTML = `
         <div class="ai-setup-source-column-header">
           <div class="ai-setup-source-column-title">Website URL</div>
-          <div class="ai-setup-source-column-subtitle">Use a homepage, help center, or docs URL</div>
+          <div class="ai-setup-source-column-subtitle">Homepage, help center, or docs URL</div>
         </div>
         <div class="ai-setup-source-url-list" id="ai-setup-url-list"></div>
         <button type="button" class="ai-setup-inline-action-secondary ai-setup-source-add-btn" id="ai-setup-add-url-btn">Add URL</button>
@@ -1887,7 +1896,7 @@ ASSISTANT MODE
       pastePanel.innerHTML = `
         <div class="ai-setup-source-column-header">
           <div class="ai-setup-source-column-title">Pasted text</div>
-          <div class="ai-setup-source-column-subtitle">${initialPasteText ? 'Preloaded context is included below. Edit it, remove it, or add more.' : 'Paste notes, docs, or copied content'}</div>
+          <div class="ai-setup-source-column-subtitle">${initialPasteText ? 'Edit the starter context below, or add more.' : 'Paste notes, docs, or copied content'}</div>
         </div>
         <textarea class="ai-setup-source-paste-input" placeholder="Paste text here..." rows="5" id="ai-setup-paste-input">${escapeHtml(initialPasteText)}</textarea>
       `;
@@ -1924,6 +1933,14 @@ ASSISTANT MODE
 
     container.appendChild(wrapper);
     scrollToBottom(container);
+    requestAnimationFrame(() => {
+      scrollToBottom(container);
+      wrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
+    });
+    setTimeout(() => {
+      scrollToBottom(container);
+      wrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
+    }, 80);
 
     setTimeout(() => wireFileInteractions(wrapper), 0);
   }
@@ -2008,10 +2025,20 @@ ASSISTANT MODE
 
     try {
       const results = [];
+      const failures = [];
 
       for (const job of jobs) {
         processingEl.querySelector('.ai-setup-processing-text').textContent = job.label;
-        const result = await job.run();
+        let result = null;
+        try {
+          result = await job.run();
+        } catch (error) {
+          failures.push({
+            label: job.label,
+            message: error?.message || 'Unknown error',
+          });
+          continue;
+        }
         if (!result?.text) continue;
 
         AssistantStorage.addSource(_session, {
@@ -2034,8 +2061,21 @@ ASSISTANT MODE
       hideProcessingState(processingEl);
 
       if (!results.length) {
-        renderErrorBubble('Could not extract text from the source. Try a different format.');
+        const websiteFailure = failures.some(item => /fetching website/i.test(item.label) || /fetch/i.test(item.message));
+        renderErrorBubble(
+          websiteFailure
+            ? 'I couldn’t fetch the website source just now. You can continue with pasted text or a file, or try the URL again.'
+            : 'I couldn’t extract usable text from those sources. Try a different format or continue without them.'
+        );
         return;
+      }
+
+      if (failures.length > 0) {
+        const websiteFailure = failures.some(item => /fetching website/i.test(item.label) || /fetch/i.test(item.message));
+        const partialMessage = websiteFailure
+          ? 'I couldn’t fetch one or more website sources, but I used the other context that was available.'
+          : 'I used the sources that worked and skipped the ones I couldn’t read.';
+        showConfigChange(partialMessage);
       }
 
       wrapper.classList.add('ai-setup-source-resolved');
@@ -2045,11 +2085,12 @@ ASSISTANT MODE
         success: true,
         sourceCount: results.length,
         sources: results,
+        partialFailures: failures.length,
       });
     } catch (e) {
       hideProcessingState(processingEl);
       console.error('[AdminAssistant] Source processing error:', e);
-      renderErrorBubble(`Error processing source: ${e.message}`);
+      renderErrorBubble('Something went wrong while processing the sources. You can try again, or continue without them.');
     }
   }
 
@@ -2085,6 +2126,9 @@ ASSISTANT MODE
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
+    if (!resp.ok) {
+      throw new Error('Website fetch failed');
+    }
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
     return { text: data.text, title: data.title, url, source: 'url' };
@@ -2154,6 +2198,7 @@ ASSISTANT MODE
   function renderPreview() {
     const content = document.getElementById('ai-setup-preview-content');
     if (!content) return;
+    resetPreviewReveal();
     const previewTabs = getPreviewDraftTabs();
     syncPreviewLayout(previewTabs);
 
@@ -2165,7 +2210,7 @@ ASSISTANT MODE
 
     // Tab bar
     const tabBar = document.createElement('div');
-    tabBar.className = 'preview-tab-bar';
+    tabBar.className = 'preview-tab-bar preview-reveal-item';
     previewTabs.forEach((tab, index) => {
       const btn = document.createElement('button');
       btn.className = 'preview-tab' + (index === 0 ? ' active' : '');
@@ -2175,62 +2220,88 @@ ASSISTANT MODE
     content.appendChild(tabBar);
 
     const intro = document.createElement('div');
-    intro.className = 'preview-intro-card';
+    intro.className = 'preview-intro-card preview-reveal-item';
     intro.innerHTML = `
       <span class="preview-intro-eyebrow">Draft preview</span>
       <strong>This updates as the onboarding draft becomes more specific.</strong>
     `;
     content.appendChild(intro);
 
+    const revealItems = [tabBar, intro];
+
     // Widget cards for each section
     previewTabs.forEach(tab => {
+      const widgets = getPreviewWidgets(tab.id);
+      if (!widgets.length) {
+        return;
+      }
+
       const section = document.createElement('div');
       section.className = 'preview-section';
 
       const header = document.createElement('div');
-      header.className = 'preview-section-header';
+      header.className = 'preview-section-header preview-reveal-item';
       const title = document.createElement('span');
       title.textContent = tab.label;
       const count = document.createElement('span');
       count.className = 'preview-section-count';
-      const widgets = getPreviewWidgets(tab.id);
-      count.textContent = widgets.length > 0 ? `${widgets.length} widgets` : 'Awaiting relevant widgets';
+      count.textContent = `${widgets.length} widget${widgets.length === 1 ? '' : 's'}`;
       header.appendChild(title);
       header.appendChild(count);
       section.appendChild(header);
+      revealItems.push(header);
 
       const grid = document.createElement('div');
       grid.className = 'preview-widget-grid';
 
       widgets.forEach(w => {
         const previewType = normalizePreviewWidgetType(w.type);
+        const showTypeIcon = previewType !== 'metric' && previewType !== 'kpi';
         const card = document.createElement('div');
-        card.className = `preview-widget-card type-${previewType}`;
+        card.className = `preview-widget-card preview-reveal-item type-${previewType}${showTypeIcon ? '' : ' no-type-icon'}`;
         card.innerHTML = `
           <div class="preview-widget-top">
-            <span class="preview-widget-icon">${getPreviewWidgetIcon(previewType)}</span>
+            ${showTypeIcon ? `<span class="preview-widget-icon">${getPreviewWidgetIcon(previewType)}</span>` : ''}
             <span class="preview-widget-type">${escapeHtml(getPreviewWidgetTypeLabel(previewType))}</span>
           </div>
           <span class="preview-widget-title">${escapeHtml(w.title)}</span>
           <div class="preview-widget-viz type-${previewType}">
-            ${buildPreviewWidgetViz(previewType)}
+            ${buildPreviewWidgetViz(previewType, w)}
           </div>
         `;
         grid.appendChild(card);
+        revealItems.push(card);
       });
-
-      if (widgets.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'preview-widget-empty';
-        empty.textContent = 'Relevant widgets will appear here once the draft is more specific.';
-        grid.appendChild(empty);
-      }
 
       section.appendChild(grid);
       content.appendChild(section);
     });
 
     updatePreviewRoleBadge();
+    schedulePreviewReveal(revealItems);
+  }
+
+  function resetPreviewReveal() {
+    _previewRevealGeneration += 1;
+    _previewRevealTimers.forEach(timer => clearTimeout(timer));
+    _previewRevealTimers = [];
+  }
+
+  function schedulePreviewReveal(items) {
+    const generation = _previewRevealGeneration;
+    const filtered = items.filter(Boolean);
+    filtered.forEach(item => item.classList.remove('is-visible'));
+
+    let delay = 120;
+    const step = 240;
+    filtered.forEach((item) => {
+      const timer = setTimeout(() => {
+        if (generation !== _previewRevealGeneration) return;
+        item.classList.add('is-visible');
+      }, delay);
+      _previewRevealTimers.push(timer);
+      delay += step;
+    });
   }
 
   function getPreviewWidgets(tabId) {
@@ -2285,21 +2356,104 @@ ASSISTANT MODE
 
   function getPreviewWidgetIcon(type) {
     const icons = {
-      line: '╱',
-      bar: '▥',
-      stackedbar: '▤',
-      area: '▱',
-      donut: '◔',
-      funnel: '⏷',
-      table: '☰',
-      metric: '◌',
-      kpi: '◌',
-      list: '≣',
+      line: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2 11.5L5.1 8.4L7.6 10.2L12.5 4.8" stroke="#2a2f4a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M11.1 4.8H12.9V6.6" stroke="#2a2f4a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="5.1" cy="8.4" r="1" fill="#82c9ff"/>
+        <circle cx="7.6" cy="10.2" r="1" fill="#6fcdbf"/>
+        <circle cx="12.5" cy="4.8" r="1" fill="#cf8dff"/>
+      </svg>`,
+      bar: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2.5 13.5H13.5" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round"/>
+        <rect x="3.2" y="8.3" width="2.1" height="4.2" rx="0.7" fill="#6fcdbf"/>
+        <rect x="6.9" y="5.8" width="2.1" height="6.7" rx="0.7" fill="#82c9ff"/>
+        <rect x="10.6" y="3.4" width="2.1" height="9.1" rx="0.7" fill="#2a2f4a"/>
+      </svg>`,
+      stackedbar: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2.5 13.5H13.5" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round"/>
+        <rect x="3.2" y="9.5" width="2.1" height="3" rx="0.7" fill="#6fcdbf"/>
+        <rect x="3.2" y="7.4" width="2.1" height="2" rx="0.7" fill="#2a2f4a" opacity="0.55"/>
+        <rect x="6.9" y="8.7" width="2.1" height="3.8" rx="0.7" fill="#82c9ff"/>
+        <rect x="6.9" y="5.6" width="2.1" height="3" rx="0.7" fill="#2a2f4a" opacity="0.55"/>
+        <rect x="10.6" y="7.8" width="2.1" height="4.7" rx="0.7" fill="#cf8dff"/>
+        <rect x="10.6" y="3.9" width="2.1" height="3.8" rx="0.7" fill="#2a2f4a" opacity="0.55"/>
+      </svg>`,
+      area: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2 11.8L5 8.6L7.4 9.7L11.2 5.1L14 7.2V13H2V11.8Z" fill="#82c9ff" opacity="0.32"/>
+        <path d="M2 11.8L5 8.6L7.4 9.7L11.2 5.1L14 7.2" stroke="#2a2f4a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+      donut: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="4.8" stroke="#cbd5e1" stroke-width="2.2"/>
+        <path d="M8 3.2A4.8 4.8 0 0 1 12.8 8" stroke="#6fcdbf" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M12.2 8.8A4.8 4.8 0 0 1 8.6 12.7" stroke="#82c9ff" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>`,
+      funnel: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2.5 3.5H13.5L9.4 8.1V11.8L6.6 13V8.1L2.5 3.5Z" fill="#82c9ff" opacity="0.22" stroke="#2a2f4a" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>`,
+      table: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="2.5" y="3" width="11" height="10" rx="1.5" fill="#ffffff" stroke="#94a3b8" stroke-width="1.4"/>
+        <path d="M2.5 6.4H13.5" stroke="#94a3b8" stroke-width="1.3"/>
+        <path d="M6 3V13M10 3V13" stroke="#dbe4ee" stroke-width="1.2"/>
+        <rect x="3.6" y="4.1" width="1.3" height="1.2" rx="0.4" fill="#6fcdbf"/>
+        <rect x="7.2" y="4.1" width="1.3" height="1.2" rx="0.4" fill="#82c9ff"/>
+        <rect x="10.8" y="4.1" width="1.3" height="1.2" rx="0.4" fill="#cf8dff"/>
+      </svg>`,
+      metric: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 10.8C3 7.8 5.4 5.4 8.4 5.4C10.4 5.4 12.1 6.4 13 8" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M8.2 8.1L10.9 6.3" stroke="#2a2f4a" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="8.2" cy="8.1" r="1" fill="#6fcdbf"/>
+      </svg>`,
+      kpi: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 10.8C3 7.8 5.4 5.4 8.4 5.4C10.4 5.4 12.1 6.4 13 8" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M8.2 8.1L10.9 6.3" stroke="#2a2f4a" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="8.2" cy="8.1" r="1" fill="#6fcdbf"/>
+      </svg>`,
+      list: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="3.5" cy="4.5" r="1" fill="#6fcdbf"/>
+        <circle cx="3.5" cy="8" r="1" fill="#82c9ff"/>
+        <circle cx="3.5" cy="11.5" r="1" fill="#cf8dff"/>
+        <path d="M6 4.5H13M6 8H13M6 11.5H13" stroke="#64748b" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>`,
     };
-    return icons[type] || '◌';
+    return icons[type] || icons.metric;
   }
 
-  function buildPreviewWidgetViz(type) {
+  function hashPreviewSeed(value) {
+    return String(value || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  }
+
+  function buildPreviewKpiViz(widget) {
+    const title = String(widget?.title || '').toLowerCase();
+    const seed = hashPreviewSeed(title);
+    const isPercent = title.includes('rate') || title.includes('%') || title.includes('share');
+    const isTime = title.includes('time') || title.includes('reply') || title.includes('response');
+    const isCount = title.includes('tickets') || title.includes('contacts') || title.includes('conversations');
+
+    let value = `${60 + (seed % 35)}`;
+    let suffix = '';
+    if (isPercent) {
+      value = `${2 + (seed % 16)}.${seed % 10}`;
+      suffix = '%';
+    } else if (isTime) {
+      value = `${1 + (seed % 4)}h ${8 + (seed % 42)}m`;
+    } else if (isCount) {
+      value = `${18 + (seed % 240)}`;
+    }
+
+    const trendUp = seed % 3 !== 0;
+    const trendValue = `${1 + (seed % 9)}.${seed % 10}%`;
+
+    return `
+      <div class="preview-kpi">
+        <div class="preview-kpi-main">
+          <span class="preview-kpi-value">${escapeHtml(value)}${suffix ? `<small>${suffix}</small>` : ''}</span>
+          <span class="preview-kpi-trend ${trendUp ? 'up' : 'down'}">${trendUp ? '↗' : '↘'} ${escapeHtml(trendValue)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildPreviewWidgetViz(type, widget) {
     if (type === 'bar' || type === 'stackedbar') {
       return '<span></span><span></span><span></span><span></span>';
     }
@@ -2311,6 +2465,9 @@ ASSISTANT MODE
     }
     if (type === 'table' || type === 'list') {
       return '<em></em><em></em><em></em>';
+    }
+    if (type === 'metric' || type === 'kpi') {
+      return buildPreviewKpiViz(widget);
     }
     return '<b></b>';
   }
@@ -2335,22 +2492,39 @@ ASSISTANT MODE
   // ═══════════════════════════════════════════════════════════
 
   function renderMarkdown(text) {
-    // Simple markdown rendering — bold, italic, code, links, lists
-    return text
+    const escaped = String(text || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
+      .replace(/>/g, '&gt;');
+
+    const inline = (value) => value
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>')
-      .replace(/^(.*)$/, '<p>$1</p>')
-      .replace(/<p><\/p>/g, '')
-      .replace(/<ul><\/ul>/g, '');
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    const blocks = escaped
+      .trim()
+      .split(/\n\s*\n/)
+      .map(block => block.trim())
+      .filter(Boolean);
+
+    if (!blocks.length) return '';
+
+    return blocks.map((block) => {
+      const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
+      const isList = lines.length > 0 && lines.every(line => /^[-•]\s+/.test(line));
+
+      if (isList) {
+        const items = lines
+          .map(line => line.replace(/^[-•]\s+/, ''))
+          .map(line => `<li>${inline(line)}</li>`)
+          .join('');
+        return `<ul>${items}</ul>`;
+      }
+
+      return `<p>${inline(lines.join('<br>'))}</p>`;
+    }).join('');
   }
 
   function escapeHtml(text) {

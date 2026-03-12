@@ -75,6 +75,34 @@ const USER_TEAMS_KEY      = 'trengo_user_teams';
 const DEFAULT_TEAMS_KEY   = 'trengo_default_teams';
 const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
 
+const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
+  'northstar-health': {
+    legacyWebsite: 'https://www.northstarhealth.io',
+    next: {
+      website: 'https://connect.doctolib.com/',
+      helpCenterUrl: 'https://connect.doctolib.com/nl/helpcentrum',
+      productSummary: 'Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.',
+      suggestedPreviewContext: 'Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams.',
+    },
+  },
+  'luma-commerce': {
+    legacyWebsite: 'https://www.lumacommerce.eu',
+    next: {
+      website: 'https://prestashop.com/',
+      helpCenterUrl: 'https://help-center.prestashop.com/',
+      productSummary: 'Commerce enablement company supporting design-led and specialty retailers across Europe, with merchant operations, partner onboarding, and a growing B2B commerce service.',
+      suggestedPreviewContext: 'Focus on channel-level performance, merchant support health, and separating partner-growth work from operational support metrics.',
+    },
+  },
+  'orbit-mobility': {
+    legacyWebsite: 'https://www.orbitmobility.com',
+    next: {
+      website: 'https://www.voi.com/',
+      helpCenterUrl: '',
+    },
+  },
+};
+
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
   { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: false },
@@ -396,14 +424,14 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
     id: 'northstar-health',
     company: 'Northstar Health',
     industry: 'Healthcare SaaS',
-    productSummary: 'Patient engagement platform for clinics, hospitals, and specialty practices. Handles appointment scheduling, patient communication, and care coordination across multiple channels.',
-    website: 'https://www.northstarhealth.io',
-    helpCenterUrl: 'https://help.northstarhealth.io',
+    productSummary: 'Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.',
+    website: 'https://connect.doctolib.com/',
+    helpCenterUrl: 'https://connect.doctolib.com/nl/helpcentrum',
     knownTeams: [
-      { name: 'Patient Support', likelyFocus: 'resolve', size: 12, description: 'Handles patient inquiries, appointment issues, and billing questions' },
-      { name: 'Sales', likelyFocus: 'convert', size: 6, description: 'Inbound demo requests and outbound outreach to clinics' },
-      { name: 'Onboarding', likelyFocus: 'resolve', size: 4, description: 'Guides new clinic partners through platform setup and training' },
-      { name: 'Enterprise CS', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for hospital network accounts' }
+      { name: 'Patient Support', likelyFocus: 'resolve', size: 12, description: 'Handles patient inquiries, access issues, and communication-related questions' },
+      { name: 'Sales', likelyFocus: 'convert', size: 6, description: 'Inbound demo requests and outbound outreach to clinics and care networks' },
+      { name: 'Implementation', likelyFocus: 'resolve', size: 4, description: 'Guides new healthcare organizations through setup, rollout, and training' },
+      { name: 'Enterprise CS', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for larger care groups and multi-site accounts' }
     ],
     channels: ['email', 'whatsapp', 'live-chat', 'voice', 'sms'],
     plan: 'Scale',
@@ -416,20 +444,20 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
       resolution: 'case closure'
     },
     currentSetup: {
-      primaryUseCase: 'Patient communication and support triage',
+      primaryUseCase: 'Care-team communication and patient coordination',
       busiestChannels: ['whatsapp', 'voice'],
       avgMonthlyConversations: 8500,
-      topPainPoints: ['Long first-response times on weekends', 'Difficulty tracking escalated cases across teams']
+      topPainPoints: ['Long first-response times during peak demand', 'Difficulty tracking escalated coordination issues across teams']
     },
-    suggestedPreviewContext: 'Focus on patient case resolution metrics, cross-team escalation tracking, and first-response time optimization.'
+    suggestedPreviewContext: 'Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams.'
   },
   {
     id: 'luma-commerce',
     company: 'Luma Commerce',
     industry: 'E-commerce',
-    productSummary: 'Premium home goods and lifestyle brand selling direct-to-consumer across Europe. Operates both online store and wholesale B2B channel.',
-    website: 'https://www.lumacommerce.eu',
-    helpCenterUrl: 'https://support.lumacommerce.eu',
+    productSummary: 'Premium home and living retailer selling direct-to-consumer across Europe, with a curated assortment and a growing B2B design service.',
+    website: 'https://www.westwing.com/home/',
+    helpCenterUrl: 'https://support.westwing.com/hc',
     knownTeams: [
       { name: 'Customer Care', likelyFocus: 'resolve', size: 18, description: 'Handles order inquiries, returns, shipping issues, and product questions' },
       { name: 'Sales & Partnerships', likelyFocus: 'convert', size: 8, description: 'B2B wholesale inquiries, retail partnerships, and bulk orders' },
@@ -447,20 +475,20 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
       resolution: 'resolution'
     },
     currentSetup: {
-      primaryUseCase: 'Omnichannel customer support with social commerce conversion',
+      primaryUseCase: 'Omnichannel customer support with design-led commerce conversion',
       busiestChannels: ['email', 'whatsapp', 'instagram'],
       avgMonthlyConversations: 15200,
       topPainPoints: ['Social channels have low conversion tracking', 'B2B and B2C inquiries mixed in same queues']
     },
-    suggestedPreviewContext: 'Focus on channel-level performance, conversion tracking across social commerce, and separating B2B from B2C support metrics.'
+    suggestedPreviewContext: 'Focus on channel-level performance, conversion tracking across inspirational commerce journeys, and separating B2B from B2C support metrics.'
   },
   {
     id: 'orbit-mobility',
     company: 'Orbit Mobility',
     industry: 'Logistics & Mobility',
     productSummary: 'Urban mobility platform offering shared e-bikes, e-scooters, and last-mile delivery services across 12 European cities. Both consumer app and B2B fleet management.',
-    website: 'https://www.orbitmobility.com',
-    helpCenterUrl: 'https://help.orbitmobility.com',
+    website: 'https://www.voi.com/',
+    helpCenterUrl: '',
     knownTeams: [
       { name: 'Rider Support', likelyFocus: 'resolve', size: 22, description: 'App issues, payment disputes, damaged vehicles, safety incidents' },
       { name: 'Fleet Operations', likelyFocus: 'resolve', size: 6, description: 'Coordinates with maintenance, city ops, and reports on vehicle availability' },
@@ -493,7 +521,16 @@ function readStoredCustomerProfiles() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return null;
-    const profiles = ensureUniqueCustomerIds(parsed).filter(profile => profile.company || profile.industry || profile.productSummary || profile.generalNotes);
+    const migrated = parsed.map((profile) => {
+      const migration = LEGACY_CUSTOMER_PROFILE_MIGRATIONS[profile?.id];
+      if (!migration) return profile;
+      if (String(profile?.website || '').trim() !== migration.legacyWebsite) return profile;
+      return {
+        ...profile,
+        ...migration.next,
+      };
+    });
+    const profiles = ensureUniqueCustomerIds(migrated).filter(profile => profile.company || profile.industry || profile.productSummary || profile.generalNotes);
     return profiles;
   } catch {
     return null;
@@ -5160,7 +5197,7 @@ function renderCustomerSettingsModal() {
       <div class="customer-settings-card-header">
         <div>
           <div class="customer-settings-card-title" data-customer-title="${index}">${escapeHtml(profile.company || `Customer ${index + 1}`)}</div>
-          <div class="customer-settings-card-subtitle">This is the pre-loaded context the onboarding agent can start from.</div>
+          <div class="customer-settings-card-subtitle">This is the starter context the onboarding agent can begin from.</div>
         </div>
         <button class="customer-settings-delete-btn" data-delete-index="${index}" type="button">Delete</button>
       </div>
@@ -5203,7 +5240,7 @@ function renderCustomerSettingsModal() {
 
   body.innerHTML = `
     <div class="customer-settings-toolbar">
-      <div class="customer-settings-toolbar-note">Changes are stored locally in this browser and become the starting customer context the onboarding assistant can use.</div>
+      <div class="customer-settings-toolbar-note">Changes are stored locally in this browser and become the starter company context the onboarding assistant can use.</div>
     </div>
     <div class="customer-settings-list">${rows}</div>
     <div class="customer-settings-footer-tools">

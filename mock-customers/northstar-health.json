@@ -2,14 +2,14 @@
   "id": "northstar-health",
   "company": "Northstar Health",
   "industry": "Healthcare SaaS",
-  "productSummary": "Patient engagement platform for clinics, hospitals, and specialty practices. Handles appointment scheduling, patient communication, and care coordination across multiple channels.",
-  "website": "https://www.northstarhealth.io",
-  "helpCenterUrl": "https://help.northstarhealth.io",
+  "productSummary": "Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.",
+  "website": "https://connect.doctolib.com/",
+  "helpCenterUrl": "https://connect.doctolib.com/nl/helpcentrum",
   "knownTeams": [
-    { "name": "Patient Support", "likelyFocus": "resolve", "size": 12, "description": "Handles patient inquiries, appointment issues, and billing questions" },
-    { "name": "Sales", "likelyFocus": "convert", "size": 6, "description": "Inbound demo requests and outbound outreach to clinics" },
-    { "name": "Onboarding", "likelyFocus": "resolve", "size": 4, "description": "Guides new clinic partners through platform setup and training" },
-    { "name": "Enterprise CS", "likelyFocus": "resolve", "size": 3, "description": "Dedicated support for hospital network accounts" }
+    { "name": "Patient Support", "likelyFocus": "resolve", "size": 12, "description": "Handles patient inquiries, access issues, and communication-related questions" },
+    { "name": "Sales", "likelyFocus": "convert", "size": 6, "description": "Inbound demo requests and outbound outreach to clinics and care networks" },
+    { "name": "Implementation", "likelyFocus": "resolve", "size": 4, "description": "Guides new healthcare organizations through setup, rollout, and training" },
+    { "name": "Enterprise CS", "likelyFocus": "resolve", "size": 3, "description": "Dedicated support for larger care groups and multi-site accounts" }
   ],
   "channels": ["email", "whatsapp", "live-chat", "voice", "sms"],
   "plan": "Scale",
@@ -22,10 +22,10 @@
     "resolution": "case closure"
   },
   "currentSetup": {
-    "primaryUseCase": "Patient communication and support triage",
+    "primaryUseCase": "Care-team communication and patient coordination",
     "busiestChannels": ["whatsapp", "voice"],
     "avgMonthlyConversations": 8500,
-    "topPainPoints": ["Long first-response times on weekends", "Difficulty tracking escalated cases across teams"]
+    "topPainPoints": ["Long first-response times during peak demand", "Difficulty tracking escalated coordination issues across teams"]
   },
-  "suggestedPreviewContext": "Focus on patient case resolution metrics, cross-team escalation tracking, and first-response time optimization."
+  "suggestedPreviewContext": "Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams."
 }

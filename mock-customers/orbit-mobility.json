@@ -3,8 +3,8 @@
   "company": "Orbit Mobility",
   "industry": "Logistics & Mobility",
   "productSummary": "Urban mobility platform offering shared e-bikes, e-scooters, and last-mile delivery services across 12 European cities. Both consumer app and B2B fleet management.",
-  "website": "https://www.orbitmobility.com",
-  "helpCenterUrl": "https://help.orbitmobility.com",
+  "website": "https://www.voi.com/",
+  "helpCenterUrl": "",
   "knownTeams": [
     { "name": "Rider Support", "likelyFocus": "resolve", "size": 22, "description": "App issues, payment disputes, damaged vehicles, safety incidents" },
     { "name": "Fleet Operations", "likelyFocus": "resolve", "size": 6, "description": "Coordinates with maintenance, city ops, and reports on vehicle availability" },

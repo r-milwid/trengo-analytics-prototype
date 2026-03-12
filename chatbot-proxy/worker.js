@@ -275,10 +275,31 @@ export default {
         const { url } = await request.json();
         if (!url) return json({ error: 'missing url' }, 400);
 
-        const response = await fetch(url, {
-          headers: { 'User-Agent': 'TrengoAnalyticsBot/1.0' },
+        const fetchWithProfile = async (targetUrl) => fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
           redirect: 'follow',
         });
+
+        let response = await fetchWithProfile(url);
+        if (!response.ok) {
+          const normalized = (() => {
+            try {
+              const parsed = new URL(url);
+              return parsed.origin + '/';
+            } catch {
+              return null;
+            }
+          })();
+          if (normalized && normalized !== url) {
+            response = await fetchWithProfile(normalized);
+          }
+        }
         if (!response.ok) {
           return json({ error: 'fetch failed', status: response.status }, 502);
         }
