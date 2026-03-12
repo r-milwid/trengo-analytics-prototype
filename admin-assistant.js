@@ -34,6 +34,7 @@ const AdminAssistant = (() => {
   let _previewRevealTimers = [];
   let _threadRevealGeneration = 0;
   let _threadScrollSequence = null;
+  let _forceNextSequenceAutoScroll = false;
 
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
@@ -455,6 +456,11 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - When there are only a few likely answers or next actions, lean toward clickable choices instead of free text, especially after a proposal, summary, or final check-in.
 - Prefer chips or other compact clickable choices when 2-4 likely responses would make the user's next step faster and clearer.
 - After summarizing a proposed setup or asking whether anything should change, strongly prefer compact clickable choices if the likely responses are things like yes/no, good to go, adjust, refine, or review.
+- If you are about to ask a short follow-up question and the likely answers are a small, clear set, prefer clickable choices over free text.
+- If two short follow-up questions would each have a small, clear answer set, prefer asking them one at a time with clickable choices rather than bundling them into one free-text prompt.
+- If you are naming possible answers inside the question, that is usually a sign the user should be able to click them instead. Prefer a choice UI rather than embedding those options in prose.
+- If a question has an obvious either/or structure, or a short list like "A, B, C, or something else", prefer show_options or show_boolean_choice over plain text.
+- After source analysis, if the next clarification has a small likely answer set, strongly prefer clickable choices. Do not ask "two quick questions" as plain text if either question could be answered faster by clicking.
 - Prefer the smallest tool or tool sequence that can answer well or move the workflow forward. Do not chain tools just because they are available.
 </tool_choice>
 
@@ -1202,6 +1208,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     while (iterations < MAX_LOOP_ITERATIONS) {
       if (generation !== _runGeneration) return;
       iterations++;
+      const threadSequenceToken = beginThreadRevealSequence();
       showTypingIndicator();
 
       const mode = AssistantStorage.getMode(_session) || 'onboarding';
@@ -1220,6 +1227,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       } catch (e) {
         if (generation !== _runGeneration) return;
         hideTypingIndicator();
+        endThreadRevealSequence(threadSequenceToken);
         renderErrorBubble('Network error — please check your connection.');
         return;
       }
@@ -1228,6 +1236,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       hideTypingIndicator();
 
       if (data.error) {
+        endThreadRevealSequence(threadSequenceToken);
         renderErrorBubble(`API error: ${data.error.message || data.error}`);
         return;
       }
@@ -1236,15 +1245,18 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const content = data.content || [];
       const textBlocks = content.filter(b => b.type === 'text');
       const toolUseBlocks = content.filter(b => b.type === 'tool_use');
-      const threadSequenceToken = beginThreadRevealSequence();
-
       // Render any text
       if (textBlocks.length > 0) {
-        const fullText = textBlocks.map(b => b.text).join('\n\n');
-        await renderAssistantTurn(fullText, {
-          hasInteractiveFollowup: toolUseBlocks.length > 0,
-          generation,
-        });
+        const fullText = reconcileAssistantTextAndToolPrompt(
+          textBlocks.map(b => b.text).join('\n\n'),
+          toolUseBlocks
+        );
+        if (fullText) {
+          await renderAssistantTurn(fullText, {
+            hasInteractiveFollowup: toolUseBlocks.length > 0,
+            generation,
+          });
+        }
       }
 
       // Append the full assistant response to history
@@ -1388,6 +1400,53 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     return bubble;
   }
 
+  async function renderPassiveQuickReplies(spec, generation = _runGeneration) {
+    const container = getMessagesContainer();
+    if (!container || !spec?.options?.length) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `ai-setup-options style-chips ai-setup-passive-quick-replies${spec.multiSelect ? ' is-multi' : ''}`;
+
+    const selected = new Set();
+
+    spec.options.forEach((option) => {
+      const button = document.createElement('button');
+      button.className = 'ai-setup-option-chip';
+      button.textContent = option.label;
+      button.addEventListener('click', () => {
+        if (spec.multiSelect) {
+          button.classList.toggle('selected');
+          if (selected.has(option.value)) selected.delete(option.value);
+          else selected.add(option.value);
+          return;
+        }
+
+        wrapper.classList.add('ai-setup-options-resolved');
+        disableOptions(wrapper);
+        sendMessage(option.value);
+      });
+      wrapper.appendChild(button);
+    });
+
+    if (spec.multiSelect) {
+      const continueBtn = document.createElement('button');
+      continueBtn.className = 'ai-setup-option-confirm';
+      continueBtn.textContent = 'Continue';
+      continueBtn.addEventListener('click', () => {
+        if (!selected.size) return;
+        wrapper.classList.add('ai-setup-options-resolved');
+        disableOptions(wrapper);
+        sendMessage([...selected].join(', '));
+      });
+      wrapper.appendChild(continueBtn);
+    }
+
+    await mountInteractiveThreadBlock(wrapper, {
+      delayMs: THREAD_REVEAL_DELAY_MS,
+      generation,
+    });
+  }
+
   async function renderAssistantTurn(text, { hasInteractiveFollowup = false, generation = _runGeneration } = {}) {
     const parts = splitAssistantTurnText(text, { hasInteractiveFollowup });
     if (parts.length === 0) return;
@@ -1409,6 +1468,12 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const bubble = renderAssistantBubble(parts[i]);
       if (shouldAnimate) {
         animateThreadElement(bubble);
+      }
+      if (!hasInteractiveFollowup && i === parts.length - 1 && (AssistantStorage.getMode(_session) || 'onboarding') === 'onboarding') {
+        const quickReplySpec = buildQuickReplySpec(parts[i]);
+        if (quickReplySpec) {
+          await renderPassiveQuickReplies(quickReplySpec, generation);
+        }
       }
     }
   }
@@ -1603,7 +1668,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     typing.className = 'ai-setup-typing';
     typing.innerHTML = '<span class="ai-setup-typing-dot"></span><span class="ai-setup-typing-dot"></span><span class="ai-setup-typing-dot"></span>';
     container.appendChild(typing);
-    scrollThreadRevealIntoView(container, typing);
+    scrollThreadRevealIntoView(container, typing, { anchorEligible: false });
   }
 
   function hideTypingIndicator() {
@@ -1687,6 +1752,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
           el.classList.add('selected');
           wrapper.classList.add('ai-setup-options-resolved');
           disableOptions(wrapper);
+          markNextSequenceShouldFollow();
           _pendingResolve = null;
           resolve({ selected: [opt.id], selectedLabels: [opt.label] });
         }
@@ -1704,6 +1770,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         wrapper.classList.add('ai-setup-options-resolved');
         disableOptions(wrapper);
         const selectedLabels = options.filter(o => selected.has(o.id)).map(o => o.label);
+        markNextSequenceShouldFollow();
         _pendingResolve = null;
         resolve({ selected: [...selected], selectedLabels });
       });
@@ -1741,6 +1808,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         btn.classList.add('selected');
         wrapper.classList.add('ai-setup-options-resolved');
         disableOptions(wrapper);
+        markNextSequenceShouldFollow();
         _pendingResolve = null;
         resolve({ value: choice.value, selected: choice.value ? ['yes'] : ['no'], selectedLabels: [choice.label] });
       });
@@ -1923,6 +1991,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       handleSetTeamUsecases({ assignments }, { quiet: true });
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
+      markNextSequenceShouldFollow();
       _pendingResolve = null;
       resolve({ assignments, teamNames: cleaned.map(row => row.name) });
     });
@@ -1934,6 +2003,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     skipBtn.addEventListener('click', () => {
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
+      markNextSequenceShouldFollow();
       _pendingResolve = null;
       resolve({ skipped: true });
     });
@@ -2011,6 +2081,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         if (option.id === 'accept_proposal') {
           wrapper.classList.add('ai-setup-options-resolved');
           disableOptions(wrapper);
+          markNextSequenceShouldFollow();
           _pendingResolve = null;
           resolve({
             decision: option.id,
@@ -2027,6 +2098,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
           renderPreview();
           wrapper.classList.add('ai-setup-options-resolved');
           disableOptions(wrapper);
+          markNextSequenceShouldFollow();
           _pendingResolve = null;
           resolve({ decision: option.id, keepDefaults: true });
           return;
@@ -2034,6 +2106,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
         disableOptions(wrapper);
         renderTabEditorUI('Refine the proposed tabs directly.', proposalTabs, (result) => {
+          markNextSequenceShouldFollow();
           _pendingResolve = null;
           resolve({
             decision: option.id,
@@ -2241,6 +2314,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const committed = commitTabDraft(draft, { source: 'user', message: 'Tabs updated' });
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
+      markNextSequenceShouldFollow();
       _pendingResolve = null;
       resolve({ tabs: committed.map(tab => ({ id: tab.id, label: tab.label, category: tab.category || null })) });
     });
@@ -2252,6 +2326,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     skipBtn.addEventListener('click', () => {
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
+      markNextSequenceShouldFollow();
       _pendingResolve = null;
       resolve({ skipped: true });
     });
@@ -2407,6 +2482,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       AssistantStorage.save(_session);
       wrapper.classList.add('ai-setup-source-resolved');
       disableSourceInput(wrapper);
+      markNextSequenceShouldFollow();
       _pendingResolve = null;
       resolve({ skipped: true });
     });
@@ -2568,6 +2644,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
       wrapper.classList.add('ai-setup-source-resolved');
       disableSourceInput(wrapper);
+      markNextSequenceShouldFollow();
       _pendingResolve = null;
       resolve({
         success: true,
@@ -3030,15 +3107,18 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     return (container.scrollHeight - (container.scrollTop + container.clientHeight)) <= threshold;
   }
 
-  function beginThreadRevealSequence(container = getMessagesContainer()) {
+  function beginThreadRevealSequence(container = getMessagesContainer(), options = {}) {
     if (!container) return null;
+    const { suppressAutoScroll = false } = options;
     const token = Symbol('thread-sequence');
+    const followToBottom = _forceNextSequenceAutoScroll;
     _threadScrollSequence = {
       token,
-      startedNearBottom: isNearBottom(container),
-      startScrollHeight: container.scrollHeight,
-      maxAutoScrollHeight: Math.max(260, Math.floor(container.clientHeight * 0.9)),
+      startedNearBottom: !suppressAutoScroll && (followToBottom || isNearBottom(container)),
+      followToBottom,
+      firstAnchorElement: null,
     };
+    _forceNextSequenceAutoScroll = false;
     return token;
   }
 
@@ -3049,7 +3129,11 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     }
   }
 
-  function scrollThreadRevealIntoView(container, element) {
+  function markNextSequenceShouldFollow() {
+    _forceNextSequenceAutoScroll = true;
+  }
+
+  function scrollThreadRevealIntoView(container, element, { anchorEligible = true } = {}) {
     if (!container) return;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -3061,10 +3145,21 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         if (!state.startedNearBottom) {
           return;
         }
-        const totalAddedHeight = Math.max(0, container.scrollHeight - state.startScrollHeight);
-        if (totalAddedHeight <= state.maxAutoScrollHeight) {
+        if (state.followToBottom) {
           container.scrollTop = container.scrollHeight;
+          return;
         }
+        if (anchorEligible && !state.firstAnchorElement && element?.isConnected) {
+          state.firstAnchorElement = element;
+        }
+        const candidateScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+        const anchor = state.firstAnchorElement;
+        if (!anchor?.isConnected) {
+          return;
+        }
+        const maxAllowedScrollTop = Math.max(0, anchor.offsetTop);
+        const topMargin = 24;
+        container.scrollTop = Math.min(candidateScrollTop, Math.max(0, maxAllowedScrollTop - topMargin));
       });
     });
   }
@@ -3074,6 +3169,107 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     if (items.length === 1) return items[0];
     if (items.length === 2) return `${items[0]} and ${items[1]}`;
     return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  }
+
+  function normalizeComparisonText(text) {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getPromptWords(text) {
+    return normalizeComparisonText(text)
+      .split(' ')
+      .filter(word => word.length >= 4);
+  }
+
+  function hasStrongPromptOverlap(textA, textB) {
+    const wordsA = new Set(getPromptWords(textA));
+    const wordsB = new Set(getPromptWords(textB));
+    if (!wordsA.size || !wordsB.size) return false;
+    let shared = 0;
+    wordsA.forEach((word) => {
+      if (wordsB.has(word)) shared += 1;
+    });
+    const overlapA = shared / wordsA.size;
+    const overlapB = shared / wordsB.size;
+    return shared >= 4 || (overlapA >= 0.5 && overlapB >= 0.4);
+  }
+
+  function getToolPrompt(block) {
+    return block?.input?.prompt ? String(block.input.prompt) : '';
+  }
+
+  function reconcileAssistantTextAndToolPrompt(text, toolUseBlocks) {
+    const rawText = String(text || '').trim();
+    if (!rawText || !Array.isArray(toolUseBlocks) || toolUseBlocks.length === 0) {
+      return rawText;
+    }
+    const firstPrompt = getToolPrompt(toolUseBlocks[0]);
+    if (!firstPrompt) return rawText;
+
+    const paragraphs = rawText.split(/\n\s*\n/).map(part => part.trim()).filter(Boolean);
+    if (paragraphs.length === 0) return rawText;
+    if (paragraphs.length === 1) return rawText;
+
+    const lastParagraph = paragraphs[paragraphs.length - 1];
+    if (!hasStrongPromptOverlap(lastParagraph, firstPrompt)) {
+      return rawText;
+    }
+
+    paragraphs.pop();
+    return paragraphs.join('\n\n').trim();
+  }
+
+  function stripLeadingQuestionNumber(text) {
+    return String(text || '').replace(/^\s*\d+[\).\s-]+/, '').trim();
+  }
+
+  function titleCaseLabel(text) {
+    const value = String(text || '').trim();
+    if (!value) return value;
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function buildQuickReplySpec(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return null;
+    const paragraphs = raw.split(/\n\s*\n/).map(part => part.trim()).filter(Boolean);
+    const question = stripLeadingQuestionNumber(paragraphs[paragraphs.length - 1] || '');
+    if (!question || !question.includes('?')) return null;
+
+    const exampleMatch = question.match(/for example:\s*(.+?)(?:\s*[—-]\s*or\s+something else|\s+or\s+something else)\?/i);
+    if (exampleMatch) {
+      const items = exampleMatch[1]
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean)
+        .map(item => titleCaseLabel(item.replace(/\s+rates?$/i, ' rate')));
+      if (items.length >= 2) {
+        return {
+          multiSelect: true,
+          options: [...items, 'Something else'].map(label => ({ label, value: label })),
+        };
+      }
+    }
+
+    const visibilityMatch = question.match(/^Does\s+the\s+(.+?)\s+need to be visible.*?,\s*or\s+is this primarily\s+(.+?)\?$/i);
+    if (visibilityMatch) {
+      const visibleTarget = titleCaseLabel(visibilityMatch[1].trim());
+      const primaryView = titleCaseLabel(visibilityMatch[2].trim()).replace(/\s+view$/i, '');
+      return {
+        multiSelect: false,
+        options: [
+          { label: `Include ${visibleTarget}`, value: `Include ${visibleTarget}` },
+          { label: `${primaryView} only`, value: `${primaryView} only` },
+        ],
+      };
+    }
+
+    return null;
   }
 
   function scrollToBottom(container) {
@@ -3251,6 +3447,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   async function triggerWelcome() {
     const generation = _runGeneration;
     _loopRunning = true;
+    const threadSequenceToken = beginThreadRevealSequence(getMessagesContainer(), { suppressAutoScroll: true });
     showTypingIndicator();
 
     try {
@@ -3298,6 +3495,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       hideTypingIndicator();
 
       if (data.error) {
+        endThreadRevealSequence(threadSequenceToken);
         renderErrorBubble(`API error: ${data.error.message || data.error}`);
         _loopRunning = false;
         return;
@@ -3306,13 +3504,17 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const content = data.content || [];
       const textBlocks = content.filter(b => b.type === 'text');
       const toolUseBlocks = content.filter(b => b.type === 'tool_use');
-      const threadSequenceToken = beginThreadRevealSequence();
-
       if (textBlocks.length > 0) {
-        await renderAssistantTurn(textBlocks.map(b => b.text).join('\n\n'), {
-          hasInteractiveFollowup: toolUseBlocks.length > 0,
-          generation,
-        });
+        const fullText = reconcileAssistantTextAndToolPrompt(
+          textBlocks.map(b => b.text).join('\n\n'),
+          toolUseBlocks
+        );
+        if (fullText) {
+          await renderAssistantTurn(fullText, {
+            hasInteractiveFollowup: toolUseBlocks.length > 0,
+            generation,
+          });
+        }
       }
 
       AssistantStorage.appendToolUse(_session, content);
@@ -3356,6 +3558,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     } catch (e) {
       if (generation !== _runGeneration) return;
       hideTypingIndicator();
+      endThreadRevealSequence(threadSequenceToken);
       console.error('[AdminAssistant] Welcome error:', e);
       renderErrorBubble('Could not connect to the AI. Please try refreshing.');
     } finally {
