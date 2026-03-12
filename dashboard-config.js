@@ -13,6 +13,14 @@ const DashboardConfig = (() => {
   let _userId = null;
   const SAVE_DEBOUNCE_MS = 1500;
 
+  function normalizeTeamUsecase(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'support' || normalized === 'resolve') return 'resolve';
+    if (normalized === 'sales' || normalized === 'convert') return 'convert';
+    if (normalized === 'both') return 'both';
+    return 'resolve';
+  }
+
   // ── Serialize: state → config JSON ─────────────────────────
   function serialize(state, actor = 'ui') {
     // Convert tabWidgets Sets to arrays
@@ -27,9 +35,17 @@ const DashboardConfig = (() => {
     const teams = {};
     if (state.teamUsecases) {
       for (const [teamName, usecase] of Object.entries(state.teamUsecases)) {
-        teams[teamName] = { usecase };
+        teams[teamName] = { usecase: normalizeTeamUsecase(usecase) };
       }
     }
+
+    const teamDefinitions = Array.isArray(state.teams)
+      ? state.teams.map(team => ({
+          name: team.name,
+          usecase: normalizeTeamUsecase(team.usecase || state.teamUsecases?.[team.name]),
+          members: Array.isArray(team.members) ? [...team.members] : [],
+        }))
+      : [];
 
     return {
       version: 1,
@@ -38,7 +54,9 @@ const DashboardConfig = (() => {
       updatedBy: actor,
       lens: state.lens || 'support',
       role: state.role || 'supervisor',
+      personaRole: state.personaRole || state.role || 'supervisor',
       teams,
+      teamDefinitions,
       tabs: (state.tabs || []).map(t => ({
         id: t.id,
         label: t.label,
@@ -63,13 +81,35 @@ const DashboardConfig = (() => {
     // Lens & role
     if (config.lens) state.lens = config.lens;
     if (config.role) state.role = config.role;
+    if (config.personaRole) state.personaRole = config.personaRole;
 
-    // Teams → teamUsecases
-    if (config.teams) {
+    // Teams → editable team definitions + teamUsecases
+    if (Array.isArray(config.teamDefinitions) && config.teamDefinitions.length > 0) {
+      state.teams = config.teamDefinitions.map(team => ({
+        name: team.name,
+        usecase: normalizeTeamUsecase(team.usecase),
+        members: Array.isArray(team.members) ? [...team.members] : [],
+      }));
       state.teamUsecases = {};
-      for (const [teamName, teamConfig] of Object.entries(config.teams)) {
-        state.teamUsecases[teamName] = teamConfig.usecase || 'resolve';
-      }
+      state.teams.forEach(team => {
+        state.teamUsecases[team.name] = normalizeTeamUsecase(team.usecase);
+      });
+    } else if (config.teams) {
+      const existingMembers = new Map(
+        Array.isArray(state.teams)
+          ? state.teams.map(team => [team.name, Array.isArray(team.members) ? [...team.members] : []])
+          : []
+      );
+      state.teamUsecases = {};
+      state.teams = Object.entries(config.teams).map(([teamName, teamConfig]) => {
+        const usecase = normalizeTeamUsecase(teamConfig.usecase);
+        state.teamUsecases[teamName] = usecase;
+        return {
+          name: teamName,
+          usecase,
+          members: existingMembers.get(teamName) || [],
+        };
+      });
     }
 
     // Tabs

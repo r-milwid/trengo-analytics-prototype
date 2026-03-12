@@ -9,7 +9,8 @@
 const state = {
   currentView: 'landing', // 'landing' | 'analytics'
   lens: 'support',        // 'support' | 'sales'
-  role: 'supervisor',     // 'supervisor' | 'agent'
+  role: 'supervisor',     // preview role: 'supervisor' | 'agent'
+  personaRole: 'supervisor', // selected persona: 'admin' | 'supervisor' | 'agent'
   navMode: 'tabs',     // 'anchors' | 'tabs'
   activeSection: 'overview',
   loadedSections: new Set(),
@@ -30,6 +31,7 @@ const state = {
   barFilter: { widgetId: null, sectionId: null, selectedIndices: new Set() },
   tabs: JSON.parse(JSON.stringify(DEFAULT_TABS)),
   tabWidgets: {}, // tabId -> Set of widget IDs assigned to this tab
+  teams: [],
 };
 
 // Channel values that are considered "voice" — voice widgets hide when any other channel is active
@@ -69,11 +71,13 @@ const resizeState = {
 // ── FEATURE FLAGS ───────────────────────────────────────────────
 const FEATURE_FLAGS_KEY   = 'trengo_feature_flags';
 const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
+const USER_TEAMS_KEY      = 'trengo_user_teams';
+const DEFAULT_TEAMS_KEY   = 'trengo_default_teams';
+const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
 
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
-  { id: 'team-usecases',   label: 'Team specific usecases',  desc: 'Assign Convert or Resolve usecases per team from a display settings button next to the team filter' },
-  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: true },
+  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: false },
 ];
 
 function isFeatureEnabled(id) {
@@ -143,6 +147,327 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function cloneTeamDefinitions(teams = []) {
+  return teams.map(team => ({
+    name: String(team?.name || '').trim(),
+    usecase: normalizeTeamUsecase(team?.usecase),
+    members: Array.isArray(team?.members) ? [...team.members] : [],
+  }));
+}
+
+function normalizeTeamUsecase(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'sales' || normalized === 'convert') return 'convert';
+  if (normalized === 'support' || normalized === 'resolve') return 'resolve';
+  if (normalized === 'both') return 'both';
+  return 'resolve';
+}
+
+function buildBuiltInDefaultTeams() {
+  return TEAMS_DATA.map(team => ({
+    name: team.name,
+    members: Array.isArray(team.members) ? [...team.members] : [],
+    usecase: team.name === 'Sales team' ? 'convert' : 'resolve',
+  }));
+}
+
+function readStoredTeams(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const teams = cloneTeamDefinitions(parsed).filter(team => team.name);
+    return teams.length ? teams : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTeams(key, teams) {
+  try {
+    localStorage.setItem(key, JSON.stringify(cloneTeamDefinitions(teams)));
+  } catch {}
+}
+
+function getDefaultTeams() {
+  return cloneTeamDefinitions(readStoredTeams(DEFAULT_TEAMS_KEY) || buildBuiltInDefaultTeams());
+}
+
+function getStoredUserTeams() {
+  return cloneTeamDefinitions(readStoredTeams(USER_TEAMS_KEY) || []);
+}
+
+function hasStoredUserTeams() {
+  return getStoredUserTeams().length > 0;
+}
+
+function getActiveTeams() {
+  const userTeams = getStoredUserTeams();
+  return userTeams.length ? userTeams : getDefaultTeams();
+}
+
+function getTeamUsecaseMap(teams = []) {
+  const usecases = {};
+  cloneTeamDefinitions(teams).forEach(team => {
+    if (team.name) usecases[team.name] = normalizeTeamUsecase(team.usecase);
+  });
+  return usecases;
+}
+
+function getPrototypeTeams() {
+  return cloneTeamDefinitions(state.teams || []);
+}
+
+function persistPrototypeTeams(scope = 'user') {
+  writeStoredTeams(scope === 'default' ? DEFAULT_TEAMS_KEY : USER_TEAMS_KEY, getPrototypeTeams());
+}
+
+function getTeamNames() {
+  return getPrototypeTeams().map(team => team.name);
+}
+
+function getPrototypeTeamByName(teamName) {
+  return getPrototypeTeams().find(team => team.name === teamName) || null;
+}
+
+function syncTeamsState(teams, options = {}) {
+  const normalizedTeams = cloneTeamDefinitions(teams).filter(team => team.name);
+  state.teams = normalizedTeams;
+  state.teamUsecases = getTeamUsecaseMap(normalizedTeams);
+
+  if (options.persist === 'user') {
+    writeStoredTeams(USER_TEAMS_KEY, normalizedTeams);
+  } else if (options.persist === 'default') {
+    writeStoredTeams(DEFAULT_TEAMS_KEY, normalizedTeams);
+  } else if (options.persist === 'clear-user') {
+    localStorage.removeItem(USER_TEAMS_KEY);
+  }
+
+  if (!options.skipUIRefresh && typeof updateTeamFilterOptions === 'function') {
+    updateTeamFilterOptions();
+  }
+}
+
+window.getPrototypeTeams = getPrototypeTeams;
+window.syncTeamsState = syncTeamsState;
+
+let _customerProfilesCache = null;
+
+function guessCustomerTeamFocus(name) {
+  const value = String(name || '').trim().toLowerCase();
+  if (!value) return null;
+  const salesSignals = ['sales', 'revenue', 'growth', 'partnership', 'partnerships', 'commercial', 'business development', 'bdr', 'sdr'];
+  const supportSignals = ['support', 'care', 'success', 'service', 'operations', 'ops', 'onboarding', 'implementation', 'fleet', 'helpdesk', 'customer care'];
+  const hasSales = salesSignals.some(signal => value.includes(signal));
+  const hasSupport = supportSignals.some(signal => value.includes(signal));
+  if (hasSales && hasSupport) return 'both';
+  if (hasSales) return 'convert';
+  if (hasSupport) return 'resolve';
+  return null;
+}
+
+function parseCustomerTeamFocus(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'support' || normalized === 'resolve') return 'resolve';
+  if (normalized === 'sales' || normalized === 'convert') return 'convert';
+  if (normalized === 'both') return 'both';
+  return null;
+}
+
+function slugifyCustomerId(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function uniqueNonEmptyLines(value) {
+  const seen = new Set();
+  return String(value || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => {
+      if (!line) return false;
+      const key = line.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeCustomerKnownTeams(teams = []) {
+  if (!Array.isArray(teams)) return [];
+  return teams
+    .map((team) => {
+      const source = typeof team === 'string' ? { name: team } : (team || {});
+      const name = String(source.name || '').trim();
+      if (!name) return null;
+      const likelyFocus = parseCustomerTeamFocus(source.likelyFocus || source.usecase) || guessCustomerTeamFocus(name);
+      const normalized = {
+        ...source,
+        name,
+      };
+      if (likelyFocus) normalized.likelyFocus = likelyFocus;
+      else delete normalized.likelyFocus;
+      return normalized;
+    })
+    .filter(Boolean);
+}
+
+function normalizeCustomerProfile(profile = {}, index = 0) {
+  const company = String(profile.company || '').trim();
+  const industry = String(profile.industry || '').trim();
+  const website = String(profile.website || '').trim();
+  const helpCenterUrl = String(profile.helpCenterUrl || '').trim();
+  const productSummary = String(profile.productSummary || '').trim();
+  const generalNotes = String(profile.generalNotes || profile.generalInfo || '').trim();
+  const extraSourceUrls = Array.isArray(profile.extraSourceUrls)
+    ? uniqueNonEmptyLines(profile.extraSourceUrls.join('\n'))
+    : uniqueNonEmptyLines('');
+  const normalized = {
+    ...profile,
+    id: String(profile.id || '').trim() || slugifyCustomerId(company) || `customer-${index + 1}`,
+    company,
+    industry,
+    website,
+    helpCenterUrl,
+    productSummary,
+    generalNotes,
+    extraSourceUrls,
+    knownTeams: normalizeCustomerKnownTeams(profile.knownTeams),
+  };
+  delete normalized.generalInfo;
+  delete normalized.knownTeamsText;
+  delete normalized.extraSourceUrlsText;
+  return normalized;
+}
+
+function ensureUniqueCustomerIds(profiles = []) {
+  const seen = new Set();
+  return profiles.map((profile, index) => {
+    const normalized = normalizeCustomerProfile(profile, index);
+    let candidate = normalized.id || `customer-${index + 1}`;
+    let suffix = 2;
+    while (seen.has(candidate)) {
+      candidate = `${normalized.id || `customer-${index + 1}`}-${suffix++}`;
+    }
+    seen.add(candidate);
+    return { ...normalized, id: candidate };
+  });
+}
+
+function readStoredCustomerProfiles() {
+  try {
+    const raw = localStorage.getItem(CUSTOMER_PROFILES_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const profiles = ensureUniqueCustomerIds(parsed).filter(profile => profile.company || profile.industry || profile.productSummary || profile.generalNotes);
+    return profiles;
+  } catch {
+    return null;
+  }
+}
+
+async function seedCustomerProfilesFromFixtures() {
+  try {
+    const resp = await fetch('mock-customers/index.json');
+    const indexData = await resp.json();
+    const entries = Array.isArray(indexData?.customers) ? indexData.customers : [];
+    const profiles = await Promise.all(entries.map(async (entry, index) => {
+      try {
+        const fileResp = await fetch(`mock-customers/${entry.file}`);
+        const fileData = await fileResp.json();
+        return normalizeCustomerProfile({ ...entry, ...fileData }, index);
+      } catch {
+        return normalizeCustomerProfile(entry, index);
+      }
+    }));
+    return ensureUniqueCustomerIds(profiles);
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomerProfiles(profiles = []) {
+  const normalized = ensureUniqueCustomerIds(profiles);
+  _customerProfilesCache = cloneJson(normalized);
+  try {
+    localStorage.setItem(CUSTOMER_PROFILES_KEY, JSON.stringify(normalized));
+  } catch {}
+  return cloneJson(normalized);
+}
+
+async function loadCustomerProfiles() {
+  if (_customerProfilesCache) return cloneJson(_customerProfilesCache);
+  const stored = readStoredCustomerProfiles();
+  if (stored) {
+    _customerProfilesCache = cloneJson(stored);
+    return cloneJson(stored);
+  }
+  const seeded = await seedCustomerProfilesFromFixtures();
+  if (seeded.length) {
+    return saveCustomerProfiles(seeded);
+  }
+  _customerProfilesCache = [];
+  return [];
+}
+
+function getStoredCustomerProfilesSync() {
+  if (_customerProfilesCache) return cloneJson(_customerProfilesCache);
+  const stored = readStoredCustomerProfiles();
+  if (stored) {
+    _customerProfilesCache = cloneJson(stored);
+    return cloneJson(stored);
+  }
+  return [];
+}
+
+function getCustomerProfileById(id) {
+  if (!id) return null;
+  return getStoredCustomerProfilesSync().find(profile => profile.id === id) || null;
+}
+
+function createBlankCustomerProfile() {
+  return normalizeCustomerProfile({
+    id: `customer-${Date.now()}`,
+    company: '',
+    industry: '',
+    website: '',
+    helpCenterUrl: '',
+    productSummary: '',
+    knownTeams: [],
+    extraSourceUrls: [],
+    generalNotes: '',
+  });
+}
+
+window.CustomerProfilesStore = {
+  loadAll: loadCustomerProfiles,
+  saveAll: saveCustomerProfiles,
+  getAllSync: getStoredCustomerProfilesSync,
+  getById: getCustomerProfileById,
+  createBlank: createBlankCustomerProfile,
+  guessTeamFocus: guessCustomerTeamFocus,
+};
+window.persistPrototypeTeams = persistPrototypeTeams;
+
 // Initialize tabWidgets for default tabs (each gets all widget IDs from its category)
 function initTabWidgets() {
   state.tabs.forEach(tab => {
@@ -170,25 +495,32 @@ function buildDefaultTabWidgets() {
 }
 
 function buildDefaultTeamUsecases() {
-  const defaults = {};
-  TEAMS_DATA.forEach(team => {
-    defaults[team.name] = team.name === 'Sales team' ? 'convert' : 'resolve';
+  return getTeamUsecaseMap(getDefaultTeams());
+}
+
+syncTeamsState(getActiveTeams(), { skipUIRefresh: true });
+
+function syncRoleToggleButtons() {
+  const activeRole = state.personaRole || state.role || 'supervisor';
+  document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.role === activeRole);
   });
-  return defaults;
 }
 
 function resetPrototypeStateToDefaults() {
   // Keep walkthrough completion intact; Reset All in sub-nav context should not re-open onboarding.
   localStorage.removeItem(FEATURE_FLAGS_KEY);
+  localStorage.removeItem(USER_TEAMS_KEY);
   state.tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
   state.tabWidgets = buildDefaultTabWidgets();
   state.lens = 'support';
   state.role = 'supervisor';
+  state.personaRole = 'supervisor';
   state.navMode = 'tabs';
   state.dateFilter = 'Last 30 days';
   state.channelFilter = new Set();
   state.teamFilter = 'All teams';
-  state.teamUsecases = buildDefaultTeamUsecases();
+  syncTeamsState(getDefaultTeams(), { persist: 'clear-user' });
   state.opportunityStates = {};
   state.chartViewMode = {};
   state.barFilter = { widgetId: null, sectionId: null, selectedIndices: new Set() };
@@ -204,17 +536,12 @@ function resetPrototypeStateToDefaults() {
   if (state.expandedWidgets) state.expandedWidgets = new Set();
 
   document.body.dataset.role = state.role;
-  document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.role === state.role);
-  });
+  syncRoleToggleButtons();
   syncLensButtons();
 
-  document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.editmode === 'enabled');
-  });
   if (viewEditToggleBtn) {
     viewEditToggleBtn.style.display = '';
-    setViewEditMode('edit');
+    setViewEditMode('view');
   }
 }
 
@@ -223,7 +550,10 @@ function resetPrototypeStateToDefaults() {
 // Re-applies the server's version and re-renders.
 window._dashboardConfigConflictHandler = function(config) {
   DashboardConfig.apply(config, state);
+  persistPrototypeTeams('user');
   initTabWidgets();
+  updateTeamFilterOptions();
+  syncRoleToggleButtons();
   renderTabs();
   renderSections();
   scrollToSection(state.activeSection, true);
@@ -464,9 +794,10 @@ function renderWidget(w, section, placement, rows, layout) {
 // lens from that usecase (resolve → support, convert → sales) instead of
 // using the manually selected lens from Preview options.
 function getEffectiveLens() {
-  if (isFeatureEnabled('team-usecases') && state.teamFilter && state.teamFilter !== 'All teams') {
-    const usecase = (state.teamUsecases && state.teamUsecases[state.teamFilter]) || 'resolve';
-    return usecase === 'convert' ? 'sales' : 'support';
+  if (state.teamFilter && state.teamFilter !== 'All teams') {
+    const usecase = normalizeTeamUsecase(state.teamUsecases?.[state.teamFilter]);
+    if (usecase === 'convert') return 'sales';
+    if (usecase === 'resolve') return 'support';
   }
   return state.lens;
 }
@@ -479,7 +810,9 @@ function stateKey() {
 // When a team overrides the lens the buttons are dimmed to show they're overridden.
 function syncLensButtons() {
   const effectiveLens = getEffectiveLens();
-  const overridden = isFeatureEnabled('team-usecases') && state.teamFilter && state.teamFilter !== 'All teams';
+  const overridden = state.teamFilter
+    && state.teamFilter !== 'All teams'
+    && normalizeTeamUsecase(state.teamUsecases?.[state.teamFilter]) !== 'both';
   document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.lens === effectiveLens);
     b.style.opacity = overridden ? '0.45' : '';
@@ -491,9 +824,9 @@ function syncLensButtons() {
 // so all widgets stay visible/togglable while the user customises the layout.
 function isEditModeWithTeamOverride() {
   return document.body.dataset.viewmode !== 'view'
-      && isFeatureEnabled('team-usecases')
       && state.teamFilter
-      && state.teamFilter !== 'All teams';
+      && state.teamFilter !== 'All teams'
+      && normalizeTeamUsecase(state.teamUsecases?.[state.teamFilter]) !== 'both';
 }
 
 function getStateOverride(w) {
@@ -2383,10 +2716,12 @@ function renderTable(container, w) {
   if (w.id === 'op-workload-agent') {
     // Determine which agents to show — filtered to selected team's members if applicable
     const teamData = state.teamFilter && state.teamFilter !== 'All teams'
-      ? TEAMS_DATA.find(t => t.name === state.teamFilter)
+      ? getPrototypeTeamByName(state.teamFilter)
       : null;
     const allAgents = ['Victor Montala', 'Greg Aquino', 'Isabella Escobar', 'Federico Lai', 'Donovan van der Weerd', 'Deborah Pia', 'Rowan Milwid', 'Dmytro Hachok'];
-    const agents = teamData ? teamData.members : allAgents;
+    const agents = teamData && Array.isArray(teamData.members) && teamData.members.length
+      ? teamData.members
+      : allAgents;
 
     // Cache keyed by widget id + team so switching teams generates fresh mock data
     const cacheKey = w.id + '::' + (state.teamFilter || 'All teams');
@@ -3798,10 +4133,10 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
 
 document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    state.role = btn.dataset.role;
+    state.personaRole = btn.dataset.role;
+    state.role = state.personaRole === 'admin' ? 'supervisor' : state.personaRole;
     document.body.dataset.role = state.role;
-    document.querySelectorAll('#role-toggle .role-preview-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    syncRoleToggleButtons();
     resetViewState();
     // Snapshot then remount — Set is mutated during remount so we must copy first
     [...state.loadedSections].forEach(s => remountSection(s));
@@ -3813,6 +4148,7 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
 
 // Set initial role attribute
 document.body.dataset.role = state.role;
+syncRoleToggleButtons();
 
 
 // ── VIEW / EDIT MODE ────────────────────────────────────────────
@@ -3823,7 +4159,7 @@ const VIEW_ICON = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" s
 // Pencil SVG (Edit mode icon)
 const EDIT_ICON = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/></svg>`;
 
-let _currentViewMode = 'edit'; // 'edit' or 'view'
+let _currentViewMode = 'view'; // 'edit' or 'view'
 
 function setViewEditMode(mode) {
   _currentViewMode = mode;
@@ -3831,37 +4167,23 @@ function setViewEditMode(mode) {
     document.body.dataset.viewmode = 'view';
     // In view mode → show "Edit" action to switch back
     viewEditToggleBtn.innerHTML = EDIT_ICON + '<span>Edit</span>';
+    viewEditToggleBtn.title = 'Switch to Edit mode';
   } else {
     delete document.body.dataset.viewmode;
     // In edit mode → show "View" action to switch to view
     viewEditToggleBtn.innerHTML = VIEW_ICON + '<span>View</span>';
+    viewEditToggleBtn.title = 'Switch to View mode';
   }
   // When a team filter overrides the lens (feature flag on), switching modes
   // changes which widgets are visible (edit shows all, view hides lens-mismatched).
-  if (isFeatureEnabled('team-usecases') && state.teamFilter && state.teamFilter !== 'All teams') {
+  if (state.teamFilter && state.teamFilter !== 'All teams') {
     [...state.loadedSections].forEach(s => remountSection(s));
   }
 }
 
-document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#editmode-mode-toggle .editmode-preview-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const enabled = btn.dataset.editmode === 'enabled';
-    if (enabled) {
-      viewEditToggleBtn.style.display = '';
-      setViewEditMode('edit');
-    } else {
-      viewEditToggleBtn.style.display = 'none';
-      delete document.body.dataset.viewmode;
-    }
-    window.sendEvent('Preview toggle — changed');
-  });
-});
-
 // Default: View/Edit mode enabled on load
 viewEditToggleBtn.style.display = '';
-setViewEditMode('edit');
+setViewEditMode('view');
 
 if (viewEditToggleBtn) {
   viewEditToggleBtn.addEventListener('click', () => {
@@ -3892,6 +4214,9 @@ const userPopoutClose = document.getElementById('user-popout-close');
 if (settingsNav && userPopout) {
   settingsNav.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (settingsNav.dataset.disabled === 'true') {
+      return;
+    }
     if (userPopout.style.display === 'block') {
       userPopout.classList.remove('open');
       setTimeout(() => { userPopout.style.display = 'none'; }, 200);
@@ -3989,9 +4314,6 @@ function renderFlagList() {
       // Flags with immediate side-effects
       if (cb.dataset.flag === 'anchors-nav') {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
-      }
-      if (cb.dataset.flag === 'team-usecases') {
-        applyTeamSettingsFlag();
       }
       if (cb.dataset.flag === 'ai-onboarding') {
         if (cb.checked) {
@@ -4188,10 +4510,40 @@ const filterConfigs = {
     ]
   },
   'filter-team': {
-    options: ['All teams', 'Sales team', 'SMB Central', 'Mid-Market', 'Expansion', 'Retention', 'Core Services'],
+    options: [],
     stateKey: 'teamFilter'
   }
 };
+
+function getTeamFilterOptions() {
+  return ['All teams', ...getTeamNames()];
+}
+
+function updateTeamFilterOptions() {
+  const options = getTeamFilterOptions();
+  filterConfigs['filter-team'].options = options;
+
+  if (!options.includes(state.teamFilter)) {
+    state.teamFilter = 'All teams';
+  }
+
+  const chip = document.getElementById('filter-team');
+  if (chip) {
+    const label = chip.querySelector('span');
+    if (label) label.textContent = state.teamFilter;
+    chip.classList.toggle('filter-applied', state.teamFilter !== 'All teams');
+  }
+
+  const dropdown = document.getElementById('filter-dropdown');
+  if (dropdown?.style.display === 'block' && dropdown.dataset.filter === 'filter-team') {
+    const content = document.getElementById('filter-dropdown-content');
+    content.innerHTML = options.map(opt =>
+      `<div class="filter-option ${state.teamFilter === opt ? 'selected' : ''}" data-value="${opt}"><span class="filter-option-label">${opt}</span>${buildTickSVG()}</div>`
+    ).join('');
+  }
+}
+
+updateTeamFilterOptions();
 
 // Chip click handlers — open/populate the dropdown only
 Object.keys(filterConfigs).forEach(filterId => {
@@ -4342,79 +4694,412 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ── TEAM DISPLAY SETTINGS ──────────────────────────────────────
-// TEAMS_DATA is defined in widget-catalog.js
-
-// Persisted usecase assignments: { teamName: 'convert' | 'resolve' | null }
-if (!state.teamUsecases) state.teamUsecases = {};
-if (!state.teamUsecases['Sales team']) state.teamUsecases['Sales team'] = 'convert';
+// ── TEAM SETTINGS ──────────────────────────────────────────────
+let _teamSettingsDraft = [];
+let _teamSettingsMode = 'session'; // 'session' | 'default'
 
 function applyTeamSettingsFlag() {
   const btn = document.getElementById('team-display-settings-btn');
-  if (!btn) return;
-  btn.style.display = isFeatureEnabled('team-usecases') ? '' : 'none';
+  if (btn) btn.style.display = 'none';
 }
 
-function buildTeamSettingsModal() {
+function buildTeamSettingsDraft(teams) {
+  return cloneTeamDefinitions(teams).map(team => ({
+    name: team.name,
+    members: [...team.members],
+    usecase: normalizeTeamUsecase(team.usecase),
+    originalName: team.name,
+  }));
+}
+
+function getTeamSettingsSource(mode) {
+  if (mode === 'default') return getDefaultTeams();
+  const liveTeams = getPrototypeTeams();
+  return liveTeams.length ? liveTeams : getActiveTeams();
+}
+
+function teamSettingsModeMeta() {
+  const editingDefaults = _teamSettingsMode === 'default';
+  return {
+    title: editingDefaults ? 'Edit default teams' : 'Manage teams',
+    subtitle: editingDefaults
+      ? 'Update the prototype defaults used when a session has not customised teams.'
+      : 'Update team names and whether each team is support, sales, or both for this session.',
+  };
+}
+
+function renderTeamSettingsModal() {
   const body = document.getElementById('team-settings-body');
-  if (!body) return;
+  const title = document.getElementById('team-settings-title');
+  const subtitle = document.getElementById('team-settings-subtitle');
+  if (!body || !title || !subtitle) return;
 
-  const rows = TEAMS_DATA.map(team => {
-    const current = state.teamUsecases[team.name] || 'resolve';
-    const memberPills = team.members.map(name => {
-      const initial = name.charAt(0).toUpperCase();
-      const colour  = agentAvatarColor(name);
-      return `<span class="team-member-pill">
-        <span class="team-member-avatar" style="background:${colour}">${initial}</span>
-        ${name.split(' ')[0]}
-      </span>`;
-    }).join('');
+  const { title: titleText, subtitle: subtitleText } = teamSettingsModeMeta();
+  title.textContent = titleText;
+  subtitle.textContent = subtitleText;
 
-    return `<tr class="team-settings-row" data-team="${team.name}">
-      <td class="team-settings-team-cell">
-        <div class="team-settings-team-name">${team.name}</div>
-        <div class="team-settings-members">${memberPills}</div>
-      </td>
-      <td class="team-settings-usecase-cell">
-        <div class="usecase-toggle">
-          <button class="usecase-btn ${current === 'convert' ? 'active' : ''}" data-usecase="convert">Convert</button>
-          <button class="usecase-btn ${current === 'resolve' ? 'active' : ''}" data-usecase="resolve">Resolve</button>
+  const editingDefaults = _teamSettingsMode === 'default';
+
+  const rows = _teamSettingsDraft.map((team, index) => {
+    const memberCount = Array.isArray(team.members) ? team.members.length : 0;
+    const memberText = memberCount === 0
+      ? 'No members assigned'
+      : `${memberCount} member${memberCount === 1 ? '' : 's'} linked`;
+
+    return `<div class="team-settings-editor-row" data-index="${index}">
+      <div class="team-settings-editor-main">
+        <label class="team-settings-field-label" for="team-settings-name-${index}">Team name</label>
+        <input
+          class="team-settings-name-input"
+          id="team-settings-name-${index}"
+          type="text"
+          value="${escapeHtml(team.name)}"
+          placeholder="Team name"
+        />
+        <div class="team-settings-row-meta">${memberText}</div>
+      </div>
+      <div class="team-settings-editor-focus">
+        <div class="team-settings-field-label">Focus</div>
+        <div class="ai-setup-team-row-choices">
+          ${['resolve', 'convert', 'both'].map(usecase => `
+            <button
+              class="ai-setup-team-choice ${normalizeTeamUsecase(team.usecase) === usecase ? 'selected' : ''}"
+              data-index="${index}"
+              data-usecase="${usecase}"
+              type="button"
+            >${usecase === 'resolve' ? 'Support' : usecase === 'convert' ? 'Sales' : 'Both'}</button>
+          `).join('')}
         </div>
-      </td>
-    </tr>`;
+      </div>
+      <button class="team-settings-delete-btn" data-index="${index}" type="button">Delete</button>
+    </div>`;
   }).join('');
 
-  body.innerHTML = `<table class="team-settings-table">
-    <thead>
-      <tr>
-        <th>Team &amp; members</th>
-        <th class="col-usecase">Usecase</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+  body.innerHTML = `
+    <div class="team-settings-toolbar">
+      <div class="team-settings-toolbar-note">${editingDefaults ? 'Default changes affect new or reset team setups on this browser.' : 'Session changes update the team filter and current dashboard view.'}</div>
+    </div>
+    <div class="team-settings-editor-list">${rows}</div>
+    <div class="team-settings-footer-tools">
+      <button class="team-settings-add-btn" id="team-settings-add-btn" type="button">Add team</button>
+    </div>
+    <div class="team-settings-error" id="team-settings-error"></div>
+  `;
 
-  // Usecase toggle interaction — boolean, always one selected
-  body.querySelectorAll('.usecase-btn').forEach(btn => {
+  body.querySelectorAll('.team-settings-name-input').forEach(input => {
+    input.addEventListener('input', () => {
+      const index = Number(input.closest('.team-settings-editor-row')?.dataset.index);
+      if (Number.isNaN(index) || !_teamSettingsDraft[index]) return;
+      _teamSettingsDraft[index].name = input.value;
+    });
+  });
+
+  body.querySelectorAll('.ai-setup-team-choice').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (btn.classList.contains('active')) return; // already selected, no-op
-      const row      = btn.closest('.team-settings-row');
-      const teamName = row.dataset.team;
-      row.querySelectorAll('.usecase-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.teamUsecases[teamName] = btn.dataset.usecase;
-      DashboardConfig.notifyChanged();
+      const index = Number(btn.dataset.index);
+      if (Number.isNaN(index) || !_teamSettingsDraft[index]) return;
+      _teamSettingsDraft[index].usecase = btn.dataset.usecase;
+      renderTeamSettingsModal();
+    });
+  });
+
+  body.querySelectorAll('.team-settings-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = Number(btn.dataset.index);
+      if (Number.isNaN(index)) return;
+      _teamSettingsDraft.splice(index, 1);
+      renderTeamSettingsModal();
+    });
+  });
+
+  body.querySelector('#team-settings-add-btn')?.addEventListener('click', () => {
+    _teamSettingsDraft.push({
+      name: '',
+      members: [],
+      usecase: 'resolve',
+      originalName: null,
+    });
+    renderTeamSettingsModal();
+    requestAnimationFrame(() => {
+      const lastInput = body.querySelector('.team-settings-editor-row:last-child .team-settings-name-input');
+      lastInput?.focus();
     });
   });
 }
 
-function openTeamSettingsModal() {
-  buildTeamSettingsModal();
+function validateTeamSettingsDraft() {
+  const seen = new Set();
+  const renameMap = {};
+  const teams = [];
+
+  for (const team of _teamSettingsDraft) {
+    const name = String(team?.name || '').trim();
+    if (!name) {
+      return { error: 'Every team needs a name.' };
+    }
+    const nameKey = name.toLowerCase();
+    if (seen.has(nameKey)) {
+      return { error: `Team names need to be unique. "${name}" appears more than once.` };
+    }
+    seen.add(nameKey);
+    teams.push({
+      name,
+      members: Array.isArray(team?.members) ? [...team.members] : [],
+      usecase: normalizeTeamUsecase(team?.usecase),
+    });
+    if (team?.originalName && team.originalName !== name) {
+      renameMap[team.originalName] = name;
+    }
+  }
+
+  if (!teams.length) {
+    return { error: 'Keep at least one team.' };
+  }
+
+  return { teams, renameMap };
+}
+
+function applySavedTeams(teams, renameMap = {}) {
+  const previousFilter = state.teamFilter;
+  syncTeamsState(teams, { persist: 'user' });
+
+  if (previousFilter && previousFilter !== 'All teams') {
+    state.teamFilter = renameMap[previousFilter] || previousFilter;
+  }
+  updateTeamFilterOptions();
+  syncLensButtons();
+  resetViewState();
+  [...state.loadedSections].forEach(sectionId => remountSection(sectionId));
+  if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
+  DashboardConfig.notifyChanged();
+}
+
+function saveTeamSettingsModal() {
+  const body = document.getElementById('team-settings-body');
+  const errorEl = document.getElementById('team-settings-error');
+  const { teams, renameMap, error } = validateTeamSettingsDraft();
+
+  if (error) {
+    if (errorEl) errorEl.textContent = error;
+    return false;
+  }
+
+  if (_teamSettingsMode === 'default') {
+    const hadUserOverride = hasStoredUserTeams();
+    writeStoredTeams(DEFAULT_TEAMS_KEY, teams);
+    if (!hadUserOverride) {
+      syncTeamsState(teams);
+      updateTeamFilterOptions();
+      syncLensButtons();
+      resetViewState();
+      [...state.loadedSections].forEach(sectionId => remountSection(sectionId));
+      if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
+      DashboardConfig.notifyChanged();
+    }
+  } else {
+    applySavedTeams(teams, renameMap);
+  }
+
+  if (body) body.scrollTop = 0;
+  closeTeamSettingsModal();
+  return true;
+}
+
+function openTeamSettingsModal(mode = 'session') {
+  _teamSettingsMode = mode;
+  _teamSettingsDraft = buildTeamSettingsDraft(getTeamSettingsSource(mode));
+  renderTeamSettingsModal();
   document.getElementById('team-settings-modal-overlay').style.display = 'flex';
 }
 
 function closeTeamSettingsModal() {
   document.getElementById('team-settings-modal-overlay').style.display = 'none';
+}
+
+let _customerSettingsDraft = [];
+
+function buildCustomerSettingsDraft(profiles = []) {
+  return profiles.map((profile, index) => {
+    const normalized = normalizeCustomerProfile(profile, index);
+    return {
+      ...cloneJson(normalized),
+      knownTeamsText: (normalized.knownTeams || []).map(team => team.name).join('\n'),
+      extraSourceUrlsText: Array.isArray(normalized.extraSourceUrls) ? normalized.extraSourceUrls.join('\n') : '',
+    };
+  });
+}
+
+function isBlankCustomerDraft(profile) {
+  return !String(profile.company || '').trim()
+    && !String(profile.industry || '').trim()
+    && !String(profile.website || '').trim()
+    && !String(profile.helpCenterUrl || '').trim()
+    && !String(profile.productSummary || '').trim()
+    && !String(profile.generalNotes || '').trim()
+    && !String(profile.knownTeamsText || '').trim()
+    && !String(profile.extraSourceUrlsText || '').trim();
+}
+
+function buildKnownTeamsFromText(value) {
+  return uniqueNonEmptyLines(value).map(name => {
+    const likelyFocus = guessCustomerTeamFocus(name);
+    return likelyFocus ? { name, likelyFocus } : { name };
+  });
+}
+
+function renderCustomerSettingsModal() {
+  const body = document.getElementById('customer-settings-body');
+  if (!body) return;
+
+  const rows = _customerSettingsDraft.map((profile, index) => `
+    <div class="customer-settings-card" data-index="${index}">
+      <div class="customer-settings-card-header">
+        <div>
+          <div class="customer-settings-card-title" data-customer-title="${index}">${escapeHtml(profile.company || `Customer ${index + 1}`)}</div>
+          <div class="customer-settings-card-subtitle">This is the pre-loaded context the onboarding agent can start from.</div>
+        </div>
+        <button class="customer-settings-delete-btn" data-delete-index="${index}" type="button">Delete</button>
+      </div>
+      <div class="customer-settings-grid">
+        <div class="customer-settings-field">
+          <label class="team-settings-field-label" for="customer-company-${index}">Company name</label>
+          <input class="customer-settings-input" id="customer-company-${index}" data-index="${index}" data-customer-field="company" type="text" value="${escapeHtml(profile.company || '')}" placeholder="Company name" />
+        </div>
+        <div class="customer-settings-field">
+          <label class="team-settings-field-label" for="customer-industry-${index}">Industry</label>
+          <input class="customer-settings-input" id="customer-industry-${index}" data-index="${index}" data-customer-field="industry" type="text" value="${escapeHtml(profile.industry || '')}" placeholder="Industry" />
+        </div>
+        <div class="customer-settings-field">
+          <label class="team-settings-field-label" for="customer-website-${index}">Website</label>
+          <input class="customer-settings-input" id="customer-website-${index}" data-index="${index}" data-customer-field="website" type="url" value="${escapeHtml(profile.website || '')}" placeholder="https://example.com" />
+        </div>
+        <div class="customer-settings-field">
+          <label class="team-settings-field-label" for="customer-help-${index}">Help center / docs URL</label>
+          <input class="customer-settings-input" id="customer-help-${index}" data-index="${index}" data-customer-field="helpCenterUrl" type="url" value="${escapeHtml(profile.helpCenterUrl || '')}" placeholder="https://help.example.com" />
+        </div>
+        <div class="customer-settings-field-wide">
+          <label class="team-settings-field-label" for="customer-summary-${index}">Product or service summary</label>
+          <textarea class="customer-settings-textarea" id="customer-summary-${index}" data-index="${index}" data-customer-field="productSummary" placeholder="What does this company do?">${escapeHtml(profile.productSummary || '')}</textarea>
+        </div>
+        <div class="customer-settings-field">
+          <label class="team-settings-field-label" for="customer-teams-${index}">Known teams</label>
+          <textarea class="customer-settings-textarea" id="customer-teams-${index}" data-index="${index}" data-customer-field="knownTeamsText" placeholder="One team per line">${escapeHtml(profile.knownTeamsText || '')}</textarea>
+        </div>
+        <div class="customer-settings-field">
+          <label class="team-settings-field-label" for="customer-sources-${index}">Extra source URLs</label>
+          <textarea class="customer-settings-textarea" id="customer-sources-${index}" data-index="${index}" data-customer-field="extraSourceUrlsText" placeholder="One URL per line">${escapeHtml(profile.extraSourceUrlsText || '')}</textarea>
+        </div>
+        <div class="customer-settings-field-wide">
+          <label class="team-settings-field-label" for="customer-notes-${index}">General information</label>
+          <textarea class="customer-settings-textarea" id="customer-notes-${index}" data-index="${index}" data-customer-field="generalNotes" placeholder="Anything else the onboarding agent should know about this customer...">${escapeHtml(profile.generalNotes || '')}</textarea>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  body.innerHTML = `
+    <div class="customer-settings-toolbar">
+      <div class="customer-settings-toolbar-note">Changes are stored locally in this browser and become the starting customer context the onboarding assistant can use.</div>
+    </div>
+    <div class="customer-settings-list">${rows}</div>
+    <div class="customer-settings-footer-tools">
+      <button class="customer-settings-add-btn" id="customer-settings-add-btn" type="button">Add customer</button>
+    </div>
+    <div class="customer-settings-error" id="customer-settings-error"></div>
+  `;
+
+  body.querySelectorAll('[data-customer-field]').forEach((input) => {
+    input.addEventListener('input', () => {
+      const index = Number(input.dataset.index);
+      const field = input.dataset.customerField;
+      if (Number.isNaN(index) || !_customerSettingsDraft[index] || !field) return;
+      _customerSettingsDraft[index][field] = input.value;
+      if (field === 'company') {
+        const title = body.querySelector(`[data-customer-title="${index}"]`);
+        if (title) title.textContent = input.value.trim() || `Customer ${index + 1}`;
+      }
+    });
+  });
+
+  body.querySelectorAll('[data-delete-index]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const index = Number(btn.dataset.deleteIndex);
+      if (Number.isNaN(index)) return;
+      _customerSettingsDraft.splice(index, 1);
+      renderCustomerSettingsModal();
+    });
+  });
+
+  body.querySelector('#customer-settings-add-btn')?.addEventListener('click', () => {
+    _customerSettingsDraft.push({
+      ...createBlankCustomerProfile(),
+      knownTeamsText: '',
+      extraSourceUrlsText: '',
+    });
+    renderCustomerSettingsModal();
+    requestAnimationFrame(() => {
+      body.querySelector('.customer-settings-card:last-child [data-customer-field="company"]')?.focus();
+    });
+  });
+}
+
+function validateCustomerSettingsDraft() {
+  const profiles = [];
+  const seenCompanies = new Set();
+
+  for (let index = 0; index < _customerSettingsDraft.length; index += 1) {
+    const draft = _customerSettingsDraft[index];
+    if (isBlankCustomerDraft(draft)) continue;
+
+    const company = String(draft.company || '').trim();
+    if (!company) {
+      return { error: 'Every saved customer needs a company name.' };
+    }
+
+    const companyKey = company.toLowerCase();
+    if (seenCompanies.has(companyKey)) {
+      return { error: `Customer names need to be unique. "${company}" appears more than once.` };
+    }
+    seenCompanies.add(companyKey);
+
+    profiles.push(normalizeCustomerProfile({
+      ...draft,
+      company,
+      industry: String(draft.industry || '').trim(),
+      website: String(draft.website || '').trim(),
+      helpCenterUrl: String(draft.helpCenterUrl || '').trim(),
+      productSummary: String(draft.productSummary || '').trim(),
+      generalNotes: String(draft.generalNotes || '').trim(),
+      extraSourceUrls: uniqueNonEmptyLines(draft.extraSourceUrlsText),
+      knownTeams: buildKnownTeamsFromText(draft.knownTeamsText),
+    }, index));
+  }
+
+  return { profiles };
+}
+
+async function openCustomerSettingsModal() {
+  _customerSettingsDraft = buildCustomerSettingsDraft(await loadCustomerProfiles());
+  renderCustomerSettingsModal();
+  const overlay = document.getElementById('customer-settings-modal-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function closeCustomerSettingsModal() {
+  const overlay = document.getElementById('customer-settings-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function saveCustomerSettingsModal() {
+  const errorEl = document.getElementById('customer-settings-error');
+  const { profiles, error } = validateCustomerSettingsDraft();
+  if (error) {
+    if (errorEl) errorEl.textContent = error;
+    return false;
+  }
+  saveCustomerProfiles(profiles);
+  closeCustomerSettingsModal();
+  return true;
 }
 
 // Wire up button and modal controls
@@ -4426,23 +5111,42 @@ if (teamSettingsBtn) {
   });
 }
 
+document.getElementById('manage-teams-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  userPopout?.classList.remove('open');
+  if (userPopout) userPopout.style.display = 'none';
+  openTeamSettingsModal();
+});
+
+document.getElementById('edit-customers-btn')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  flagPopout?.classList.remove('open');
+  if (flagPopout) flagPopout.style.display = 'none';
+  await openCustomerSettingsModal();
+});
+
+document.getElementById('edit-default-teams-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  flagPopout?.classList.remove('open');
+  if (flagPopout) flagPopout.style.display = 'none';
+  openTeamSettingsModal('default');
+});
+
 document.getElementById('team-settings-modal-close')?.addEventListener('click', closeTeamSettingsModal);
 document.getElementById('team-settings-cancel')?.addEventListener('click', closeTeamSettingsModal);
-document.getElementById('team-settings-save')?.addEventListener('click', () => {
-  closeTeamSettingsModal();
-  // If a specific team is selected, re-apply the (possibly changed) usecase lens
-  if (state.teamFilter && state.teamFilter !== 'All teams') {
-    [...state.loadedSections].forEach(s => remountSection(s));
-    syncLensButtons();
-  }
-});
+document.getElementById('team-settings-save')?.addEventListener('click', saveTeamSettingsModal);
+document.getElementById('customer-settings-modal-close')?.addEventListener('click', closeCustomerSettingsModal);
+document.getElementById('customer-settings-cancel')?.addEventListener('click', closeCustomerSettingsModal);
+document.getElementById('customer-settings-save')?.addEventListener('click', saveCustomerSettingsModal);
 
 // Close on overlay backdrop click
 document.getElementById('team-settings-modal-overlay')?.addEventListener('click', (e) => {
   if (e.target === document.getElementById('team-settings-modal-overlay')) closeTeamSettingsModal();
 });
+document.getElementById('customer-settings-modal-overlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('customer-settings-modal-overlay')) closeCustomerSettingsModal();
+});
 
-// Apply flag visibility on load
 applyTeamSettingsFlag();
 syncLensButtons();
 
@@ -4472,6 +5176,9 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
       const config = await DashboardConfig.load(userId);
       if (config) {
         DashboardConfig.apply(config, state);
+        persistPrototypeTeams('user');
+        updateTeamFilterOptions();
+        syncRoleToggleButtons();
         // Re-initialize tabWidgets from the loaded config
         // (initTabWidgets was already called with defaults at top-level;
         //  apply() overwrites state.tabWidgets, so we're good)
@@ -4800,21 +5507,28 @@ Below is a complete description of everything implemented in the clickable proto
 
 NAVIGATION AND LAYOUT
 - The sidebar contains navigation icons: Inbox, Pipeline, AI & Automation, Analytics, Broadcast, Settings. The bottom of the sidebar has Voice, Support, and Notifications icons. Only Analytics is functional; the rest are visual placeholders.
-- The Settings cog opens a popout with preview options:
-  - Role: Supervisor (default) or Agent — filters content by role perspective
-  - Use Case: Resolve (default) or Convert — filters content by use case goal
-  - View / Edit mode: Enabled (default) or Disabled — toggles between editable and read-only views
-  - Reset All: resets the entire prototype to its default state — tabs, widgets, filters, role, and use case
+- The Settings cog opens a popout with local prototype controls:
+  - Role: Admin, Supervisor (default), or Agent — filters the analytics perspective
+  - Teams: opens a team manager where session team names and team focus can be edited
+  - Reset All: resets the dashboard prototype state to its default configuration
+- During AI onboarding, the Settings cog remains visible but is temporarily locked until onboarding is finished.
+
+AI SETUP ASSISTANT
+- The prototype can include an AI setup assistant for configuration.
+- When available, it can open after the walkthrough and starts with two setup choices: which customer profile to use and which role to impersonate.
+- It can gather context from customer profiles, website URLs, uploaded files, and pasted text.
+- Its goal is to understand the customer well enough to propose an initial dashboard structure, including tab names/order and starter widgets.
+- During onboarding it appears as a full-screen assistant flow with a chat area and a live preview.
+- After onboarding, it collapses into a smaller Analytics Assistant that remains available for further configuration help.
 
 FILTERS
 - Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
-- Channel filter: All channels (default), Email, WhatsApp, Live chat, Phone, Instagram, Facebook
-- Team filter: All teams (default), Sales team, SMB Central, Mid-Market, Expansion, Retention, Core Services
-- A Label filter chip is visible but not functional.
+- Channel filter: All channels (default), with grouped channel types such as Email, Live chat, Social, and Voice, plus nested channel choices inside the dropdown
+- Team filter: All teams (default), plus the currently configured team names from the active team setup. Editing teams updates this dropdown.
 - Changing filters re-renders sections. All data in the prototype is randomly generated mock data, so filter changes produce new random values.
 
-ROLE AND USE CASE FILTERING
-The Role toggle and Use Case toggle combine to create four states: support_supervisor, support_agent, sales_supervisor, sales_agent. Each widget can be configured per state to:
+ROLE AND TEAM-FOCUS FILTERING
+The analytics model still uses four widget states internally: support_supervisor, support_agent, sales_supervisor, sales_agent. The visible role selector offers Admin, Supervisor, and Agent. Supervisor and Agent change the rendered dashboard perspective directly. Admin is an impersonation/configuration role and currently previews the supervisor perspective. A selected team can also push the view toward Resolve or Convert based on that team's configured focus. Each widget can be configured per state to:
 - show: make visible
 - hide: remove from view
 - emphasize: visually highlight as high-priority
@@ -4824,7 +5538,7 @@ Some widgets also change their sub-label (scopeLabel) and tooltip text depending
 Additionally, widgets marked "Voice channel only" in the widget lists below are only visible when the channel filter is set to Phone. They are hidden by default under "All channels" and only appear when the voice channel is explicitly selected.
 
 VIEW / EDIT MODE
-The prototype has a View/Edit mode toggle in the settings popout. In View mode the dashboard is read-only. In Edit mode users can drag-reorder widgets, resize them, hide them, and manage tabs (create, rename, delete pages). Edit mode is enabled by default.
+The prototype defaults to View mode. A toggle in the sub-navigation switches between View and Edit. In View mode the dashboard is read-only. In Edit mode users can drag-reorder widgets, resize them, hide them, and manage tabs (create, rename, delete pages).
 
 WIDGET INTERACTIONS
 All drag, resize, and hide interactions below require Edit mode to be enabled.
@@ -4860,7 +5574,7 @@ CURRENT REPORTING CONTINUITY NOTES
 - If asked how stakeholders should think about CSV exports in this concept, answer generically: exportability should still exist in the real product, even if the main reporting surface is reorganised around the watchtower model. Exports are an output capability, not the organising logic.
 
 GUIDED WALKTHROUGH
-On first visit, a multi-step walkthrough introduces the prototype. It covers the five-section model, the Prototype Guide, the settings popout (roles, use cases, view/edit mode, and reset), and how to customise widgets in edit mode. The walkthrough can be dismissed and reset from the feature flags popout.
+On first visit, a multi-step walkthrough introduces the prototype. It covers the five-section model, the Prototype Guide, the settings popout, and how to customise widgets in edit mode. The walkthrough can be dismissed and reset from the feature flags popout. If the AI setup assistant is available, it can open after the walkthrough.
 
 CHART TYPES USED
 - KPI cards: Large number with trend indicator (up/down percentage) and sub-label
@@ -5115,6 +5829,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   }
 
   window.setPanelState = setPanelState;
+  window.setGuideOnboardingState = function(active) {
+    setPanelState(active ? 'bar' : 'chat');
+  };
+  window.getGuidePanelState = function() {
+    return document.body.dataset.panel || 'chat';
+  };
 
   // ── Button listeners ──────────────────────────────────────
   expandFromBarBtn.addEventListener('click', () => setPanelState('chat'));
@@ -5131,7 +5851,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     _pendingContextApproval = null;
     clearChatHistory();
     chatMessages.innerHTML = '';
-    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it. You\'ll also see occasional context as you navigate.', 'assistant');
+    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it.', 'assistant');
     chatInput.focus();
   });
 
@@ -5624,32 +6344,28 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
   const ONBOARDING_KEY = 'trengo_onboarding_done';
   const ONBOARDING_STEPS = [
     {
-      text: 'This prototype explores a new analytics model \u2014 replacing fragmented dashboards with five default sections, each answering a distinct operational question. Some of the charts and visual details are only illustrative \u2014 the focus is on the overall structure and concepts.',
+      text: 'This prototype explores a customisable analytics model with five broadly applicable default sections. Focus feedback on the overall structure, logic, and decisions it supports.',
       getTargets: () => [],
       placement: 'center'
     },
     {
-      text: 'The Guide is not part of the prototype \u2014 it\u2019s internal only. Use it to ask questions and provide feedback.',
+      text: 'Use the Prototype Guide for concept questions and feedback.',
       getTargets: () => [document.querySelector('#ai-panel')],
       placement: 'left-of-panel'
     },
     {
-      text: 'The default Analytics navigation answers operational questions: Overview (where to look), Understand (why work enters), Operate (is it flowing), Improve (what changes help), and Automate (what runs without humans). Users can customise to the language and structure they choose.',
-      getTargets: () => [document.querySelector('#sub-nav')],
-      placement: 'above-subnav'
-    },
-    {
-      text: 'Use the settings icon to preview, edit, and reset the dashboard.',
-      getTargets: () => [document.querySelector('#settings-nav')],
-      placement: 'right-of-cog'
-    },
-    {
-      text: 'When in edit mode, customise which metrics are visible in each section \u2014 add hidden widgets or remove ones you don\u2019t need. Drag to reorder and resize widgets to suit.',
+      text: 'The default navigation is only a starting point. The model is designed to be customised to each company\u2019s language, structure, and priorities. In edit mode, users can add, remove, reorder, and resize.',
       getTargets: () => [
-        document.querySelector('#manage-widgets-btn'),
-        document.querySelector('#section-overview .widget-action-btn')
+        document.querySelector('#sub-nav-tabs'),
+        document.querySelector(`.section-content[data-section="${state.activeSection}"] .widget-card`) ||
+          document.querySelector('.section-content .widget-card')
       ],
       placement: 'center-dual'
+    },
+    {
+      text: 'Use the settings icon for local controls like role, teams, and reset.',
+      getTargets: () => [document.querySelector('#settings-nav')],
+      placement: 'right-of-cog'
     }
   ];
 
@@ -5779,15 +6495,31 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       card.style.left = cardLeft + 'px';
       card.style.top = cardTop + 'px';
 
-      // Arrow 1: to manage widgets button
+      const cardTopLeftX = cardLeft + 56;
+      const cardTopLeftY = cardTop + 18;
+      const cardBottomLeftX = cardLeft + 28;
+      const cardBottomLeftY = cardTop + ch - 96;
+
+      // Arrow 1: to the bottom-right of the tab navigation
       if (targets[0]) {
-        const br = targets[0].getBoundingClientRect();
-        drawArrow(cardLeft + cw - 20, cardTop + 10, br.left + br.width / 2, br.top + br.height / 2);
+        const navRect = targets[0].getBoundingClientRect();
+        drawArrow(
+          cardTopLeftX,
+          cardTopLeftY,
+          navRect.right - 12,
+          navRect.bottom - 8
+        );
       }
-      // Arrow 2: to widget X button (start from same top-right corner as arrow 1)
+
+      // Arrow 2: to the top-right corner of a widget card
       if (targets[1]) {
-        const xr = targets[1].getBoundingClientRect();
-        drawArrow(cardLeft + cw - 20, cardTop + 10, xr.left + xr.width / 2, xr.top + xr.height / 2);
+        const widgetRect = targets[1].getBoundingClientRect();
+        drawArrow(
+          cardBottomLeftX,
+          cardBottomLeftY,
+          widgetRect.right - 14,
+          widgetRect.top + 14
+        );
       }
     }
   }

@@ -24,11 +24,20 @@ const AssistantStorage = (() => {
 
       structured: {
         confirmedFacts: {},    // { company, industry, productSummary, ... }
-        teamAssignments: {},   // { 'Support': 'resolve', 'Sales': 'convert' }
+        teamAssignments: {},   // { 'Support': 'resolve' | 'convert' | 'both' }
         collectedGoals: [],    // ['reduce response time', 'track pipeline']
         analyzedSources: [],   // [{ url?, filename?, title, summary, extractedText }]
         appliedPatches: [],    // [{ tool, input, timestamp }]
         pendingProposals: [],  // [{ id, description, patch }]
+        suggestedConfigDraft: null, // latest AI-suggested config snapshot
+        pendingTabDraft: null,      // latest editable tab draft in progress
+        sourceStatus: {
+          requested: false,
+          provided: false,
+          skipped: false,
+          lastUpdatedAt: null,
+        },
+        pendingProposalSource: null, // 'ai' | 'user' | null
       },
 
       messages: [], // Anthropic messages format (role + content)
@@ -36,6 +45,26 @@ const AssistantStorage = (() => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  function ensureSessionShape(session) {
+    if (!session) return null;
+    if (!session.structured) session.structured = {};
+    const defaults = createEmpty(session.customerId, session.impersonationRole || 'admin');
+    session.impersonationRole = session.impersonationRole || defaults.impersonationRole;
+    session.mode = session.mode || defaults.mode;
+    session.structured = {
+      ...defaults.structured,
+      ...session.structured,
+      sourceStatus: {
+        ...defaults.structured.sourceStatus,
+        ...(session.structured.sourceStatus || {}),
+      },
+    };
+    if (!Array.isArray(session.messages)) session.messages = [];
+    if (!session.createdAt) session.createdAt = defaults.createdAt;
+    if (!session.updatedAt) session.updatedAt = defaults.updatedAt;
+    return session;
   }
 
   // ── Meta: which customer/role is active ──────────────────
@@ -64,7 +93,7 @@ const AssistantStorage = (() => {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) return null;
-      return JSON.parse(raw);
+      return ensureSessionShape(JSON.parse(raw));
     } catch {
       return null;
     }
@@ -134,6 +163,7 @@ const AssistantStorage = (() => {
       ...source,
       addedAt: new Date().toISOString(),
     });
+    setSourceStatus(session, { requested: true, provided: true, skipped: false });
   }
 
   function recordPatch(session, tool, input) {
@@ -153,6 +183,30 @@ const AssistantStorage = (() => {
   function setMode(session, mode) {
     if (!session) return;
     session.mode = mode;
+  }
+
+  function setSuggestedConfigDraft(session, draft) {
+    if (!session) return;
+    session.structured.suggestedConfigDraft = draft || null;
+  }
+
+  function setPendingTabDraft(session, draft) {
+    if (!session) return;
+    session.structured.pendingTabDraft = draft || null;
+  }
+
+  function setSourceStatus(session, patch) {
+    if (!session) return;
+    session.structured.sourceStatus = {
+      ...session.structured.sourceStatus,
+      ...patch,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+  }
+
+  function setPendingProposalSource(session, source) {
+    if (!session) return;
+    session.structured.pendingProposalSource = source || null;
   }
 
   // ── Reset ────────────────────────────────────────────────
@@ -194,6 +248,23 @@ const AssistantStorage = (() => {
       );
       parts.push('Analyzed sources:\n' + summaries.join('\n'));
     }
+    if (s.sourceStatus) {
+      parts.push('Source status: ' + JSON.stringify(s.sourceStatus));
+    }
+    if (s.suggestedConfigDraft) {
+      const draftTabs = (Array.isArray(s.suggestedConfigDraft.tabs) ? s.suggestedConfigDraft.tabs : []).map(t => t.label).join(', ');
+      parts.push('Suggested config draft: ' + JSON.stringify({
+        tabs: draftTabs,
+        widgetCount: Array.isArray(s.suggestedConfigDraft.widgetIds) ? s.suggestedConfigDraft.widgetIds.length : undefined,
+      }));
+    }
+    if (s.pendingTabDraft) {
+      const pendingTabs = (Array.isArray(s.pendingTabDraft) ? s.pendingTabDraft : []).map(t => t.label).join(', ');
+      parts.push('Pending tab draft: ' + pendingTabs);
+    }
+    if (s.pendingProposalSource) {
+      parts.push('Pending proposal source: ' + s.pendingProposalSource);
+    }
     if (s.appliedPatches.length > 0) {
       parts.push('Applied changes: ' + s.appliedPatches.length + ' config patches');
     }
@@ -233,6 +304,10 @@ const AssistantStorage = (() => {
     recordPatch,
     getMode,
     setMode,
+    setSuggestedConfigDraft,
+    setPendingTabDraft,
+    setSourceStatus,
+    setPendingProposalSource,
     clearAll,
     clearSession,
     buildPromptContext,
