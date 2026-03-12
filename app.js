@@ -433,14 +433,36 @@ function saveCustomerProfiles(profiles = []) {
   return cloneJson(normalized);
 }
 
+function mergeCustomerProfiles(baseProfiles = [], storedProfiles = []) {
+  const merged = [];
+  const seen = new Set();
+
+  storedProfiles.forEach((profile, index) => {
+    const normalized = normalizeCustomerProfile(profile, index);
+    if (!normalized.id) return;
+    merged.push(normalized);
+    seen.add(normalized.id);
+  });
+
+  baseProfiles.forEach((profile, index) => {
+    const normalized = normalizeCustomerProfile(profile, index);
+    if (!normalized.id || seen.has(normalized.id)) return;
+    merged.push(normalized);
+    seen.add(normalized.id);
+  });
+
+  return ensureUniqueCustomerIds(merged);
+}
+
 async function loadCustomerProfiles() {
   if (_customerProfilesCache) return cloneJson(_customerProfilesCache);
   const stored = readStoredCustomerProfiles();
-  if (stored) {
-    _customerProfilesCache = cloneJson(stored);
-    return cloneJson(stored);
-  }
   const seeded = await seedCustomerProfilesFromFixtures();
+  if (stored) {
+    const merged = mergeCustomerProfiles(seeded, stored);
+    _customerProfilesCache = cloneJson(merged);
+    return cloneJson(merged);
+  }
   if (seeded.length) {
     return saveCustomerProfiles(seeded);
   }
@@ -451,10 +473,6 @@ async function loadCustomerProfiles() {
 function getStoredCustomerProfilesSync() {
   if (_customerProfilesCache) return cloneJson(_customerProfilesCache);
   const stored = readStoredCustomerProfiles();
-  if (stored) {
-    _customerProfilesCache = cloneJson(stored);
-    return cloneJson(stored);
-  }
   return [];
 }
 
