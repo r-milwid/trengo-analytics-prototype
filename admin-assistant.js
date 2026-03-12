@@ -257,7 +257,13 @@ const AdminAssistant = (() => {
 
     // Build widget catalog summary
     const widgetSummary = Object.entries(WIDGETS).map(([section, widgets]) => {
-      const list = widgets.map(w => `  - ${w.id}: "${w.title}" (${w.type})`).join('\n');
+      const list = widgets.map(w => {
+        const purpose = String(w.tooltip || '')
+          .split('. ')
+          .find(Boolean)
+          ?.trim();
+        return `  - ${w.id}: "${w.title}" (${w.type})${purpose ? ` — ${purpose.replace(/\.$/, '')}.` : ''}`;
+      }).join('\n');
       return `### ${section}\n${list}`;
     }).join('\n\n');
 
@@ -312,6 +318,12 @@ DECISION POLICY
 - Prefer understanding the underlying goal or decision need over collecting lots of surface preferences.
 - If the user suggests a solution-detail directly, understand the underlying need when that would improve the decision, but do not become argumentative or pushy.
 - If the user skips something, preserve progress and continue with defaults or the best available assumption.
+- Before deciding the starter widget set, silently compare what you know against the available widgets and their purposes.
+- Only treat the widget draft as high-confidence if you can explain why the included widgets matter for this business and why the obvious alternatives are less relevant.
+- Do not assume a website, company profile, or source material is automatically enough. Those often help with terminology and context, but they do not always reveal the operating reality or decision needs behind good widget choices.
+- If the current context would still leave important widget choices underdetermined, ask the single highest-leverage clarification question first.
+- Useful clarification areas can include team workflows, success measures, management judgement, quality or satisfaction signals, or the decisions the dashboard needs to support, but these are examples rather than a fixed checklist.
+- A few extra targeted questions are better than a shallow proposal. Usually this means 2-4 strong clarification questions total after the initial source/context step, not a long questionnaire.
 
 HOW TO GATHER CONTEXT
 - Prioritize information that improves decisions: company/product, teams, team goals, terminology, audience, important outcomes to monitor or improve, and source material.
@@ -320,6 +332,10 @@ HOW TO GATHER CONTEXT
 - Adapt each next question to what is still missing. Do not follow a fixed questionnaire.
 - Avoid handing blank configuration work to the user if you can infer a strong first proposal.
 - When customer data already contains relevant context for a UI block, surface it visibly in that block and let the user edit, remove, or add to it instead of hiding it in the background.
+- Prefer high-information questions that unlock better tab and widget decisions.
+- Ask about operating reality, success measures, bottlenecks, ownership, or decision-making when those would materially improve the draft.
+- Prefer questions about decision-making and operating reality over questions about layout preferences.
+- Do not let the user do all the design work. Your job is to understand enough to make a strong proposal.
 
 TOOL CHOICE
 - Use show_boolean_choice for yes/no questions.
@@ -366,8 +382,11 @@ ONBOARDING
 - Open by using known customer context and gathering source context early.
 - If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.
 - In the opening phase, focus on enough understanding to make a draft, not on collecting every possible preference.
-- Ask follow-up questions only when they materially improve the likely tab proposal, team setup, terminology, or starter widget set.
+- After the source/context step, do a real gap check before proposing.
+- Ask follow-up questions when they materially improve the likely tab proposal, team setup, terminology, or starter widget set.
 - Your goal is to collect enough context to propose an initial dashboard draft, including tab names/order/number and a sensible starting widget set.
+- Do not treat the starter widget set as high-confidence unless the current context is enough to justify the included widgets against the other available options.
+- Each starter widget choice should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic widgets just because they exist.
 - Once you have enough for a credible draft, move to the proposal. Do not continue questioning just because more detail could be gathered.
 - Do not ask the user to invent tab names, tab order, or starter widgets from scratch if you can infer a strong first proposal.
 - When team classification is needed, prefer show_team_assignment_matrix over generic cards.
@@ -2475,7 +2494,7 @@ ASSISTANT MODE
       const tools = getToolsForRole(_role, 'onboarding');
 
       // Initial message with context
-      let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please start by checking what is already known, ask for any website or files that would help, and then propose a strong first draft before asking me to fine-tune details.';
+      let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please start by checking what is already known, ask for any website or files that would help, then ask the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
       if (_customerData) {
         initialUserMsg += ` I'm from ${_customerData.company}.`;
         if (_customerData.website) {
@@ -2710,8 +2729,11 @@ ASSISTANT MODE
     const targetCenterX = fabRect.left + fabRect.width / 2;
     const targetCenterY = fabRect.top + fabRect.height / 2;
     const scale = Math.min(fabRect.width / sourceRect.width, fabRect.height / sourceRect.height);
+    const finalScale = Math.max(scale, 0.08);
+    const midpointScale = Math.min(0.48, Math.max(finalScale * 2.2, 0.22));
     const translateX = targetCenterX - sourceCenterX;
     const translateY = targetCenterY - sourceCenterY;
+    const duration = 680;
 
     surface.style.transformOrigin = 'center center';
     overlay.style.pointerEvents = 'none';
@@ -2722,28 +2744,38 @@ ASSISTANT MODE
     try {
       surfaceAnimation = surface.animate([
         {
+          offset: 0,
           transform: 'translate3d(0, 0, 0) scale(1)',
           opacity: 1,
           borderRadius: getComputedStyle(surface).borderRadius || '0px',
           filter: 'blur(0px)',
         },
         {
-          transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${Math.max(scale, 0.04)})`,
-          opacity: 0.18,
+          offset: 0.62,
+          transform: `translate3d(${translateX * 0.74}px, ${translateY * 0.74}px, 0) scale(${midpointScale})`,
+          opacity: 0.9,
+          borderRadius: '24px',
+          filter: 'blur(0px)',
+        },
+        {
+          offset: 1,
+          transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${finalScale})`,
+          opacity: 0.14,
           borderRadius: '999px',
-          filter: 'blur(1px)',
+          filter: 'blur(1.5px)',
         },
       ], {
-        duration: 520,
-        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+        duration,
+        easing: 'cubic-bezier(0.16, 0.84, 0.2, 1)',
         fill: 'forwards',
       });
 
       overlayAnimation = overlay.animate([
-        { backgroundColor: 'rgba(255, 255, 255, 1)' },
-        { backgroundColor: 'rgba(255, 255, 255, 0)' },
+        { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
+        { offset: 0.72, backgroundColor: 'rgba(247, 247, 248, 0.24)' },
+        { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
       ], {
-        duration: 520,
+        duration,
         easing: 'ease-out',
         fill: 'forwards',
       });
