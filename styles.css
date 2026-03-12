@@ -3165,6 +3165,18 @@ body[data-panel="wide"] .ai-setup-overlay {
   box-shadow: var(--shadow-sm);
 }
 
+.thread-reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  will-change: opacity, transform;
+}
+
+.thread-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .ai-setup-bubble.assistant {
   align-self: flex-start;
   background: var(--white);

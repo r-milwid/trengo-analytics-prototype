@@ -18,6 +18,7 @@ const AdminAssistant = (() => {
   const PROXY_URL = 'https://trengo-chatbot-proxy.analytics-chatbot.workers.dev';
   const MAX_LOOP_ITERATIONS = 10;
   const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode'; // 'onboarding' | 'assistant' | null
+  const THREAD_REVEAL_DELAY_MS = 1200;
 
   // ── Internal state ─────────────────────────────────────────
   let _session = null;        // AssistantStorage session object
@@ -31,6 +32,7 @@ const AdminAssistant = (() => {
   let _runGeneration = 0;
   let _previewRevealGeneration = 0;
   let _previewRevealTimers = [];
+  let _threadRevealGeneration = 0;
 
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
@@ -141,7 +143,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'show_boolean_choice',
-      description: 'Display a yes/no choice. Use this for yes/no questions instead of plain text or generic options.',
+      description: 'Display a yes/no choice. Use this for yes/no questions instead of plain text or generic options. The prompt should be concise and work as the block header/subtext unless a separate short lead-in is genuinely clearer.',
       input_schema: {
         type: 'object',
         properties: {
@@ -154,7 +156,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'show_team_assignment_matrix',
-      description: 'Display one row per team with Support, Sales, and Both choices. Use this when the user needs to classify teams without typing.',
+      description: 'Display one row per team with Support, Sales, and Both choices. Use this when the user needs to classify teams without typing. Keep the prompt concise and block-oriented unless a separate short lead-in adds real clarity.',
       input_schema: {
         type: 'object',
         properties: {
@@ -169,7 +171,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'show_tab_editor',
-      description: 'Open the inline tab editor so the user can rename, reorder, add, and remove tabs directly in one place. Use this instead of asking conversational rename/reorder questions.',
+      description: 'Open the inline tab editor so the user can rename, reorder, add, and remove tabs directly in one place. Use this instead of asking conversational rename/reorder questions. The prompt should usually function as a short block header or instruction.',
       input_schema: {
         type: 'object',
         properties: {
@@ -192,7 +194,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'show_tab_proposal_choice',
-      description: 'Present a proposed tab structure and let the user either accept the proposal, refine it further, or keep the defaults. Use this instead of asking whether they want to edit tabs.',
+      description: 'Present a proposed tab structure and let the user either accept the proposal, refine it further, or keep the defaults. Use this instead of asking whether they want to edit tabs. Keep the prompt concise and tied directly to the choice block.',
       input_schema: {
         type: 'object',
         properties: {
@@ -215,7 +217,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'show_source_input',
-      description: 'Show a source input UI so the user can provide a file, URL, or pasted text for analysis. The conversation pauses until the user submits.',
+      description: 'Show a source input UI so the user can provide a file, URL, or pasted text for analysis. The conversation pauses until the user submits. Use the prompt as a compact block header/subtext unless a separate short lead-in is clearly needed.',
       input_schema: {
         type: 'object',
         properties: {
@@ -379,6 +381,15 @@ CONVERSATION STYLE
 - Do not produce long recaps. If summarizing known context, keep it to the few most decision-relevant points, not every available field.
 - When a UI block already shows details visibly, mention that briefly instead of restating the full contents in chat.
 - If you use bullets, keep them compact: no blank lines between bullets, no more than 4 bullets unless the user asked for a longer list, and keep each bullet to one line where possible.
+- Less is more. Give only the information the user needs to act or understand the next step. It is fine if the user asks a follow-up clarification question.
+
+UI PRESENTATION
+- Treat interactive UI blocks as their own communication surface, not just attachments to long chat messages.
+- Decide whether a short lead-in message is actually helpful. Use one only when it adds clarity that would not fit well as a concise block header or subtext.
+- If the instructional copy is directly about how to use the block, prefer putting it in the block prompt/header rather than as a separate chat message.
+- Avoid saying the same thing in both a chat bubble and the block itself.
+- Keep block prompts and helper copy minimal. Usually a short header plus one short supporting sentence is enough.
+- Do not create extra separation just to imitate conversation. Prefer the clearest and most compact presentation for the user.
 
 DECISION POLICY
 - Infer where reasonable. Ask only when the missing information would materially change the tab structure, team focus, terminology, or starting widget choices.
@@ -459,7 +470,9 @@ ONBOARDING
 - Open by using known customer context and gathering source context early.
 - If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.
 - For the first source step, do not dump the full customer profile into chat. Use at most 2 short lines or up to 4 very compact bullets covering only the most decision-relevant facts.
-- Prefer a pattern like: brief acknowledgment of what is already known, one short sentence on what would sharpen the draft, then show_source_input.
+- For the first source step, decide whether a short lead-in message actually helps. Often the clearest option is a very short acknowledgment followed by a source block whose prompt carries the practical instruction.
+- After a source step succeeds, briefly acknowledge which source types were actually used. If a website or help center was successfully analyzed, make that visible in your wording.
+- Do not say or imply that only pasted text was used when website or file source analysis also succeeded.
 - In the opening phase, focus on enough understanding to make a draft, not on collecting every possible preference.
 - After the source/context step, do a real gap check before proposing.
 - Ask follow-up questions when they materially improve the likely tab proposal, team setup, terminology, or starter widget set.
@@ -989,35 +1002,35 @@ ASSISTANT MODE
     // This is a "blocking" UI tool — we render the options and pause the loop
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      renderOptionsUI(options, multiSelect || false, style || 'cards', resolve);
+      void renderOptionsUI(options, multiSelect || false, style || 'cards', resolve);
     });
   }
 
   function handleShowBooleanChoice({ prompt, yesLabel, noLabel }) {
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      renderBooleanChoiceUI(prompt, yesLabel || 'Yes', noLabel || 'No', resolve);
+      void renderBooleanChoiceUI(prompt, yesLabel || 'Yes', noLabel || 'No', resolve);
     });
   }
 
   function handleShowTeamAssignmentMatrix({ prompt, teams }) {
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      renderTeamAssignmentMatrixUI(prompt, teams?.length ? teams : getKnownTeamNames(), resolve);
+      void renderTeamAssignmentMatrixUI(prompt, teams?.length ? teams : getKnownTeamNames(), resolve);
     });
   }
 
   function handleShowTabEditor({ prompt, tabs }) {
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      renderTabEditorUI(prompt, tabs?.length ? tabs : getCurrentTabDraft(), resolve);
+      void renderTabEditorUI(prompt, tabs?.length ? tabs : getCurrentTabDraft(), resolve);
     });
   }
 
   function handleShowTabProposalChoice({ prompt, tabs }) {
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      renderTabProposalChoiceUI(prompt, tabs || [], resolve);
+      void renderTabProposalChoiceUI(prompt, tabs || [], resolve);
     });
   }
 
@@ -1027,7 +1040,7 @@ ASSISTANT MODE
       AssistantStorage.setSourceStatus(_session, { requested: true });
       AssistantStorage.save(_session);
       _pendingResolve = resolve;
-      renderSourceInputUI(prompt, allowedTypes || ['file', 'url', 'paste'], resolve);
+      void renderSourceInputUI(prompt, allowedTypes || ['file', 'url', 'paste'], resolve);
     });
   }
 
@@ -1183,7 +1196,10 @@ ASSISTANT MODE
       // Render any text
       if (textBlocks.length > 0) {
         const fullText = textBlocks.map(b => b.text).join('\n\n');
-        renderAssistantBubble(fullText);
+        await renderAssistantTurn(fullText, {
+          hasInteractiveFollowup: toolUseBlocks.length > 0,
+          generation,
+        });
       }
 
       // Append the full assistant response to history
@@ -1198,6 +1214,9 @@ ASSISTANT MODE
       // Execute tool calls and collect results
       const toolResults = [];
       let interruptedByUser = false;
+      if (toolUseBlocks.length > 0) {
+        await delay(160);
+      }
       for (const block of toolUseBlocks) {
         const result = await handleToolUse(block.name, block.input);
         AssistantStorage.recordPatch(_session, block.name, block.input);
@@ -1262,6 +1281,77 @@ ASSISTANT MODE
     bubble.innerHTML = renderMarkdown(text);
     container.appendChild(bubble);
     scrollToBottom(container);
+    return bubble;
+  }
+
+  async function renderAssistantTurn(text, { hasInteractiveFollowup = false, generation = _runGeneration } = {}) {
+    const parts = splitAssistantTurnText(text, { hasInteractiveFollowup });
+    if (parts.length === 0) return;
+
+    const revealGeneration = ++_threadRevealGeneration;
+    const shouldAnimate = parts.length > 1 || hasInteractiveFollowup || text.length > 180;
+
+    for (let i = 0; i < parts.length; i += 1) {
+      if (generation !== _runGeneration || revealGeneration !== _threadRevealGeneration) return;
+      if (shouldAnimate) {
+        showTypingIndicator();
+        await delay(THREAD_REVEAL_DELAY_MS);
+        if (generation !== _runGeneration || revealGeneration !== _threadRevealGeneration) {
+          hideTypingIndicator();
+          return;
+        }
+        hideTypingIndicator();
+      }
+      const bubble = renderAssistantBubble(parts[i]);
+      if (shouldAnimate) {
+        animateThreadElement(bubble);
+      }
+    }
+  }
+
+  function splitAssistantTurnText(text, { hasInteractiveFollowup = false } = {}) {
+    const raw = String(text || '').trim();
+    if (!raw) return [];
+
+    const paragraphs = raw.split(/\n\s*\n/).map(part => part.trim()).filter(Boolean);
+    if (!hasInteractiveFollowup && raw.length < 220) {
+      return [raw];
+    }
+
+    const chunks = [];
+    let current = '';
+    const maxChunkLength = hasInteractiveFollowup ? 180 : 240;
+
+    paragraphs.forEach((paragraph) => {
+      const candidate = current ? `${current}\n\n${paragraph}` : paragraph;
+      const isBulletBlock = paragraph.split('\n').every(line => /^[-•]\s+/.test(line.trim()));
+      if (!current) {
+        current = paragraph;
+        return;
+      }
+      if (candidate.length > maxChunkLength || isBulletBlock) {
+        chunks.push(current);
+        current = paragraph;
+      } else {
+        current = candidate;
+      }
+    });
+
+    if (current) {
+      chunks.push(current);
+    }
+
+    return chunks.length ? chunks : [raw];
+  }
+
+  function animateThreadElement(element) {
+    if (!element) return;
+    element.classList.add('thread-reveal');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        element.classList.add('is-visible');
+      });
+    });
   }
 
   function renderAnalyticsArtifact(presentation, meta = {}, options = {}) {
@@ -1396,6 +1486,7 @@ ASSISTANT MODE
     bubble.innerHTML = `<span style="color:var(--red-500,#ef4444)">${escapeHtml(text)}</span>
       <button class="ai-setup-retry-btn" onclick="AdminAssistant.retryLastMessage()">Retry</button>`;
     container.appendChild(bubble);
+    animateThreadElement(bubble);
     scrollToBottom(container);
   }
 
@@ -1424,11 +1515,40 @@ ASSISTANT MODE
     pill.className = 'ai-setup-config-change';
     pill.textContent = text;
     container.appendChild(pill);
+    animateThreadElement(pill);
     scrollToBottom(container);
   }
 
+  async function mountInteractiveThreadBlock(wrapper, { delayMs = THREAD_REVEAL_DELAY_MS, onMounted, generation = _runGeneration } = {}) {
+    const container = getMessagesContainer();
+    if (!container || !wrapper) return;
+
+    wrapper.style.opacity = '0';
+    wrapper.style.transform = 'translateY(8px)';
+    wrapper.style.pointerEvents = 'none';
+    const revealGeneration = ++_threadRevealGeneration;
+    showTypingIndicator();
+    await delay(delayMs);
+    if (generation !== _runGeneration || revealGeneration !== _threadRevealGeneration) {
+      hideTypingIndicator();
+      return;
+    }
+    hideTypingIndicator();
+    const currentContainer = getMessagesContainer();
+    if (!currentContainer) return;
+    currentContainer.appendChild(wrapper);
+    requestAnimationFrame(() => {
+      wrapper.style.opacity = '';
+      wrapper.style.transform = '';
+      wrapper.style.pointerEvents = '';
+      animateThreadElement(wrapper);
+      scrollToBottom(currentContainer);
+      if (typeof onMounted === 'function') onMounted(wrapper, currentContainer);
+    });
+  }
+
   // ── Options UI (rendered when AI calls show_options) ───────
-  function renderOptionsUI(options, multiSelect, style, resolve) {
+  async function renderOptionsUI(options, multiSelect, style, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
@@ -1486,11 +1606,10 @@ ASSISTANT MODE
       wrapper.appendChild(confirmBtn);
     }
 
-    container.appendChild(wrapper);
-    scrollToBottom(container);
+    await mountInteractiveThreadBlock(wrapper);
   }
 
-  function renderBooleanChoiceUI(prompt, yesLabel, noLabel, resolve) {
+  async function renderBooleanChoiceUI(prompt, yesLabel, noLabel, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
@@ -1525,11 +1644,10 @@ ASSISTANT MODE
     });
 
     wrapper.appendChild(choices);
-    container.appendChild(wrapper);
-    scrollToBottom(container);
+    await mountInteractiveThreadBlock(wrapper);
   }
 
-  function renderTeamAssignmentMatrixUI(prompt, teams, resolve) {
+  async function renderTeamAssignmentMatrixUI(prompt, teams, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
@@ -1718,11 +1836,10 @@ ASSISTANT MODE
     actions.appendChild(skipBtn);
 
     wrapper.appendChild(actions);
-    container.appendChild(wrapper);
-    scrollToBottom(container);
+    await mountInteractiveThreadBlock(wrapper);
   }
 
-  function renderTabProposalChoiceUI(prompt, tabs, resolve) {
+  async function renderTabProposalChoiceUI(prompt, tabs, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
@@ -1824,11 +1941,10 @@ ASSISTANT MODE
     });
 
     wrapper.appendChild(choices);
-    container.appendChild(wrapper);
-    scrollToBottom(container);
+    await mountInteractiveThreadBlock(wrapper);
   }
 
-  function renderTabEditorUI(prompt, tabs, resolve) {
+  async function renderTabEditorUI(prompt, tabs, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
@@ -2038,9 +2154,11 @@ ASSISTANT MODE
     actions.appendChild(skipBtn);
 
     wrapper.appendChild(actions);
-    container.appendChild(wrapper);
-    applyTabDraftToPreview(draft);
-    scrollToBottom(container);
+    await mountInteractiveThreadBlock(wrapper, {
+      onMounted: () => {
+        applyTabDraftToPreview(draft);
+      },
+    });
   }
 
   function disableOptions(wrapper) {
@@ -2051,17 +2169,19 @@ ASSISTANT MODE
   }
 
   // ── Source input UI (rendered when AI calls show_source_input)
-  function renderSourceInputUI(prompt, allowedTypes, resolve) {
+  async function renderSourceInputUI(prompt, allowedTypes, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'ai-setup-source-input';
 
-    const promptEl = document.createElement('div');
-    promptEl.className = 'ai-setup-source-prompt';
-    promptEl.textContent = prompt;
-    wrapper.appendChild(promptEl);
+    if (prompt) {
+      const promptEl = document.createElement('div');
+      promptEl.className = 'ai-setup-source-prompt';
+      promptEl.textContent = prompt;
+      wrapper.appendChild(promptEl);
+    }
 
     const helper = document.createElement('div');
     helper.className = 'ai-setup-source-helper';
@@ -2190,18 +2310,17 @@ ASSISTANT MODE
 
     wrapper.appendChild(actions);
 
-    container.appendChild(wrapper);
-    scrollToBottom(container);
-    requestAnimationFrame(() => {
-      scrollToBottom(container);
-      wrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
+    await mountInteractiveThreadBlock(wrapper, {
+      onMounted: (mountedWrapper, currentContainer) => {
+        scrollToBottom(currentContainer);
+        mountedWrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
+        setTimeout(() => {
+          scrollToBottom(currentContainer);
+          mountedWrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
+        }, 80);
+        wireFileInteractions(mountedWrapper);
+      },
     });
-    setTimeout(() => {
-      scrollToBottom(container);
-      wrapper.scrollIntoView({ block: 'end', behavior: 'auto' });
-    }, 80);
-
-    setTimeout(() => wireFileInteractions(wrapper), 0);
   }
 
   function wireFileInteractions(wrapper) {
@@ -2301,6 +2420,7 @@ ASSISTANT MODE
         if (!result?.text) continue;
 
         AssistantStorage.addSource(_session, {
+          source: result.source || null,
           url: result.url || null,
           filename: result.filename || null,
           title: result.title || 'Source',
@@ -2327,6 +2447,17 @@ ASSISTANT MODE
             : 'I couldn’t extract usable text from those sources. Try a different format or continue without them.'
         );
         return;
+      }
+
+      const succeededSourceTypes = [...new Set(results.map(item => item.source).filter(Boolean))];
+      if (succeededSourceTypes.length > 0) {
+        const labels = succeededSourceTypes.map((type) => {
+          if (type === 'url') return 'website source' + (results.filter(item => item.source === 'url').length > 1 ? 's' : '');
+          if (type === 'file') return 'file upload';
+          if (type === 'paste') return 'pasted context';
+          return 'source context';
+        });
+        showConfigChange(`Analyzed ${joinWithAnd(labels)}.`);
       }
 
       if (failures.length > 0) {
@@ -2792,6 +2923,17 @@ ASSISTANT MODE
     return div.innerHTML;
   }
 
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function joinWithAnd(items) {
+    if (!Array.isArray(items) || items.length === 0) return '';
+    if (items.length === 1) return items[0];
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  }
+
   function scrollToBottom(container) {
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
@@ -3024,7 +3166,10 @@ ASSISTANT MODE
       const toolUseBlocks = content.filter(b => b.type === 'tool_use');
 
       if (textBlocks.length > 0) {
-        renderAssistantBubble(textBlocks.map(b => b.text).join('\n\n'));
+        await renderAssistantTurn(textBlocks.map(b => b.text).join('\n\n'), {
+          hasInteractiveFollowup: toolUseBlocks.length > 0,
+          generation,
+        });
       }
 
       AssistantStorage.appendToolUse(_session, content);
@@ -3034,6 +3179,7 @@ ASSISTANT MODE
       if (toolUseBlocks.length > 0) {
         const toolResults = [];
         let interruptedByUser = false;
+        await delay(160);
         for (const block of toolUseBlocks) {
           const result = await handleToolUse(block.name, block.input);
           AssistantStorage.recordPatch(_session, block.name, block.input);

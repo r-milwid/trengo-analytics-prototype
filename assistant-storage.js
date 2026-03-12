@@ -167,6 +167,7 @@ const AssistantStorage = (() => {
     if (!session) return;
     session.structured.analyzedSources.push({
       ...source,
+      source: source?.source || null,
       addedAt: new Date().toISOString(),
     });
     setSourceStatus(session, { requested: true, provided: true, skipped: false });
