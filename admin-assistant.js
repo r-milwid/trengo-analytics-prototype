@@ -19,7 +19,7 @@ const AdminAssistant = (() => {
   const MAX_LOOP_ITERATIONS = 10;
   const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode'; // 'onboarding' | 'assistant' | null
   const THREAD_REVEAL_DELAY_MS = 1200;
-  const WORKING_WORD_ROTATION_MS = 1400;
+  const WORKING_WORD_ROTATION_MS = 2400;
   const BACKGROUND_WORKING_TOOLS = new Set([
     'inspect_data_capability',
     'plan_semantic_query',
@@ -1391,59 +1391,85 @@ ${role === 'agent'
     return Math.abs(hash);
   }
 
-  function pushUniqueWords(target, words) {
-    words.forEach((word) => {
-      const normalized = String(word || '').trim().toLowerCase();
-      if (!normalized || target.includes(normalized)) return;
-      target.push(normalized);
-    });
-  }
+  // ── Tool-name dispatch map for status words ──────────────
+  // Design rules:
+  //  • No word appears in more than 2 sets (eliminates overlap)
+  //  • Each set has 4 base words (enough variety for 2.4s rotation)
+  //  • Enrichment adds 1-2 specific words replacing generic ones
+  const TOOL_STATUS_WORDS = {
+    inspect_data_capability: {
+      base: ['exploring', 'scanning', 'mapping', 'probing'],
+    },
+    plan_semantic_query: {
+      base: ['interpreting', 'structuring', 'scoping', 'planning'],
+      enrich(input) {
+        const extras = [];
+        if (input?.metrics?.some(m => /ticket|conversation/i.test(m))) extras.push('counting');
+        if (input?.comparison) extras.push('comparing');
+        if (input?.timeRange) extras.push('ranging');
+        return extras;
+      },
+    },
+    run_semantic_query: {
+      base: ['querying', 'fetching', 'aggregating', 'crunching'],
+      enrich(input) {
+        const extras = [];
+        const qs = input?.querySpec;
+        if (qs?.grain === 'day' || qs?.grain === 'week') extras.push('trending');
+        if (qs?.dimensions?.includes('team')) extras.push('grouping');
+        if (qs?.metrics?.some(m => /time|duration/i.test(m))) extras.push('measuring');
+        return extras;
+      },
+    },
+    summarize_query_result: {
+      base: ['summarizing', 'highlighting', 'composing', 'distilling'],
+      enrich(input) {
+        const hint = input?.chartHint;
+        if (hint === 'line') return ['plotting'];
+        if (hint === 'ranking') return ['ranking'];
+        if (hint === 'donut') return ['slicing'];
+        if (hint === 'table') return ['tabulating'];
+        if (hint === 'bar') return ['charting'];
+        return [];
+      },
+    },
+  };
 
-  function buildWorkingStatusWords({ context = '', detail = '' } = {}) {
-    const mode = AssistantStorage.getMode(_session) || 'onboarding';
-    const recentText = getLastUserMessageText();
-    const normalized = normalizeComparisonText([mode, context, detail, recentText].join(' '));
-    const includesAny = (terms) => terms.some(term => normalized.includes(term));
-    const words = [];
+  // Phase-based fallback sets (when no specific tool is executing)
+  const PHASE_STATUS_WORDS = {
+    onboarding:        ['learning', 'tailoring', 'preparing', 'configuring'],
+    assistant:         ['thinking', 'considering', 'analyzing', 'reasoning'],
+    recovery:          ['retrying', 'adjusting', 'simplifying', 'recovering'],
+    welcome:           ['setting up', 'preparing', 'personalizing', 'loading'],
+    source_url:        ['fetching', 'crawling', 'extracting', 'reading'],
+    source_file:       ['parsing', 'loading', 'indexing', 'scanning'],
+    source_paste:      ['reading', 'analyzing', 'absorbing', 'structuring'],
+    source_processing: ['processing', 'extracting', 'parsing', 'indexing'],
+  };
 
-    if (includesAny(['source', 'sources', 'website', 'file', 'files', 'upload', 'uploads', 'paste', 'pasted', 'extract', 'fetch'])) {
-      pushUniqueWords(words, ['reading', 'sorting', 'checking', 'extracting', 'reviewing']);
-    }
-
-    if (includesAny(['query', 'chart', 'trend', 'metric', 'metrics', 'ticket', 'tickets', 'reply', 'replies', 'conversation', 'conversations', 'volume', 'count', 'counts', 'day', 'week', 'month', 'compare', 'breakdown'])) {
-      pushUniqueWords(words, ['checking', 'grouping', 'counting', 'plotting', 'summarizing']);
-    }
-
-    if (includesAny(['welcome', 'setup', 'onboarding', 'dashboard', 'configure', 'config', 'tab', 'tabs', 'widget', 'widgets', 'team', 'teams'])) {
-      pushUniqueWords(words, ['learning', 'tailoring', 'mapping', 'preparing', 'checking']);
-    }
-
-    if (includesAny(['recover', 'retry', 'limit', 'reset', 'simplify'])) {
-      pushUniqueWords(words, ['resetting', 'narrowing', 'checking', 'simplifying', 'drafting']);
-    }
-
-    if (mode === 'assistant') {
-      pushUniqueWords(words, ['checking', 'mapping', 'querying', 'drafting', 'summarizing']);
-    } else {
-      pushUniqueWords(words, ['learning', 'preparing', 'mapping', 'checking', 'tailoring']);
-    }
-
-    pushUniqueWords(words, ['working', 'reviewing', 'organizing']);
-
-    const desiredCount = Math.min(5, Math.max(3, 3 + (hashStatusSeed(normalized || mode || 'working') % 3)));
-    if (words.length <= desiredCount) {
-      return words.slice(0, desiredCount);
-    }
-
-    const selected = [];
-    const startIndex = hashStatusSeed(`${normalized}|${desiredCount}`) % words.length;
-    for (let i = 0; i < words.length && selected.length < desiredCount; i += 1) {
-      const word = words[(startIndex + i) % words.length];
-      if (!selected.includes(word)) {
-        selected.push(word);
+  function buildWorkingStatusWords({ context = '', detail = '', toolInput = null } = {}) {
+    // Tier 1: Direct tool-name dispatch
+    const toolEntry = TOOL_STATUS_WORDS[context];
+    if (toolEntry) {
+      const words = [...toolEntry.base];
+      if (toolEntry.enrich && toolInput) {
+        const extras = toolEntry.enrich(toolInput);
+        if (extras?.length) {
+          // Replace last base word(s) with enrichment words
+          const spliceCount = Math.min(extras.length, 2);
+          words.splice(words.length - spliceCount, spliceCount, ...extras.slice(0, 2));
+        }
       }
+      return words;
     }
-    return selected;
+
+    // Tier 2: Phase-based fallback (source types, recovery, etc.)
+    const phaseWords = PHASE_STATUS_WORDS[context];
+    if (phaseWords) return [...phaseWords];
+
+    // Tier 3: Mode-based default
+    const mode = AssistantStorage.getMode(_session) || 'onboarding';
+    return [...(PHASE_STATUS_WORDS[mode] || PHASE_STATUS_WORDS.assistant)];
   }
 
   function clearRotatingStatusWord(hostEl) {
@@ -1688,7 +1714,7 @@ ${role === 'agent'
         showTypingIndicator({
           mode: 'working',
           context: block.name,
-          detail: typeof block?.input?.question === 'string' ? block.input.question : '',
+          toolInput: block.input,
         });
       }
       try {
@@ -1812,7 +1838,7 @@ ${role === 'agent'
       const threadSequenceToken = beginThreadRevealSequence();
       showTypingIndicator({
         mode: 'working',
-        context: mode === 'assistant' ? 'assistant analytics' : 'onboarding setup',
+        context: mode,
       });
       const tools = getToolsForRole(_role, mode);
       const systemPrompt = buildSystemPrompt();
@@ -1915,7 +1941,7 @@ ${role === 'agent'
 
     showTypingIndicator({
       mode: 'working',
-      context: 'recovery retry',
+      context: 'recovery',
     });
 
     try {
@@ -2487,7 +2513,7 @@ ${role === 'agent'
   }
 
   function showTypingIndicator(options = {}) {
-    const { mode = 'typing', context = '', detail = '' } = options;
+    const { mode = 'typing', context = '', detail = '', toolInput = null } = options;
     const container = getMessagesContainer();
     if (!container) return null;
     removeTypingIndicators();
@@ -2499,7 +2525,7 @@ ${role === 'agent'
       const word = document.createElement('span');
       word.className = 'ai-setup-typing-word';
       typing.appendChild(word);
-      applyRotatingStatusWord(typing, word, buildWorkingStatusWords({ context, detail }));
+      applyRotatingStatusWord(typing, word, buildWorkingStatusWords({ context, detail, toolInput }));
     }
     container.appendChild(typing);
     scrollThreadRevealIntoView(container, typing, {
@@ -2951,6 +2977,13 @@ ${role === 'agent'
         renderTabEditorUI('Refine the proposed tabs directly.', proposalTabs, (result) => {
           markNextSequenceShouldFollow();
           _pendingResolve = null;
+          if (result?.cancelled || result?.skipped) {
+            resolve({
+              decision: 'refine_cancelled',
+              skipped: true,
+            });
+            return;
+          }
           resolve({
             decision: 'accept_proposal',
             refined: true,
@@ -2982,6 +3015,7 @@ ${role === 'agent'
     let draft = buildTabDraftForApply(tabs?.length ? tabs : getCurrentTabDraft());
     let draggedId = null;
     const typoConfirmedIds = new Set();
+    const previousProposalSource = _session?.structured?.pendingProposalSource || null;
 
     AssistantStorage.setPendingTabDraft(_session, draft);
     AssistantStorage.setPendingProposalSource(_session, 'user');
@@ -3166,13 +3200,17 @@ ${role === 'agent'
 
     const skipBtn = document.createElement('button');
     skipBtn.className = 'ai-setup-inline-action-secondary';
-    skipBtn.textContent = 'Skip for now';
+    skipBtn.textContent = 'Discard draft';
     skipBtn.addEventListener('click', () => {
+      AssistantStorage.setPendingTabDraft(_session, null);
+      AssistantStorage.setPendingProposalSource(_session, previousProposalSource);
+      AssistantStorage.save(_session);
+      renderPreview();
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
       markNextSequenceShouldFollow();
       _pendingResolve = null;
-      resolve({ skipped: true });
+      resolve({ skipped: true, cancelled: true });
     });
     actions.appendChild(skipBtn);
 
@@ -3407,6 +3445,7 @@ ${role === 'agent'
       urls.forEach((url) => {
         jobs.push({
           label: 'Fetching website...',
+          type: 'source_url',
           run: () => extractFromUrl(url),
         });
       });
@@ -3418,6 +3457,7 @@ ${role === 'agent'
         const file = fileInput.files[0];
         jobs.push({
           label: `Extracting text from ${file.name}...`,
+          type: 'source_file',
           run: () => extractFromFile(file),
         });
       }
@@ -3434,12 +3474,14 @@ ${role === 'agent'
         if (combined) {
           jobs.push({
             label: 'Loading context...',
+            type: 'source_paste',
             run: async () => ({ text: combined, title: text ? 'Company context + agent notes' : 'Company context', source: 'paste' }),
           });
         }
       } else if (text) {
         jobs.push({
           label: 'Analyzing pasted text...',
+          type: 'source_paste',
           run: async () => ({ text, title: 'Pasted text', source: 'paste' }),
         });
       }
@@ -3456,7 +3498,7 @@ ${role === 'agent'
     }
 
     const processingEl = showProcessingState('Analyzing sources...', {
-      context: 'source processing',
+      context: 'source_processing',
     });
 
     try {
@@ -3465,7 +3507,7 @@ ${role === 'agent'
 
       for (const job of jobs) {
         setProcessingStateText(processingEl, job.label, {
-          context: 'source processing',
+          context: job.type || 'source_processing',
         });
         let result = null;
         try {
@@ -3577,7 +3619,7 @@ ${role === 'agent'
     }
     if (wordEl) {
       applyRotatingStatusWord(el, wordEl, buildWorkingStatusWords({
-        context: options.context || 'source processing',
+        context: options.context || 'source_processing',
         detail: text,
       }));
     }
@@ -4414,7 +4456,7 @@ ${role === 'agent'
     const threadSequenceToken = beginThreadRevealSequence(getMessagesContainer(), { suppressAutoScroll: true });
     showTypingIndicator({
       mode: 'working',
-      context: 'welcome onboarding setup',
+      context: 'welcome',
     });
 
     try {

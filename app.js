@@ -5479,6 +5479,17 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
   });
 });
 
+function getConfigUpdatedAtMs(config) {
+  const timestamp = Date.parse(config?.updatedAt || '');
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function isLocalConfigNewer(localConfig, remoteConfig) {
+  if (!localConfig) return false;
+  if (!remoteConfig) return true;
+  return getConfigUpdatedAtMs(localConfig) > getConfigUpdatedAtMs(remoteConfig);
+}
+
 // ── INIT (async config bootstrap) ────────────────────────────
 (async function bootstrapDashboard() {
   let configLoaded = false;
@@ -5497,9 +5508,17 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
     try {
       const kvConfig = await DashboardConfig.load(userId);
       if (kvConfig) {
-        DashboardConfig.apply(kvConfig, state);
-        // Update localStorage with the authoritative KV version
-        DashboardConfig.saveLocal(kvConfig);
+        const latestLocalConfig = DashboardConfig.loadLocal();
+        if (isLocalConfigNewer(latestLocalConfig, kvConfig)) {
+          // Keep the freshest local state and re-sync it instead of overwriting
+          // onboarding edits with an older server snapshot.
+          DashboardConfig.apply(latestLocalConfig, state);
+          DashboardConfig.notifyChanged();
+        } else {
+          DashboardConfig.apply(kvConfig, state);
+          // Update localStorage with the authoritative KV version
+          DashboardConfig.saveLocal(kvConfig);
+        }
         configLoaded = true;
       }
     } catch (e) {
@@ -5892,7 +5911,7 @@ CUSTOM PAGES AND TAB MANAGEMENT
 - Each page maintains its own independent set of widgets. Adding or removing a widget on one page does not affect any other page.
 - Pages can be renamed by clicking the pencil icon next to the page heading in edit mode, typing a new name, and clicking Save.
 - Pages can be deleted via the same pencil menu, which shows a "Delete page" button. Deleting a page requires confirmation. At least one page must remain.
-- The five default pages cannot be deleted but can be customised by adding or removing widgets.
+- In this version of the prototype, the five default pages are the starting set rather than locked tabs. Default and custom pages both use the same rename and delete controls, as long as at least one page remains.
 - This allows users to create focused views (e.g., a "My Dashboard" page with selected KPIs from across all sections) without disrupting the standard five-section structure.
 
 CURRENT REPORTING CONTINUITY NOTES
