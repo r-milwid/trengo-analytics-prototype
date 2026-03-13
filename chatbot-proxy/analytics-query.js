@@ -158,8 +158,137 @@ const DIMENSION_ENTITY_MAP = {
   availability_status: 'agent_presence_daily',
 };
 
+const GENERIC_METRIC_ALIASES = new Set([
+  'ticket volume',
+  'ticket trend',
+  'tickets per day',
+  'average tickets per day',
+]);
+
 function lower(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function normalizeMetricId(value) {
+  const normalized = lower(value);
+  return METRIC_ALIASES[normalized] || normalized;
+}
+
+function normalizeRequestedMetrics(requestedMetrics = []) {
+  const normalized = [];
+  requestedMetrics.forEach((metric) => {
+    const metricId = normalizeMetricId(metric);
+    if (METRIC_DEFINITIONS[metricId] && !normalized.includes(metricId)) {
+      normalized.push(metricId);
+    }
+  });
+  return normalized;
+}
+
+function addMetricMatch(matchMap, metric, score, options = {}) {
+  if (!METRIC_DEFINITIONS[metric]) return;
+  const existing = matchMap.get(metric);
+  if (existing && existing.score >= score) return;
+  matchMap.set(metric, {
+    metric,
+    score,
+    generic: Boolean(options.generic),
+  });
+}
+
+function getRankedMetricMatches(question = '', requestedMetrics = []) {
+  const matches = new Map();
+  const q = lower(question);
+
+  normalizeRequestedMetrics(requestedMetrics).forEach((metric, index) => {
+    addMetricMatch(matches, metric, 10_000 - index);
+  });
+
+  if (q) {
+    Object.entries(METRIC_ALIASES).forEach(([alias, metric]) => {
+      if (!alias || !q.includes(alias)) return;
+      const generic = GENERIC_METRIC_ALIASES.has(alias);
+      addMetricMatch(matches, metric, generic ? alias.length : 1_000 + alias.length, { generic });
+    });
+
+    Object.entries(METRIC_DEFINITIONS).forEach(([metric, meta]) => {
+      const tokens = lower(meta.label)
+        .split(/\s+/)
+        .filter(token => token.length > 2);
+      if (tokens.length < 2) return;
+      if (tokens.every(token => q.includes(token))) {
+        addMetricMatch(matches, metric, 500 + tokens.length);
+      }
+    });
+  }
+
+  return [...matches.values()].sort((a, b) => b.score - a.score);
+}
+
+function shouldCombineMetrics(question = '', requestedMetrics = [], matches = []) {
+  if (normalizeRequestedMetrics(requestedMetrics).length > 1) return true;
+  if (matches.filter(match => !match.generic).length < 2) return false;
+  return /\b(combined|combine|together|plus|sum(?:med)?|total of|added together)\b/.test(lower(question));
+}
+
+function areMetricsCombinable(leftMeta, rightMeta) {
+  if (!leftMeta || !rightMeta) return false;
+  return leftMeta.entity === rightMeta.entity
+    && leftMeta.kind === rightMeta.kind
+    && leftMeta.aggregate === 'sum'
+    && rightMeta.aggregate === 'sum'
+    && leftMeta.sourceKey
+    && rightMeta.sourceKey;
+}
+
+function selectCompatibleMetrics(metricIds = []) {
+  const uniqueMetricIds = [...new Set(metricIds)].filter(metricId => METRIC_DEFINITIONS[metricId]);
+  if (uniqueMetricIds.length <= 1) return uniqueMetricIds;
+
+  let bestGroup = [];
+  uniqueMetricIds.forEach((metricId) => {
+    const anchorMeta = METRIC_DEFINITIONS[metricId];
+    const group = uniqueMetricIds.filter(candidateMetricId =>
+      areMetricsCombinable(anchorMeta, METRIC_DEFINITIONS[candidateMetricId])
+    );
+    if (group.length > bestGroup.length) {
+      bestGroup = group;
+    }
+  });
+
+  if (bestGroup.length <= 1) return uniqueMetricIds;
+  return uniqueMetricIds.filter(metricId => bestGroup.includes(metricId));
+}
+
+function buildCombinedMetricDefinition(metricIds = []) {
+  const componentMetrics = selectCompatibleMetrics(metricIds);
+  if (componentMetrics.length <= 1) return null;
+
+  const definitions = componentMetrics.map(metricId => METRIC_DEFINITIONS[metricId]);
+  const sameEntity = definitions.every(meta => meta.entity === definitions[0].entity);
+  const sameKind = definitions.every(meta => meta.kind === definitions[0].kind);
+  const additive = definitions.every(meta => meta.aggregate === 'sum' && meta.sourceKey);
+
+  if (!sameEntity || !sameKind || !additive) return null;
+
+  return {
+    id: componentMetrics.join('__plus__'),
+    label: definitions.map(meta => meta.label).join(' + '),
+    kind: definitions[0].kind,
+    entity: definitions[0].entity,
+    aggregate: 'sum_of_sums',
+    sourceKeys: definitions.map(meta => meta.sourceKey),
+    componentMetrics,
+  };
+}
+
+function getMetricDefinitionForQuery(metric, querySpec = {}) {
+  const metricIds = Array.isArray(querySpec.metrics) && querySpec.metrics.length
+    ? normalizeRequestedMetrics(querySpec.metrics)
+    : [];
+  const combined = buildCombinedMetricDefinition(metricIds);
+  if (combined) return combined;
+  return METRIC_DEFINITIONS[normalizeMetricId(metric)] || null;
 }
 
 function canonicalDimension(value) {
@@ -210,6 +339,7 @@ function parseTimeRange(value, question = '') {
   if (source.includes('last month')) return { key: 'last_month', days: 30, offsetDays: 30, label: 'Last month' };
   if (source.includes('today')) return { key: 'today', days: 1, label: 'Today' };
   if (source.includes('yesterday')) return { key: 'yesterday', days: 1, offsetDays: 1, label: 'Yesterday' };
+  if (source.includes('last week') || source.includes('past week')) return { key: 'last_week', days: 7, label: 'Last week' };
   if (source.includes('last 7') || source.includes('past 7') || source.includes('this week')) return { key: 'last_7_days', days: 7, label: 'Last 7 days' };
   if (source.includes('last 90') || source.includes('past 90') || source.includes('quarter')) return { key: 'last_90_days', days: 90, label: 'Last 90 days' };
   if (source.includes('last 60') || source.includes('past 60')) return { key: 'last_60_days', days: 60, label: 'Last 60 days' };
@@ -218,10 +348,7 @@ function parseTimeRange(value, question = '') {
 }
 
 function inferMetric(question, requestedMetrics = []) {
-  const normalized = requestedMetrics
-    .map(lower)
-    .map(metric => METRIC_ALIASES[metric] || metric)
-    .filter(metric => METRIC_DEFINITIONS[metric]);
+  const normalized = normalizeRequestedMetrics(requestedMetrics);
   if (normalized.length > 0) return normalized[0];
 
   const q = lower(question);
@@ -253,10 +380,8 @@ function inferMetric(question, requestedMetrics = []) {
   if ((q.includes('article') || q.includes('knowledge base') || q.includes('kb')) && q.includes('fallback')) return 'article_fallback_tickets';
   if ((q.includes('article') || q.includes('knowledge base') || q.includes('kb')) && q.includes('view')) return 'article_views';
 
-  const ranked = Object.entries(METRIC_ALIASES)
-    .filter(([alias]) => alias && q.includes(alias))
-    .sort((a, b) => b[0].length - a[0].length);
-  if (ranked.length > 0) return ranked[0][1];
+  const ranked = getRankedMetricMatches(question, requestedMetrics);
+  if (ranked.length > 0) return ranked[0].metric;
 
   if (q.includes('pipeline')) return 'pipeline_value';
   if (q.includes('deal')) return q.includes('won') ? 'deals_won' : 'deals_created';
@@ -342,7 +467,7 @@ function inferGrain(question, requestedGrain) {
   if (q.includes('by week') || q.includes('weekly')) return 'week';
   if (q.includes('by month') || q.includes('monthly')) return 'month';
   if (q.includes('by quarter') || q.includes('quarterly')) return 'quarter';
-  if (q.includes('trend') || q.includes('over time') || q.includes('how has') || q.includes('changed') || q.includes('by day') || q.includes('daily')) return 'date';
+  if (q.includes('trend') || q.includes('over time') || q.includes('how has') || q.includes('changed') || q.includes('by day') || q.includes('per day') || q.includes('daily')) return 'date';
   return null;
 }
 
@@ -376,10 +501,10 @@ function inferLimit(question, requestedLimit) {
   return 5;
 }
 
-function resolveEntity(metric, dimension, explicitEntity = null) {
+function resolveEntity(metric, dimension, explicitEntity = null, metricMeta = null) {
   if (explicitEntity && ENTITY_ROW_MAP[explicitEntity]) return explicitEntity;
   if (dimension && DIMENSION_ENTITY_MAP[dimension]) return DIMENSION_ENTITY_MAP[dimension];
-  return METRIC_DEFINITIONS[metric]?.entity || 'team_daily';
+  return metricMeta?.entity || METRIC_DEFINITIONS[metric]?.entity || 'team_daily';
 }
 
 function normalizeFilters(filters = {}, context = {}) {
@@ -462,6 +587,8 @@ function getMetricValue(meta, rows) {
   switch (meta.aggregate) {
     case 'sum':
       return sum(meta.sourceKey);
+    case 'sum_of_sums':
+      return (meta.sourceKeys || []).reduce((acc, key) => acc + sum(key), 0);
     case 'max':
       return rows.reduce((max, row) => Math.max(max, Number(row[meta.sourceKey] || 0)), 0);
     case 'weighted_average': {
@@ -481,8 +608,8 @@ function getMetricValue(meta, rows) {
   }
 }
 
-function formatMetricValue(metric, value) {
-  const meta = METRIC_DEFINITIONS[metric] || {};
+function formatMetricValue(metric, value, metaOverride = null) {
+  const meta = metaOverride || METRIC_DEFINITIONS[metric] || {};
   if (meta.kind === 'rate') return `${(value * 100).toFixed(1)}%`;
   if (meta.kind === 'score') return value.toFixed(2);
   if (meta.kind === 'currency') return `€${Math.round(value).toLocaleString('en-US')}`;
@@ -492,8 +619,8 @@ function formatMetricValue(metric, value) {
   return Math.round(value).toLocaleString('en-US');
 }
 
-function compareValue(metric, current, previous) {
-  const meta = METRIC_DEFINITIONS[metric] || {};
+function compareValue(metric, current, previous, metaOverride = null) {
+  const meta = metaOverride || METRIC_DEFINITIONS[metric] || {};
   if (previous === 0) return null;
   if (meta.kind === 'rate' || meta.kind === 'score') {
     return current - previous;
@@ -509,7 +636,7 @@ function getSortedRows(rows, dimension) {
 }
 
 function buildSummaryHints(metric, resultType, querySpec, data, context = {}) {
-  const meta = METRIC_DEFINITIONS[metric] || {};
+  const meta = getMetricDefinitionForQuery(metric, querySpec) || {};
   return {
     metricLabel: meta.label || metric,
     resultType,
@@ -522,13 +649,13 @@ function buildSummaryHints(metric, resultType, querySpec, data, context = {}) {
 }
 
 function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
-  const meta = METRIC_DEFINITIONS[metric] || {};
+  const meta = getMetricDefinitionForQuery(metric, querySpec) || {};
   if (resultType === 'metric') return null;
 
   const hint = lower(extras.chartHint || '');
 
   const shared = {
-    metric,
+    metric: meta.label || metric,
     metricKind: meta.kind || 'count',
     aggregate: extras.aggregate || null,
     comparison: extras.comparison || null,
@@ -608,7 +735,7 @@ function buildPresentation(metric, resultType, querySpec, data, extras = {}) {
 }
 
 function buildDerivedTrendPresentation(metric, querySpec, context = {}, extras = {}) {
-  const meta = METRIC_DEFINITIONS[metric] || {};
+  const meta = getMetricDefinitionForQuery(metric, querySpec) || {};
   if (!metric || !meta || querySpec?.grain || querySpec?.dimension) return null;
   if (!querySpec?.timeRange?.days || querySpec.timeRange.days < 2) return null;
 
@@ -636,9 +763,20 @@ function buildDerivedTrendPresentation(metric, querySpec, context = {}, extras =
 }
 
 function normalizeQuerySpec(querySpec = {}, context = {}) {
-  let metric = inferMetric('', [querySpec.metric].filter(Boolean));
-  let meta = METRIC_DEFINITIONS[metric] || {};
-  let dimension = canonicalDimension(querySpec.dimension);
+  let metricIds = normalizeRequestedMetrics(querySpec.metrics || []);
+  if (metricIds.length === 0) {
+    const normalizedMetric = normalizeMetricId(querySpec.metric);
+    if (METRIC_DEFINITIONS[normalizedMetric]) metricIds = [normalizedMetric];
+  }
+
+  let metric = metricIds[0] || inferMetric('', [querySpec.metric].filter(Boolean));
+  const combinedMeta = buildCombinedMetricDefinition(metricIds);
+  if (!combinedMeta && metricIds.length > 1) {
+    metricIds = [metric];
+  }
+
+  let meta = getMetricDefinitionForQuery(metric, { metrics: metricIds }) || {};
+  let dimension = canonicalDimension(querySpec.dimension) || null;
   let grain = normalizeGrain(querySpec.grain);
 
   if (dimension === 'date') {
@@ -661,11 +799,12 @@ function normalizeQuerySpec(querySpec = {}, context = {}) {
       querySpec.timeRange?.label || querySpec.timeRange?.key || querySpec.timeRange,
       ''
     );
-  const entity = resolveEntity(metric, dimension, querySpec.entity);
+  const entity = resolveEntity(metric, dimension, querySpec.entity, meta);
 
   return {
     entity,
     metric,
+    metrics: combinedMeta ? combinedMeta.componentMetrics : undefined,
     dimension,
     filters: normalizeFilters(querySpec.filters || {}, context),
     timeRange,
@@ -679,7 +818,7 @@ function executeSemanticQuery(querySpec, context) {
   const normalizedQuerySpec = normalizeQuerySpec(querySpec, context);
   const query = normalizedQuerySpec;
   const dataset = buildSyntheticDataset(context.customerProfile || {}, context);
-  const meta = METRIC_DEFINITIONS[query.metric];
+  const meta = getMetricDefinitionForQuery(query.metric, query);
   const sourceRows = dataset[ENTITY_ROW_MAP[query.entity || meta?.entity]] || [];
   const filtered = filterRows(filterRowsByTime(sourceRows, query.timeRange), query.filters);
   const previousRows = query.comparison === 'previous_period'
@@ -698,7 +837,7 @@ function executeSemanticQuery(querySpec, context) {
     const points = [...bucketMap.entries()]
       .map(([label, rows]) => ({ label, value: getMetricValue(meta, rows) }))
       .sort((a, b) => String(a.label).localeCompare(String(b.label), undefined, { numeric: true }))
-      .map(point => ({ ...point, displayValue: formatMetricValue(querySpec.metric, point.value) }));
+      .map(point => ({ ...point, displayValue: formatMetricValue(query.metric, point.value, meta) }));
 
     return {
       querySpec: query,
@@ -707,7 +846,7 @@ function executeSemanticQuery(querySpec, context) {
       comparison: previousValue == null ? null : {
         current: currentValue,
         previous: previousValue,
-        delta: compareValue(query.metric, currentValue, previousValue),
+        delta: compareValue(query.metric, currentValue, previousValue, meta),
       },
     };
   }
@@ -728,7 +867,7 @@ function executeSemanticQuery(querySpec, context) {
       query.dimension
     )
       .slice(0, query.limit || 6)
-      .map(row => ({ ...row, displayValue: formatMetricValue(query.metric, row.value) }));
+      .map(row => ({ ...row, displayValue: formatMetricValue(query.metric, row.value, meta) }));
 
     const wantsDistribution = meta.preferredChart === 'doughnut' && rows.length > 1 && rows.length <= 5;
     const wantsTimeseriesBars = query.dimension === 'hour';
@@ -741,7 +880,7 @@ function executeSemanticQuery(querySpec, context) {
       comparison: previousValue == null ? null : {
         current: currentValue,
         previous: previousValue,
-        delta: compareValue(query.metric, currentValue, previousValue),
+        delta: compareValue(query.metric, currentValue, previousValue, meta),
       },
     };
   }
@@ -751,31 +890,41 @@ function executeSemanticQuery(querySpec, context) {
     resultType: 'metric',
     data: {
       value: currentValue,
-      displayValue: formatMetricValue(query.metric, currentValue),
+      displayValue: formatMetricValue(query.metric, currentValue, meta),
     },
     comparison: previousValue == null ? null : {
       current: currentValue,
       previous: previousValue,
-      delta: compareValue(query.metric, currentValue, previousValue),
+      delta: compareValue(query.metric, currentValue, previousValue, meta),
     },
   };
 }
 
 function planSemanticQuery(payload = {}, context = {}) {
   const question = payload.question || '';
-  let metric = inferMetric(question, payload.metrics || []);
+  const metricMatches = getRankedMetricMatches(question, payload.metrics || []);
+  let combinedMetricIds = [];
+  if (shouldCombineMetrics(question, payload.metrics || [], metricMatches)) {
+    const requestedMetricIds = normalizeRequestedMetrics(payload.metrics || []);
+    const candidateMetricIds = requestedMetricIds.length > 1
+      ? requestedMetricIds
+      : metricMatches.filter(match => !match.generic).map(match => match.metric);
+    combinedMetricIds = buildCombinedMetricDefinition(candidateMetricIds)?.componentMetrics || [];
+  }
+
+  let metric = combinedMetricIds[0] || inferMetric(question, payload.metrics || []);
   const explicitDimension = inferDimension(question, payload.dimensions || []);
   const grain = inferGrain(question, payload.grain);
   if (explicitDimension === 'risk_band' && metric === 'near_breach_tickets') {
     metric = 'sla_risk_count';
   }
-  const meta = METRIC_DEFINITIONS[metric] || {};
+  const meta = getMetricDefinitionForQuery(metric, { metrics: combinedMetricIds }) || {};
   const dimension = explicitDimension || (!grain ? meta.defaultDimension || null : null);
   const comparison = inferComparison(question, payload.comparison);
   const timeRange = parseTimeRange(payload.timeRange, question);
   const filters = normalizeFilters(payload.filters || {}, context);
   const limit = inferLimit(question, payload.limit);
-  const entity = resolveEntity(metric, dimension, payload.entity);
+  const entity = resolveEntity(metric, dimension, payload.entity, meta);
 
   const needsClarification = !dimension && !grain && /(which|who|best|worst|top|where)/i.test(question)
     ? 'Do you want that broken down by team, channel, region, plan, agent, or over time?'
@@ -785,6 +934,7 @@ function planSemanticQuery(payload = {}, context = {}) {
     querySpec: {
       entity,
       metric,
+      metrics: combinedMetricIds.length > 1 ? combinedMetricIds : undefined,
       dimension,
       filters,
       timeRange,
@@ -879,7 +1029,7 @@ export async function handleAnalyticsQuery(body = {}) {
     return planSemanticQuery(body, context);
   }
   if (action === 'run') {
-    if (!body.querySpec?.metric) {
+    if (!body.querySpec?.metric && !(Array.isArray(body.querySpec?.metrics) && body.querySpec.metrics.length > 0)) {
       return { error: 'missing querySpec.metric' };
     }
     return executeSemanticQuery(body.querySpec, context);

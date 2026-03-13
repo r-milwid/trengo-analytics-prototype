@@ -87,9 +87,9 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span class="nav-tooltip">Support</span>
         </div>
-        <div class="sidebar-bottom-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-          <span class="nav-tooltip">Notifications</span>
+        <div class="sidebar-bottom-icon" id="super-admin-nav" title="Super Admin" style="display:none;cursor:pointer;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="nav-tooltip">Super Admin</span>
         </div>
       </div>
       <button class="sidebar-user-avatar" id="user-flag-btn"
@@ -433,6 +433,44 @@
     </div>
   </div>
 
+  <!-- Feedback Memory Modal -->
+  <div class="modal-overlay" id="feedback-memory-overlay" style="display:none;">
+    <div class="feedback-memory-modal" id="feedback-memory-modal">
+      <div class="modal-header">
+        <h3>Feedback and Bugs</h3>
+        <button class="drawer-close" id="feedback-memory-close">&times;</button>
+      </div>
+      <div class="feedback-memory-tabs">
+        <button class="feedback-tab active" data-tab="product">Product Feedback</button>
+        <button class="feedback-tab" data-tab="bugs">Bug Reports</button>
+      </div>
+      <div class="feedback-memory-body" id="feedback-memory-body">
+        <div class="feedback-memory-loading" id="feedback-memory-loading">
+          <p style="color:var(--gray-500);text-align:center;padding:40px 0;">Loading feedback data...</p>
+        </div>
+        <div class="feedback-memory-empty" id="feedback-memory-empty" style="display:none;">
+          <p style="color:var(--gray-500);text-align:center;padding:40px 0;">No feedback has been collected yet.</p>
+        </div>
+        <div class="feedback-memory-content" id="feedback-memory-content" style="display:none;">
+          <div class="feedback-memory-meta" id="feedback-memory-meta"></div>
+          <div class="feedback-memory-section feedback-tab-panel active" id="feedback-memory-product" data-tab="product">
+            <div class="feedback-section-body" id="feedback-product-body"></div>
+            <div class="feedback-admin-bar">
+              <button class="feedback-admin-btn" id="feedback-rebuild-product-btn">Rebuild Summary</button>
+              <button class="feedback-admin-btn" id="feedback-migrate-btn">Migrate Legacy Data</button>
+            </div>
+          </div>
+          <div class="feedback-memory-section feedback-tab-panel" id="feedback-memory-bugs" data-tab="bugs">
+            <div class="feedback-section-body" id="feedback-bugs-body"></div>
+            <div class="feedback-admin-bar">
+              <button class="feedback-admin-btn" id="feedback-rebuild-bugs-btn">Rebuild Summary</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Post-onboarding Assistant FAB + Panel -->
   <button class="assistant-fab" id="assistant-fab" style="display:none;" aria-label="Analytics Assistant">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -497,6 +535,11 @@
     <button class="reset-onboarding-btn" id="edit-default-teams-btn">Edit teams</button>
     <div class="popout-toggle-header" style="margin-top:12px;">Walkthrough &amp; Onboarding</div>
     <button class="reset-onboarding-btn" id="reset-onboarding-btn">Reset all</button>
+    <div class="popout-toggle-block" id="feedback-memory-block" style="margin-top:12px;">
+      <div class="popout-toggle-header">Feedback Memory</div>
+      <div class="popout-toggle-subtext">View structured product feedback and bug reports</div>
+      <button class="reset-onboarding-btn" id="open-feedback-memory-btn">Feedback and Bugs</button>
+    </div>
   </div>
 
   <!-- Nav scope toast -->

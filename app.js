@@ -129,6 +129,8 @@ function setFeatureFlag(id, value) {
 function showHelionAvatar() {
   const btn = document.getElementById('user-flag-btn');
   if (btn) btn.style.display = 'flex';
+  const superAdmin = document.getElementById('super-admin-nav');
+  if (superAdmin) superAdmin.style.display = '';
 }
 
 function unlockHelionAccess() {
@@ -4447,7 +4449,7 @@ if (manageWidgetsBtn) {
   });
 }
 
-// User popout toggle (triggered by settings cog)
+// User popout toggle (triggered by settings cog in main nav)
 const settingsNav = document.getElementById('settings-nav');
 const userPopout = document.getElementById('user-popout');
 const userPopoutClose = document.getElementById('user-popout-close');
@@ -4563,8 +4565,8 @@ window.addEventListener('load', () => {
   userPopout.style.display = 'none';
 });
 
-// ── FEATURE FLAG POPOUT ─────────────────────────────────────────
-const flagBtn    = document.getElementById('user-flag-btn');
+// ── FEATURE FLAG POPOUT (triggered by Super Admin cog) ──────────
+const superAdminNav = document.getElementById('super-admin-nav');
 const flagPopout = document.getElementById('feature-flag-popout');
 const flagClose  = document.getElementById('flag-popout-close');
 
@@ -4603,15 +4605,20 @@ function renderFlagList() {
   });
 }
 
-if (flagBtn && flagPopout) {
-  flagBtn.addEventListener('click', (e) => {
+if (superAdminNav && flagPopout) {
+  superAdminNav.addEventListener('click', (e) => {
     e.stopPropagation();
     if (flagPopout.style.display === 'block') {
       flagPopout.classList.remove('open');
       setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
     } else {
       renderFlagList();
+      // Position popout next to the Super Admin cog, clamped to viewport
+      const rect = superAdminNav.getBoundingClientRect();
       flagPopout.style.display = 'block';
+      const popoutH = flagPopout.offsetHeight;
+      const maxTop = window.innerHeight - popoutH - 12;
+      flagPopout.style.top = Math.min(rect.top, Math.max(12, maxTop)) + 'px';
       requestAnimationFrame(() => flagPopout.classList.add('open'));
     }
   });
@@ -4623,7 +4630,7 @@ if (flagBtn && flagPopout) {
   }
   document.addEventListener('click', (e) => {
     if (flagPopout.style.display !== 'block') return;
-    if (!flagPopout.contains(e.target) && !flagBtn.contains(e.target)) {
+    if (!flagPopout.contains(e.target) && !superAdminNav.contains(e.target)) {
       flagPopout.classList.remove('open');
       setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
     }
@@ -6028,17 +6035,29 @@ When you detect feedback intent:
    If the feedback is DETAIL: Briefly note that these details are not the focus yet because the concept is still being finalized. Then make it clear that the feedback has been noted and can be considered later once the detailed design is being worked through. Do not push back, do not ask the user to reconfirm, and do not block logging on an extra question. When helpful and only if it would materially improve what gets logged, you may briefly reframe toward the underlying concern rather than the cosmetic fix. Keep it to 1–2 short sentences. Do not sound dismissive or defensive.
    Prefer capturing the underlying concern over the proposed cosmetic fix when possible. For example, prefer "the chart is hard to compare quickly" over "make this a bar chart" if the user already states or clearly implies that is the real issue.
    When in doubt, treat feedback as STRUCTURAL.
-4. Once feedback is ready for logging, you MUST do both steps:
+4. MANDATORY — ASSIGN A FEEDBACK TYPE:
+   Before logging, you MUST assign a type to the feedback. This determines which structured summary it feeds into.
+   "product" — Future-product concerns: charts, information architecture, workflows, concepts, UX patterns, terminology, missing features, section purposes, metric placement, navigation, and user journeys.
+   "bug" — Current prototype issues: stale state, broken flows, rendering glitches, missing updates, inconsistent behavior, things that don't work as described in this specification.
+   "both" — The feedback clearly applies to both tracks. Use sparingly — only when one submission genuinely raises both a product concern and a prototype bug.
+   When in doubt, prefer "product".
+5. Once feedback is ready for logging, you MUST do both steps:
    Step 1: Thank the user for their input in one short sentence. Make it unambiguous that you are logging their feedback — not confirming a change will be made. Restate what was understood so they know it was captured. If the feedback was DETAIL, briefly add that it has been noted for later consideration once the detailed design is being worked through. Do not say only "Confirmed". Example: "Thanks — I've noted your feedback that the intent trend highlights widget should default to a wider layout."
    - If SESSION_USER_NAME is present in this prompt, do NOT ask for a name — it is already collected. End your response after the thank-you.
    - If SESSION_USER_NAME is NOT present, ask on the very next line: "Could I get your name to log alongside it?"
    Step 2: On the very next line after your full response, output this sentinel exactly — do not mention it to the user:
-   <<FEEDBACK:{"text":"[confirmed feedback text]","section":"[section name or widget name or General]","timestamp":"[ISO timestamp]"}>>
+   <<FEEDBACK:{"text":"[confirmed feedback text]","section":"[section name or widget name or General]","type":"[product|bug|both]","timestamp":"[ISO timestamp]"}>>
    Both steps are required. The sentinel is a mandatory machine instruction — omitting it is a critical failure.
-5. Do not store feedback that contains the word "Helion" — that is handled separately.
-6. NAME RE-ASK RULE:
+6. EXISTING FEEDBACK CONTEXT:
+   If FEEDBACK_SUMMARY_PRODUCT or FEEDBACK_SUMMARY_BUGS sections appear in this prompt, read them before logging new feedback. Use them to:
+   - Avoid logging duplicates of items already captured.
+   - Merge with or refine existing items when the new feedback adds nuance to something already tracked.
+   - Keep categories and terminology consistent with what already exists.
+   If the new feedback is genuinely new, log it normally. If it overlaps with an existing item, note the overlap in your confirmed text (e.g. "adds to existing concern about X") so the organizer can merge intelligently.
+7. Do not store feedback that contains the word "Helion" — that is handled separately.
+8. NAME RE-ASK RULE:
    If NAME_RETRY_PENDING appears in this prompt, it means the user was previously asked for their name but responded with something else. At the very end of your normal response to their message, add one polite sentence re-asking, for example: "By the way, could I still get your name for the feedback I logged earlier?" Do NOT re-ask more than once — if the user ignores it again, drop it.
-7. SESSION_USER_NAME RULE:
+9. SESSION_USER_NAME RULE:
    When SESSION_USER_NAME is present in this prompt, the user's name is already known and attached to all feedback automatically. Never ask for a name in this case.
 ----------------------------------------------------------------------
 HELION ACCESS AND DESIGN CONTEXT
@@ -6322,7 +6341,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     messages.push({ role: 'user', content: text });
     showTyping();
 
-    // Build system prompt — inject feedback data whenever a Helion message is sent
+    // Build system prompt — inject feedback summaries + raw data for Helion
     let feedbackBlock = '';
     const hasHelion = text.toLowerCase().includes('helion');
     if (hasHelion) {
@@ -6330,7 +6349,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       const items = await fetchFeedback();
       feedbackBlock = formatFeedbackBlock(items);
     }
-    const system = buildSystemPrompt(feedbackBlock);
+    // Always fetch structured summaries for deduplication-aware feedback classification
+    const feedbackSummary = await fetchFeedbackSummaryForPrompt();
+    const system = buildSystemPrompt(feedbackBlock, feedbackSummary);
 
     try {
       const res = await fetch(PROXY_URL, {
@@ -6519,7 +6540,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   async function storeFeedback(feedbackObj) {
     try {
-      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback', {
+      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackObj),
@@ -6529,10 +6550,75 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     } catch (e) { return null; }
   }
 
+  function truncateBugReportText(text, limit = 8000) {
+    const value = String(text || '').trim();
+    if (!value) return '';
+    if (value.length <= limit) return value;
+    return value.slice(0, limit) + '\n… [truncated]';
+  }
+
+  function buildPrototypeBugReportText(payload = {}) {
+    const summary = String(
+      payload.summary
+      || payload.userMessage
+      || payload.title
+      || 'The AI onboarding assistant hit an error.'
+    ).trim();
+
+    const diagnostics = [
+      ['Surface', payload.surface || 'AI onboarding assistant'],
+      ['Mode', payload.mode || null],
+      ['Role', payload.role || null],
+      ['Customer', payload.customerName || payload.customerId || null],
+      ['Request', payload.request || null],
+      ['Source', payload.source || null],
+      ['Actual error', payload.technicalMessage || payload.errorMessage || null],
+      ['Timestamp', payload.timestamp || new Date().toISOString()],
+    ].filter(([, value]) => value);
+
+    const lines = [summary];
+
+    if (diagnostics.length > 0) {
+      lines.push('', 'Diagnostic context:');
+      diagnostics.forEach(([label, value]) => {
+        lines.push(`- ${label}: ${truncateBugReportText(value, 2000)}`);
+      });
+    }
+
+    if (payload.thread) {
+      lines.push('', 'Thread transcript:', truncateBugReportText(payload.thread, 12000));
+    }
+
+    return lines.join('\n');
+  }
+
+  async function reportPrototypeBugFromAssistant(payload = {}) {
+    setPanelState('chat');
+
+    const feedback = {
+      text: buildPrototypeBugReportText(payload),
+      section: payload.section || 'AI onboarding assistant',
+      type: 'bug',
+    };
+    if (_sessionUserName) feedback.name = _sessionUserName;
+
+    const id = await storeFeedback(feedback);
+    const confirmation = id
+      ? 'I opened the Prototype Guide and logged a bug report with the technical details from the assistant.'
+      : 'I opened the Prototype Guide, but I could not store the bug report automatically.';
+
+    messages.push({ role: 'assistant', content: confirmation });
+    addBubble(confirmation, 'assistant');
+    saveChatHistory();
+    setTimeout(() => chatInput.focus(), 120);
+
+    return { ok: Boolean(id), id };
+  }
+
   async function updateFeedback(id, patch) {
     if (!id) return;
     try {
-      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/' + id, {
+      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -6555,6 +6641,272 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     }
   }
 
+  async function fetchFeedbackSummaryForPrompt() {
+    try {
+      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/summary?type=all&view=prompt');
+      if (!res.ok) return '';
+      return await res.text();
+    } catch (e) {
+      console.error('[fetchFeedbackSummary] Error:', e);
+      return '';
+    }
+  }
+
+  // ── Feedback Memory Modal ──────────────────────────────────
+  const feedbackMemoryOverlay = document.getElementById('feedback-memory-overlay');
+  const feedbackMemoryCloseBtn = document.getElementById('feedback-memory-close');
+  const openFeedbackMemoryBtn = document.getElementById('open-feedback-memory-btn');
+
+  function closeFeedbackMemory() {
+    if (feedbackMemoryOverlay) feedbackMemoryOverlay.style.display = 'none';
+  }
+
+  if (feedbackMemoryCloseBtn) feedbackMemoryCloseBtn.addEventListener('click', closeFeedbackMemory);
+  if (feedbackMemoryOverlay) feedbackMemoryOverlay.addEventListener('click', (e) => {
+    if (e.target === feedbackMemoryOverlay) closeFeedbackMemory();
+  });
+
+  // Escape key to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && feedbackMemoryOverlay && feedbackMemoryOverlay.style.display !== 'none') {
+      closeFeedbackMemory();
+    }
+  });
+
+  // Tab switching
+  document.querySelectorAll('.feedback-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.feedback-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+      document.querySelectorAll('.feedback-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === target));
+    });
+  });
+
+  async function openFeedbackMemory() {
+    if (!feedbackMemoryOverlay) return;
+    feedbackMemoryOverlay.style.display = 'flex';
+
+    const loadingEl = document.getElementById('feedback-memory-loading');
+    const emptyEl = document.getElementById('feedback-memory-empty');
+    const contentEl = document.getElementById('feedback-memory-content');
+
+    // Show loading
+    loadingEl.style.display = '';
+    emptyEl.style.display = 'none';
+    contentEl.style.display = 'none';
+
+    try {
+      // Fetch summary data and submissions in parallel
+      const [summaryRes, submissionsRes] = await Promise.all([
+        fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/summary?type=all&view=document'),
+        fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions'),
+      ]);
+      const summaryData = await summaryRes.json();
+      const submissionsData = await submissionsRes.json();
+      const submissions = submissionsData.submissions || [];
+
+      const product = summaryData.product || { categories: [] };
+      const bugs = summaryData.bugs || { categories: [] };
+      const meta = summaryData.meta || {};
+
+      const hasProduct = product.categories && product.categories.length > 0;
+      const hasBugs = bugs.categories && bugs.categories.length > 0;
+
+      if (!hasProduct && !hasBugs) {
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = '';
+        return;
+      }
+
+      // Render meta bar
+      const metaEl = document.getElementById('feedback-memory-meta');
+      const productCount = hasProduct ? product.categories.reduce((n, c) => n + c.items.length, 0) : 0;
+      const bugsCount = hasBugs ? bugs.categories.reduce((n, c) => n + c.items.length, 0) : 0;
+      metaEl.innerHTML =
+        '<span><strong>' + (meta.totalSubmissions || submissions.length) + '</strong> submissions</span>' +
+        '<span><strong>' + productCount + '</strong> product items</span>' +
+        '<span><strong>' + bugsCount + '</strong> bug items</span>' +
+        (product.updatedAt ? '<span>Updated ' + new Date(product.updatedAt).toLocaleDateString() + '</span>' : '');
+
+      // Render product section
+      renderFeedbackSection('feedback-product-body', product, submissions, 'product');
+      document.getElementById('feedback-memory-product').style.display = hasProduct ? '' : 'none';
+
+      // Render bugs section
+      renderFeedbackSection('feedback-bugs-body', bugs, submissions, 'bugs');
+      document.getElementById('feedback-memory-bugs').style.display = hasBugs ? '' : 'none';
+
+      loadingEl.style.display = 'none';
+      contentEl.style.display = '';
+    } catch (e) {
+      console.error('[openFeedbackMemory] Error:', e);
+      loadingEl.innerHTML = '<p style="color:#c0392b;text-align:center;padding:40px 0;">Failed to load feedback data. Check the console for details.</p>';
+    }
+  }
+
+  function renderFeedbackSection(containerId, summary, submissions, track) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (const cat of (summary.categories || [])) {
+      const catDiv = document.createElement('div');
+      catDiv.className = 'feedback-category';
+      catDiv.innerHTML = '<h5 class="feedback-category-name">' + escapeHtml(cat.name) + '</h5>';
+
+      for (const item of (cat.items || [])) {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'feedback-item';
+        itemDiv.dataset.itemId = item.id;
+        itemDiv.dataset.categoryName = cat.name;
+        itemDiv.dataset.track = track;
+
+        const evidenceCount = (item.evidenceIds || []).length;
+        const reportCount = item.reportCount || evidenceCount || 1;
+        const lastUpdated = item.lastUpdated ? new Date(item.lastUpdated).toLocaleDateString() : '';
+
+        let html = '<div class="feedback-item-header">';
+        html += '<div class="feedback-item-summary">';
+        if (reportCount > 1) html += '<span class="feedback-report-count">' + reportCount + 'x</span> ';
+        html += escapeHtml(item.summary) + '</div>';
+        html += '<div class="feedback-item-meta">';
+        html += '<span class="feedback-evidence-count">' + evidenceCount + ' source' + (evidenceCount !== 1 ? 's' : '') + '</span>';
+        if (lastUpdated) html += '<span>' + lastUpdated + '</span>';
+        html += '</div></div>';
+
+        if (evidenceCount > 0) {
+          html += '<button class="feedback-evidence-toggle" data-evidence-ids="' + escapeHtml(JSON.stringify(item.evidenceIds)) + '">View sources</button>';
+          html += '<div class="feedback-evidence-list">';
+
+          // Find matching submissions
+          for (const eid of (item.evidenceIds || [])) {
+            const sub = submissions.find(s => s.id === eid);
+            if (sub) {
+              html += '<div class="feedback-evidence-item">';
+              if (sub.submitterName) html += '<span class="feedback-evidence-submitter">' + escapeHtml(sub.submitterName) + '</span>';
+              html += '<span class="feedback-evidence-date">' + new Date(sub.submittedAt).toLocaleDateString() + '</span>';
+              html += '<span> — ' + escapeHtml(sub.section || 'General') + '</span>';
+              html += '<div style="margin-top:4px;color:var(--gray-600);">' + escapeHtml(sub.rawText) + '</div>';
+              html += '</div>';
+            }
+          }
+
+          html += '</div>';
+        }
+
+        // Admin action buttons
+        html += '<div class="feedback-item-actions" style="display:flex;gap:6px;margin-top:6px;">';
+        html += '<button class="feedback-admin-btn danger feedback-delete-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '">Delete</button>';
+        const targetTrack = track === 'product' ? 'bugs' : 'product';
+        html += '<button class="feedback-admin-btn feedback-reclassify-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '" data-target="' + targetTrack + '">Move to ' + (targetTrack === 'bugs' ? 'Bugs' : 'Product') + '</button>';
+        html += '</div>';
+
+        itemDiv.innerHTML = html;
+        catDiv.appendChild(itemDiv);
+      }
+
+      container.appendChild(catDiv);
+    }
+
+    // Wire up evidence toggles
+    container.querySelectorAll('.feedback-evidence-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const list = btn.nextElementSibling;
+        if (list) {
+          list.classList.toggle('open');
+          btn.textContent = list.classList.contains('open') ? 'Hide sources' : 'View sources';
+        }
+      });
+    });
+
+    // Wire up delete buttons
+    container.querySelectorAll('.feedback-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const itemId = btn.dataset.itemId;
+        const categoryName = btn.dataset.category;
+        const btnTrack = btn.dataset.track;
+        if (!confirm('Delete this feedback item?')) return;
+        try {
+          await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/admin-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_item', track: btnTrack, payload: { categoryName, itemId } }),
+          });
+          openFeedbackMemory(); // refresh
+        } catch (e) {
+          console.error('[deleteItem] Error:', e);
+        }
+      });
+    });
+
+    // Wire up reclassify buttons
+    container.querySelectorAll('.feedback-reclassify-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const itemId = btn.dataset.itemId;
+        const categoryName = btn.dataset.category;
+        const btnTrack = btn.dataset.track;
+        const targetTrack2 = btn.dataset.target;
+        try {
+          await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/admin-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'reclassify', track: btnTrack, payload: { categoryName, itemId, targetTrack: targetTrack2 } }),
+          });
+          openFeedbackMemory(); // refresh
+        } catch (e) {
+          console.error('[reclassify] Error:', e);
+        }
+      });
+    });
+  }
+
+  if (openFeedbackMemoryBtn) openFeedbackMemoryBtn.addEventListener('click', openFeedbackMemory);
+
+  // Admin rebuild buttons
+  const rebuildProductBtn = document.getElementById('feedback-rebuild-product-btn');
+  const rebuildBugsBtn = document.getElementById('feedback-rebuild-bugs-btn');
+  const migrateBtn = document.getElementById('feedback-migrate-btn');
+
+  async function rebuildSummary(type) {
+    try {
+      const btn = type === 'product' ? rebuildProductBtn : rebuildBugsBtn;
+      if (btn) { btn.disabled = true; btn.textContent = 'Rebuilding...'; }
+      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/rebuild', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      });
+      openFeedbackMemory(); // refresh
+    } catch (e) {
+      console.error('[rebuild] Error:', e);
+      alert('Rebuild failed — check console.');
+    }
+  }
+
+  if (rebuildProductBtn) rebuildProductBtn.addEventListener('click', () => rebuildSummary('product'));
+  if (rebuildBugsBtn) rebuildBugsBtn.addEventListener('click', () => rebuildSummary('bugs'));
+
+  if (migrateBtn) migrateBtn.addEventListener('click', async () => {
+    try {
+      migrateBtn.disabled = true;
+      migrateBtn.textContent = 'Migrating...';
+      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      migrateBtn.textContent = 'Migrated ' + (data.migrated || 0) + ' items';
+      if (data.migrated > 0) {
+        // Rebuild both summaries after migration
+        await rebuildSummary('product');
+        await rebuildSummary('bugs');
+      }
+    } catch (e) {
+      console.error('[migrate] Error:', e);
+      migrateBtn.textContent = 'Migration failed';
+    }
+  });
+
   function looksLikeName(text) {
     var t = text.trim();
     if (!t || t.length > 50 || t.includes('?')) return false;
@@ -6573,8 +6925,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     return '----------------------------------------------------------------------\nFEEDBACK_DATA\n----------------------------------------------------------------------\n' + lines;
   }
 
-  function buildSystemPrompt(feedbackBlock) {
+  function buildSystemPrompt(feedbackBlock, feedbackSummary) {
     feedbackBlock = feedbackBlock || '';
+    feedbackSummary = feedbackSummary || '';
     let prompt = SYSTEM_PROMPT_BASE;
     // Inject session user name if known
     if (_sessionUserName) {
@@ -6588,6 +6941,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     if (ctx.length > 0) {
       prompt += '\n----------------------------------------------------------------------\nDESIGN RATIONALE CONTEXT\nThese entries represent decisions and updates made after the initial specification.\nFor any topic they address, prefer these over the base specification above.\n----------------------------------------------------------------------\n';
       prompt += ctx.map(c => '• ' + c.text).join('\n');
+    }
+    // Inject structured feedback summaries for deduplication-aware classification
+    if (feedbackSummary) {
+      prompt += '\n----------------------------------------------------------------------\n' + feedbackSummary + '----------------------------------------------------------------------';
     }
     if (feedbackBlock) {
       prompt += '\n' + feedbackBlock;
@@ -6669,6 +7026,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   // Expose event tracker for click handlers outside this IIFE
   window.sendEvent = sendEvent;
+  window.reportPrototypeBug = reportPrototypeBugFromAssistant;
 
   // ── AI ONBOARDING ASSISTANT INITIALIZATION ───────────────────
   // Feature flag check is handled inside AdminAssistant.init().

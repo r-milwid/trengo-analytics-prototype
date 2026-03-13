@@ -586,6 +586,7 @@ ${role === 'agent'
 - Respond to the request first. Ask clarifying questions only when necessary to avoid a weak or incorrect change.
 - Still use clickable/editor UI tools when they are easier than making the user type several words or manually describe a structure.
 - Prefer show_boolean_choice, show_options, show_team_assignment_matrix, show_tab_proposal_choice, show_tab_editor, and show_source_input when they make configuration faster.
+- If the user asks something unrelated to dashboard setup, analytics, or the available support and sales data, politely say you are here to help with analytics and dashboard questions, and do not call tools.
 - Use the semantic analytics tools only when the user is asking for actual data analysis, especially questions involving metrics, trends, comparisons, rankings, breakdowns, or deeper detail beyond the visible charts.
 - Do not ask the user what data is available. Inspect capability silently and use the lightest tool sequence that can answer the question well.
 - When deeper data analysis is needed, the usual path is to inspect capability, plan the query, run it, and summarize the result, but skip unnecessary steps if the query is already clear.
@@ -1259,7 +1260,245 @@ ${role === 'agent'
     };
   }
 
+  const ASSISTANT_SCOPE_KEYWORDS = [
+    'analytics', 'analytic', 'dashboard', 'dashboards', 'widget', 'widgets', 'tab', 'tabs',
+    'section', 'sections', 'team', 'teams', 'agent', 'agents', 'supervisor', 'role',
+    'metric', 'metrics', 'kpi', 'kpis', 'chart', 'charts', 'graph', 'graphs', 'report', 'reports',
+    'ticket', 'tickets', 'conversation', 'conversations', 'contact', 'contacts', 'deal', 'deals',
+    'lead', 'leads', 'pipeline', 'revenue', 'csat', 'survey', 'surveys', 'sla', 'call', 'calls',
+    'voice', 'queue', 'queues', 'handoff', 'handoffs', 'intent', 'intents', 'automation',
+    'journey', 'journeys', 'knowledge', 'backlog', 'capacity', 'demand', 'response', 'resolution',
+    'workload', 'trend', 'trends', 'channel', 'channels', 'filter', 'filters', 'visible',
+    'hide', 'show', 'add', 'remove', 'configure', 'configuration', 'preview',
+  ];
+
+  const ASSISTANT_SOCIAL_PATTERNS = [
+    /^(hi|hello|hey|thanks|thank you|bye|goodbye|okay|ok|cool|great|sounds good|understood|got it)\b/,
+  ];
+
+  const ASSISTANT_FOLLOW_UP_PATTERNS = [
+    /^(why|how|what about|can you|could you)\s+(that|this|it|those|these|them)\b/,
+    /\b(break that down|tell me more|explain that|compare that|same for|again|go deeper)\b/,
+  ];
+
+  function buildToolResultBlock(toolUseId, payload) {
+    return {
+      type: 'tool_result',
+      tool_use_id: toolUseId,
+      content: JSON.stringify(payload),
+    };
+  }
+
+  function repairOrphanedToolUseHistory(reason = 'Tool execution was interrupted before completion.') {
+    if (!_session) return false;
+    const messages = AssistantStorage.getMessages(_session);
+    if (!Array.isArray(messages) || messages.length === 0) return false;
+
+    let repaired = false;
+
+    for (let i = 0; i < messages.length; i += 1) {
+      const message = messages[i];
+      if (message?.role !== 'assistant' || !Array.isArray(message.content)) continue;
+
+      const toolUses = message.content.filter(block => block?.type === 'tool_use' && block.id);
+      if (toolUses.length === 0) continue;
+
+      const next = messages[i + 1];
+      if (next?.role !== 'user' || !Array.isArray(next.content)) {
+        messages.splice(i + 1, 0, {
+          role: 'user',
+          content: toolUses.map(block => buildToolResultBlock(block.id, { skipped: true, reason })),
+        });
+        repaired = true;
+        i += 1;
+        continue;
+      }
+
+      const existingResultIds = new Set(
+        next.content
+          .filter(block => block?.type === 'tool_result' && block.tool_use_id)
+          .map(block => block.tool_use_id)
+      );
+      const missing = toolUses.filter(block => !existingResultIds.has(block.id));
+      if (missing.length === 0) continue;
+
+      next.content = [
+        ...next.content,
+        ...missing.map(block => buildToolResultBlock(block.id, { skipped: true, reason })),
+      ];
+      repaired = true;
+    }
+
+    if (repaired) {
+      AssistantStorage.save(_session);
+    }
+    return repaired;
+  }
+
+  function isLikelyOutOfScopeAssistantRequest(text) {
+    const normalized = String(text || '').trim().toLowerCase();
+    if (!normalized) return false;
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    if (ASSISTANT_SOCIAL_PATTERNS.some(pattern => pattern.test(normalized))) return false;
+    if (ASSISTANT_FOLLOW_UP_PATTERNS.some(pattern => pattern.test(normalized))) return false;
+    if (wordCount <= 7) return false;
+    if (ASSISTANT_SCOPE_KEYWORDS.some(keyword => normalized.includes(keyword))) return false;
+
+    return normalized.includes('?')
+      || /^(how|what|why|when|where|who|can|could|would|should|tell|give|write|make|create|draft|explain|estimate|calculate|show|summarize)\b/.test(normalized);
+  }
+
+  function buildOutOfScopeAssistantReply() {
+    return 'I’m here to help with analytics, dashboard setup, widgets, and support or sales data questions. I can’t help with general questions like that, but I can help you explore metrics, trends, tickets, teams, or dashboard changes.';
+  }
+
+  function stringifyErrorForReport(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (value instanceof Error) return value.stack || value.message || String(value);
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function getLastUserMessageText() {
+    const messages = AssistantStorage.getMessages(_session);
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i];
+      if (message?.role === 'user' && typeof message.content === 'string' && message.content.trim()) {
+        return message.content.trim();
+      }
+    }
+    return '';
+  }
+
+  function summarizeThreadMessageContent(message) {
+    if (!message) return '';
+    if (typeof message.content === 'string') return message.content.trim();
+
+    if (message.role === 'assistant_artifact') {
+      const title = message.content?.presentation?.title;
+      return title ? `[artifact] ${title}` : '[artifact]';
+    }
+
+    if (!Array.isArray(message.content)) {
+      return stringifyErrorForReport(message.content);
+    }
+
+    const parts = [];
+    message.content.forEach((block) => {
+      if (!block) return;
+      if (typeof block === 'string') {
+        if (block.trim()) parts.push(block.trim());
+        return;
+      }
+      if (block.type === 'text' && block.text) {
+        parts.push(String(block.text).trim());
+        return;
+      }
+      if (block.type === 'tool_use') {
+        parts.push(`[tool_use:${block.name || 'unknown'}]`);
+        return;
+      }
+      if (block.type === 'tool_result') {
+        let parsed = block.content;
+        try {
+          parsed = JSON.parse(block.content);
+        } catch {
+          parsed = block.content;
+        }
+        if (parsed?.error) {
+          parts.push(`[tool_result_error:${parsed.tool || block.tool_use_id || 'unknown'}] ${parsed.error}`);
+        } else if (parsed?.skipped) {
+          parts.push(`[tool_result:${block.tool_use_id || 'unknown'}] skipped`);
+        } else {
+          parts.push(`[tool_result:${block.tool_use_id || 'unknown'}]`);
+        }
+      }
+    });
+
+    return parts.join(' ').trim();
+  }
+
+  function buildAssistantThreadTranscript(limit = 18) {
+    const mode = AssistantStorage.getMode(_session) || 'onboarding';
+    const sourceMessages = mode === 'assistant' && typeof AssistantStorage.getAssistantDisplayMessages === 'function'
+      ? AssistantStorage.getAssistantDisplayMessages(_session)
+      : AssistantStorage.getMessages(_session);
+
+    return sourceMessages
+      .slice(-limit)
+      .map((message) => {
+        const role = message?.role === 'assistant_artifact'
+          ? 'artifact'
+          : String(message?.role || 'unknown');
+        const content = summarizeThreadMessageContent(message);
+        return `${role.toUpperCase()}: ${content || '[empty]'}`;
+      })
+      .join('\n\n');
+  }
+
+  function buildGuideBugReportPayload(errorConfig = {}) {
+    const mode = AssistantStorage.getMode(_session) || 'onboarding';
+    return {
+      section: mode === 'onboarding' ? 'AI onboarding assistant' : 'Analytics assistant',
+      surface: mode === 'onboarding' ? 'AI onboarding flow' : 'Post-onboarding analytics assistant',
+      summary: errorConfig.reportSummary
+        || errorConfig.userMessage
+        || 'The AI onboarding assistant hit an error.',
+      userMessage: errorConfig.userMessage || '',
+      technicalMessage: stringifyErrorForReport(errorConfig.technicalMessage || errorConfig.rawError || ''),
+      role: _role || 'admin',
+      mode,
+      customerName: _customerData?.company || '',
+      customerId: _customerId || '',
+      request: errorConfig.request || getLastUserMessageText(),
+      source: errorConfig.source || 'admin-assistant',
+      thread: buildAssistantThreadTranscript(),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async function reportErrorToGuide(errorConfig, reportButton, statusEl) {
+    if (typeof window.reportPrototypeBug !== 'function') {
+      if (statusEl) statusEl.textContent = 'The Prototype Guide is not available right now.';
+      return { ok: false };
+    }
+
+    if (reportButton) {
+      reportButton.disabled = true;
+      reportButton.textContent = 'Reporting...';
+    }
+    if (statusEl) statusEl.textContent = '';
+
+    try {
+      const result = await window.reportPrototypeBug(buildGuideBugReportPayload(errorConfig));
+      if (result?.ok) {
+        if (reportButton) reportButton.textContent = 'Reported';
+        if (statusEl) statusEl.textContent = 'Bug report sent to the Prototype Guide.';
+        return result;
+      }
+      if (reportButton) {
+        reportButton.disabled = false;
+        reportButton.textContent = 'Report bug';
+      }
+      if (statusEl) statusEl.textContent = 'I could not send the bug report automatically.';
+      return { ok: false };
+    } catch (error) {
+      console.error('[AdminAssistant] Bug report failed:', error);
+      if (reportButton) {
+        reportButton.disabled = false;
+        reportButton.textContent = 'Report bug';
+      }
+      if (statusEl) statusEl.textContent = 'I could not send the bug report automatically.';
+      return { ok: false, error };
+    }
+  }
+
   function buildModelMessages() {
+    repairOrphanedToolUseHistory();
     const rawMessages = AssistantStorage.getMessages(_session);
     return rawMessages.flatMap((msg) => {
       if (!msg) return [];
@@ -1313,6 +1552,56 @@ ${role === 'agent'
     return result;
   }
 
+  async function executeToolUseBlocks(toolUseBlocks, options = {}) {
+    const toolResults = [];
+    const interruptionReason = options.interruptionReason || 'User interrupted the pending step.';
+    let interruptedByUser = false;
+    let skipRemainingReason = null;
+
+    for (const block of toolUseBlocks) {
+      if (skipRemainingReason) {
+        toolResults.push(buildToolResultBlock(block.id, {
+          skipped: true,
+          reason: skipRemainingReason,
+        }));
+        continue;
+      }
+
+      let result;
+      let executed = false;
+      try {
+        result = await handleToolUse(block.name, block.input);
+        executed = true;
+      } catch (error) {
+        console.error(`[AdminAssistant] Tool error in ${block.name}:`, error);
+        result = {
+          error: error?.message || 'Tool execution failed',
+          tool: block.name,
+        };
+      }
+
+      if (executed) {
+        AssistantStorage.recordPatch(_session, block.name, block.input);
+      }
+
+      toolResults.push(buildToolResultBlock(block.id, result));
+
+      if (result?.interruptedByUser) {
+        interruptedByUser = true;
+        skipRemainingReason = interruptionReason;
+      } else if (result?.error) {
+        skipRemainingReason = `A previous tool (${block.name}) could not complete.`;
+      }
+    }
+
+    if (toolResults.length > 0) {
+      AssistantStorage.appendToolResult(_session, toolResults);
+      AssistantStorage.save(_session);
+    }
+
+    return { toolResults, interruptedByUser };
+  }
+
   async function handleCompleteOnboarding({ summary }) {
     AssistantStorage.setMode(_session, 'assistant');
     AssistantStorage.setAssistantThreadInitialized(_session, false);
@@ -1364,10 +1653,22 @@ ${role === 'agent'
     clearInput();
 
     try {
+      const mode = AssistantStorage.getMode(_session) || 'onboarding';
+      if (mode === 'assistant' && isLikelyOutOfScopeAssistantRequest(userText)) {
+        const reply = buildOutOfScopeAssistantReply();
+        await renderAssistantTurn(reply);
+        AssistantStorage.appendToolUse(_session, [{ type: 'text', text: reply }]);
+        return;
+      }
       await runAgenticLoop();
     } catch (e) {
       console.error('[AdminAssistant] Loop error:', e);
-      renderErrorBubble('Something went wrong. Please try again.');
+      renderErrorBubble({
+        userMessage: 'Something went wrong while I was working on that.',
+        technicalMessage: e,
+        reportSummary: 'The assistant hit an unexpected loop error.',
+        source: 'sendMessage.catch',
+      });
     } finally {
       _loopRunning = false;
       AssistantStorage.save(_session);
@@ -1401,7 +1702,12 @@ ${role === 'agent'
         if (generation !== _runGeneration) return;
         hideTypingIndicator();
         endThreadRevealSequence(threadSequenceToken);
-        renderErrorBubble('Network error — please check your connection.');
+        renderErrorBubble({
+          userMessage: 'Something went wrong while I was contacting the assistant.',
+          technicalMessage: e,
+          reportSummary: 'A network error interrupted the assistant request.',
+          source: 'runAgenticLoop.fetch',
+        });
         return;
       }
 
@@ -1410,7 +1716,12 @@ ${role === 'agent'
 
       if (data.error) {
         endThreadRevealSequence(threadSequenceToken);
-        renderErrorBubble(`API error: ${data.error.message || data.error}`);
+        renderErrorBubble({
+          userMessage: 'Something went wrong while I was processing that request.',
+          technicalMessage: data?.error?.message || data?.message || data?.error || 'Assistant API error',
+          reportSummary: 'The assistant API returned an error during the main chat loop.',
+          source: 'runAgenticLoop.api',
+        });
         return;
       }
 
@@ -1443,30 +1754,10 @@ ${role === 'agent'
       }
 
       // Execute tool calls and collect results
-      const toolResults = [];
-      let interruptedByUser = false;
       if (toolUseBlocks.length > 0) {
         await delay(160);
       }
-      for (const block of toolUseBlocks) {
-        const result = await handleToolUse(block.name, block.input);
-        AssistantStorage.recordPatch(_session, block.name, block.input);
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: JSON.stringify(result),
-        });
-        if (result?.interruptedByUser) {
-          interruptedByUser = true;
-          break;
-        }
-      }
-
-      // Append tool results to history
-      AssistantStorage.appendToolResult(_session, toolResults);
-
-      // Incremental save after each complete exchange
-      AssistantStorage.save(_session);
+      const { interruptedByUser } = await executeToolUseBlocks(toolUseBlocks);
 
       if (injectQueuedUserMessage()) {
         endThreadRevealSequence(threadSequenceToken);
@@ -1982,13 +2273,65 @@ ${role === 'agent'
     panel.classList.toggle('has-wide-artifact', !!container.querySelector('.assistant-data-result.is-wide'));
   }
 
-  function renderErrorBubble(text) {
+  function renderErrorBubble(config = {}) {
     const container = getMessagesContainer();
     if (!container) return;
+    const options = typeof config === 'string'
+      ? { userMessage: config }
+      : (config || {});
+
     const bubble = document.createElement('div');
     bubble.className = 'ai-setup-bubble assistant ai-setup-error';
-    bubble.innerHTML = `<span style="color:var(--red-500,#ef4444)">${escapeHtml(text)}</span>
-      <button class="ai-setup-retry-btn" onclick="AdminAssistant.retryLastMessage()">Retry</button>`;
+
+    const message = document.createElement('div');
+    message.className = 'ai-setup-error-message';
+    message.textContent = options.userMessage || 'Something went wrong while I was working on that.';
+    bubble.appendChild(message);
+
+    const helper = document.createElement('div');
+    helper.className = 'ai-setup-error-helper';
+    helper.textContent = options.helperMessage || 'Try again, or report a bug using the Guide.';
+    bubble.appendChild(helper);
+
+    const actions = document.createElement('div');
+    actions.className = 'ai-setup-error-actions';
+
+    if (options.retry !== false) {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'ai-setup-inline-action-primary ai-setup-error-btn';
+      retryBtn.textContent = options.retryLabel || 'Try again';
+      retryBtn.addEventListener('click', async () => {
+        try {
+          await Promise.resolve((options.onRetry || (() => retryLastMessage()))());
+        } catch (error) {
+          console.error('[AdminAssistant] Retry action failed:', error);
+          renderErrorBubble({
+            userMessage: 'Something went wrong while retrying that.',
+            technicalMessage: error,
+            reportSummary: 'Retrying an onboarding assistant error failed.',
+            source: 'error-retry',
+          });
+        }
+      });
+      actions.appendChild(retryBtn);
+    }
+
+    const reportBtn = document.createElement('button');
+    reportBtn.type = 'button';
+    reportBtn.className = 'ai-setup-inline-action-secondary ai-setup-error-btn';
+    reportBtn.textContent = options.reportLabel || 'Report bug';
+    actions.appendChild(reportBtn);
+    bubble.appendChild(actions);
+
+    const status = document.createElement('div');
+    status.className = 'ai-setup-error-status';
+    bubble.appendChild(status);
+
+    reportBtn.addEventListener('click', () => {
+      void reportErrorToGuide(options, reportBtn, status);
+    });
+
     container.appendChild(bubble);
     animateThreadElement(bubble);
     scrollThreadRevealIntoView(container, bubble);
@@ -2451,7 +2794,8 @@ ${role === 'agent'
           markNextSequenceShouldFollow();
           _pendingResolve = null;
           resolve({
-            decision: option.id,
+            decision: 'accept_proposal',
+            refined: true,
             ...result,
           });
         });
@@ -2891,6 +3235,9 @@ ${role === 'agent'
   }
 
   async function processSourceSubmit(wrapper, allowedTypes, resolve) {
+    const submitBtn = wrapper.querySelector('.ai-setup-source-submit');
+    if (submitBtn) submitBtn.disabled = true;
+
     const jobs = [];
 
     if (allowedTypes.includes('url')) {
@@ -2992,11 +3339,19 @@ ${role === 'agent'
 
       if (!results.length) {
         const websiteFailure = failures.some(item => /fetching website/i.test(item.label) || /fetch/i.test(item.message));
-        renderErrorBubble(
-          websiteFailure
-            ? 'I couldn’t fetch the website source just now. You can continue with pasted text or a file, or try the URL again.'
-            : 'I couldn’t extract usable text from those sources. Try a different format or continue without them.'
-        );
+        renderErrorBubble({
+          userMessage: websiteFailure
+            ? 'Something went wrong while fetching the source material.'
+            : 'Something went wrong while processing the source material.',
+          helperMessage: 'Try again, or report a bug using the Guide. You can also continue without the source.',
+          technicalMessage: failures.map(item => `${item.label}: ${item.message}`).join('\n'),
+          reportSummary: websiteFailure
+            ? 'Source fetching failed during onboarding.'
+            : 'Source extraction failed during onboarding.',
+          source: 'processSourceSubmit.empty-results',
+          onRetry: () => processSourceSubmit(wrapper, allowedTypes, resolve),
+        });
+        if (submitBtn) submitBtn.disabled = false;
         return;
       }
 
@@ -3032,7 +3387,15 @@ ${role === 'agent'
     } catch (e) {
       hideProcessingState(processingEl);
       console.error('[AdminAssistant] Source processing error:', e);
-      renderErrorBubble('Something went wrong while processing the sources. You can try again, or continue without them.');
+      renderErrorBubble({
+        userMessage: 'Something went wrong while processing the source material.',
+        helperMessage: 'Try again, or report a bug using the Guide. You can also continue without the source.',
+        technicalMessage: e,
+        reportSummary: 'Source processing threw an unexpected error during onboarding.',
+        source: 'processSourceSubmit.catch',
+        onRetry: () => processSourceSubmit(wrapper, allowedTypes, resolve),
+      });
+      if (submitBtn) submitBtn.disabled = false;
     }
   }
 
@@ -3821,7 +4184,40 @@ ${role === 'agent'
     wireOnboardingInput();
   }
 
-  async function triggerWelcome() {
+  function buildInitialOnboardingSeedMessage() {
+    const scopedTeams = typeof window.getRoleScopedPrototypeTeams === 'function'
+      ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
+      : [];
+
+    let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please begin with a short hello and one-line orientation for a new user, then check what is already known, ask for any website or files that would help, and ask only the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
+    if (_role === 'supervisor') {
+      initialUserMsg += ` This should stay scoped to the teams this supervisor oversees${scopedTeams.length ? `: ${scopedTeams.join(', ')}` : ''}.`;
+    } else if (_role === 'agent') {
+      initialUserMsg += ' This should be a simpler personal view for an individual contributor, not a full company-wide setup.';
+    } else if (_role === 'admin') {
+      initialUserMsg += ' This is a company-wide setup, so shared structure and cross-team needs matter.';
+    }
+    if (_customerData) {
+      initialUserMsg += ` I'm from ${_customerData.company}.`;
+      // Agents don't own company URLs — skip seeding them so the AI doesn't ask about them
+      if (_role !== 'agent') {
+        if (_customerData.website) {
+          initialUserMsg += ` The company website is ${_customerData.website}.`;
+        }
+        if (_customerData.helpCenterUrl) {
+          initialUserMsg += ` The help center is ${_customerData.helpCenterUrl}.`;
+        }
+        if (Array.isArray(_customerData.extraSourceUrls) && _customerData.extraSourceUrls.length) {
+          initialUserMsg += ` Additional source URLs are ${_customerData.extraSourceUrls.join(', ')}.`;
+        }
+      }
+    }
+
+    return initialUserMsg;
+  }
+
+  async function triggerWelcome(options = {}) {
+    const { seedInitialMessage = true } = options;
     const generation = _runGeneration;
     _loopRunning = true;
     const threadSequenceToken = beginThreadRevealSequence(getMessagesContainer(), { suppressAutoScroll: true });
@@ -3830,36 +4226,9 @@ ${role === 'agent'
     try {
       const systemPrompt = buildSystemPrompt();
       const tools = getToolsForRole(_role, 'onboarding');
-      const scopedTeams = typeof window.getRoleScopedPrototypeTeams === 'function'
-        ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
-        : [];
-
-      // Initial message with context
-      let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please begin with a short hello and one-line orientation for a new user, then check what is already known, ask for any website or files that would help, and ask only the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
-      if (_role === 'supervisor') {
-        initialUserMsg += ` This should stay scoped to the teams this supervisor oversees${scopedTeams.length ? `: ${scopedTeams.join(', ')}` : ''}.`;
-      } else if (_role === 'agent') {
-        initialUserMsg += ' This should be a simpler personal view for an individual contributor, not a full company-wide setup.';
-      } else if (_role === 'admin') {
-        initialUserMsg += ' This is a company-wide setup, so shared structure and cross-team needs matter.';
+      if (seedInitialMessage) {
+        AssistantStorage.appendMessage(_session, 'user', buildInitialOnboardingSeedMessage());
       }
-      if (_customerData) {
-        initialUserMsg += ` I'm from ${_customerData.company}.`;
-        // Agents don't own company URLs — skip seeding them so the AI doesn't ask about them
-        if (_role !== 'agent') {
-          if (_customerData.website) {
-            initialUserMsg += ` The company website is ${_customerData.website}.`;
-          }
-          if (_customerData.helpCenterUrl) {
-            initialUserMsg += ` The help center is ${_customerData.helpCenterUrl}.`;
-          }
-          if (Array.isArray(_customerData.extraSourceUrls) && _customerData.extraSourceUrls.length) {
-            initialUserMsg += ` Additional source URLs are ${_customerData.extraSourceUrls.join(', ')}.`;
-          }
-        }
-      }
-
-      AssistantStorage.appendMessage(_session, 'user', initialUserMsg);
 
       const resp = await fetch(`${PROXY_URL}/onboarding/chat`, {
         method: 'POST',
@@ -3876,7 +4245,13 @@ ${role === 'agent'
 
       if (data.error) {
         endThreadRevealSequence(threadSequenceToken);
-        renderErrorBubble(`API error: ${data.error.message || data.error}`);
+        renderErrorBubble({
+          userMessage: 'Something went wrong while starting the onboarding assistant.',
+          technicalMessage: data?.error?.message || data?.message || data?.error || 'Welcome API error',
+          reportSummary: 'The onboarding assistant failed before the welcome step completed.',
+          source: 'triggerWelcome.api',
+          onRetry: () => triggerWelcome({ seedInitialMessage: false }),
+        });
         _loopRunning = false;
         return;
       }
@@ -3902,24 +4277,10 @@ ${role === 'agent'
 
       // Handle any tool calls in the welcome response
       if (toolUseBlocks.length > 0) {
-        const toolResults = [];
-        let interruptedByUser = false;
         await delay(160);
-        for (const block of toolUseBlocks) {
-          const result = await handleToolUse(block.name, block.input);
-          AssistantStorage.recordPatch(_session, block.name, block.input);
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: JSON.stringify(result),
-          });
-          if (result?.interruptedByUser) {
-            interruptedByUser = true;
-            break;
-          }
-        }
-        AssistantStorage.appendToolResult(_session, toolResults);
-        AssistantStorage.save(_session);
+        const { interruptedByUser } = await executeToolUseBlocks(toolUseBlocks, {
+          interruptionReason: 'User interrupted the pending onboarding step.',
+        });
         if (injectQueuedUserMessage()) {
           endThreadRevealSequence(threadSequenceToken);
           await runAgenticLoop();
@@ -3940,7 +4301,13 @@ ${role === 'agent'
       hideTypingIndicator();
       endThreadRevealSequence(threadSequenceToken);
       console.error('[AdminAssistant] Welcome error:', e);
-      renderErrorBubble('Could not connect to the AI. Please try refreshing.');
+      renderErrorBubble({
+        userMessage: 'Something went wrong while starting the onboarding assistant.',
+        technicalMessage: e,
+        reportSummary: 'The onboarding assistant welcome request failed to connect.',
+        source: 'triggerWelcome.catch',
+        onRetry: () => triggerWelcome({ seedInitialMessage: false }),
+      });
     } finally {
       _loopRunning = false;
     }
@@ -4067,26 +4434,7 @@ ${role === 'agent'
 
     hideTypingIndicator();                  // remove "..." bubble if still visible
 
-    // ── Patch orphaned tool_use blocks in message history ──
-    // The agentic loop stores the assistant response (with tool_use) BEFORE executing tools.
-    // If skip fires mid-execution, the history ends with tool_use but no tool_result,
-    // which makes the Claude API reject subsequent requests.
-    if (_session) {
-      const msgs = AssistantStorage.getMessages(_session);
-      if (msgs.length > 0) {
-        const last = msgs[msgs.length - 1];
-        if (last.role === 'assistant' && Array.isArray(last.content)) {
-          const orphanedToolUses = last.content.filter(b => b.type === 'tool_use');
-          if (orphanedToolUses.length > 0) {
-            AssistantStorage.appendToolResult(_session, orphanedToolUses.map(tu => ({
-              type: 'tool_result',
-              tool_use_id: tu.id,
-              content: JSON.stringify({ skipped: true, reason: 'User skipped onboarding' }),
-            })));
-          }
-        }
-      }
-    }
+    repairOrphanedToolUseHistory('User skipped onboarding.');
 
     // Preserve partial progress, switch to assistant mode
     handleCompleteOnboarding({ summary: 'User skipped setup — defaults applied.' }).then(() => {
