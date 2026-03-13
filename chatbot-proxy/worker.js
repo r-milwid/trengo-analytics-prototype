@@ -604,7 +604,7 @@ export default {
         let migrated = 0;
         for (const key of oldKeys) {
           const old = await env.FEEDBACK_STORE.get(key.name, 'json');
-          if (!old) continue;
+          if (!old || old.migrated) continue; // skip already-migrated items
 
           const submission = {
             id: old.id || key.name,
@@ -625,6 +625,71 @@ export default {
         return json({ ok: true, migrated });
       } catch (e) {
         return json({ error: 'migration failed', message: e.message }, 500);
+      }
+    }
+
+    // ── POST /feedback/recover — list or restore soft-deleted submissions ──
+    if (path === '/feedback/recover' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const restoreId = body.id;
+
+        // List all sub: keys and find deleted ones
+        let allKeys = [];
+        let cursor;
+        do {
+          const batch = await env.FEEDBACK_STORE.list({ prefix: 'sub:', cursor });
+          allKeys = allKeys.concat(batch.keys);
+          cursor = batch.list_complete ? null : batch.cursor;
+        } while (cursor);
+
+        const allSubs = (await Promise.all(
+          allKeys.map(k => env.FEEDBACK_STORE.get(k.name, 'json'))
+        )).filter(Boolean);
+        const deletedSubs = allSubs.filter(s => s.deleted);
+
+        if (restoreId) {
+          // Restore a specific submission
+          const sub = deletedSubs.find(s => s.id === restoreId);
+          if (!sub) return json({ error: 'not found or not deleted' }, 404);
+          delete sub.deleted;
+          delete sub.deletedAt;
+          await env.FEEDBACK_STORE.put(`sub:${sub.id}`, JSON.stringify(sub));
+          return json({ ok: true, restored: sub.id });
+        }
+
+        // List all deleted submissions
+        return json({ deleted: deletedSubs, count: deletedSubs.length });
+      } catch (e) {
+        return json({ error: 'recovery failed', message: e.message }, 500);
+      }
+    }
+
+    // ── POST /feedback/summary/rollback — restore previous summary version ──
+    if (path === '/feedback/summary/rollback' && request.method === 'POST') {
+      try {
+        const url = new URL(request.url);
+        const track = url.searchParams.get('track');
+        if (!track || !['product', 'bugs'].includes(track)) {
+          return json({ error: 'track param required (product or bugs)' }, 400);
+        }
+
+        const prevKey = `summary:${track}:prev`;
+        const prev = await env.FEEDBACK_STORE.get(prevKey, 'json');
+        if (!prev) return json({ error: 'no previous version found' }, 404);
+
+        const currentKey = `summary:${track}`;
+        const current = await env.FEEDBACK_STORE.get(currentKey, 'json');
+
+        // Swap: current becomes prev, prev becomes current
+        if (current) {
+          await env.FEEDBACK_STORE.put(prevKey, JSON.stringify(current));
+        }
+        await env.FEEDBACK_STORE.put(currentKey, JSON.stringify(prev));
+
+        return json({ ok: true, restoredFrom: prevKey, track });
+      } catch (e) {
+        return json({ error: 'rollback failed', message: e.message }, 500);
       }
     }
 

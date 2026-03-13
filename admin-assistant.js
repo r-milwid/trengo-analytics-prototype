@@ -19,6 +19,13 @@ const AdminAssistant = (() => {
   const MAX_LOOP_ITERATIONS = 10;
   const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode'; // 'onboarding' | 'assistant' | null
   const THREAD_REVEAL_DELAY_MS = 1200;
+  const WORKING_WORD_ROTATION_MS = 1400;
+  const BACKGROUND_WORKING_TOOLS = new Set([
+    'inspect_data_capability',
+    'plan_semantic_query',
+    'run_semantic_query',
+    'summarize_query_result',
+  ]);
 
   // ── Chart palette (aligned with prototype CHART_COLORS) ───
   const CHART_PALETTE = ['#6fcdbf','#82c9ff','#cf8dff','#f2c46b','#b7c2e6','#9be1d7','#2a2f4a','#dde2ee'];
@@ -56,6 +63,7 @@ const AdminAssistant = (() => {
   let _threadRevealGeneration = 0;
   let _threadScrollSequence = null;
   let _forceNextSequenceAutoScroll = false;
+  const _statusWordRotations = new WeakMap();
 
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
@@ -1374,6 +1382,112 @@ ${role === 'agent'
     return '';
   }
 
+  function hashStatusSeed(text) {
+    const source = String(text || '');
+    let hash = 0;
+    for (let i = 0; i < source.length; i += 1) {
+      hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function pushUniqueWords(target, words) {
+    words.forEach((word) => {
+      const normalized = String(word || '').trim().toLowerCase();
+      if (!normalized || target.includes(normalized)) return;
+      target.push(normalized);
+    });
+  }
+
+  function buildWorkingStatusWords({ context = '', detail = '' } = {}) {
+    const mode = AssistantStorage.getMode(_session) || 'onboarding';
+    const recentText = getLastUserMessageText();
+    const normalized = normalizeComparisonText([mode, context, detail, recentText].join(' '));
+    const includesAny = (terms) => terms.some(term => normalized.includes(term));
+    const words = [];
+
+    if (includesAny(['source', 'sources', 'website', 'file', 'files', 'upload', 'uploads', 'paste', 'pasted', 'extract', 'fetch'])) {
+      pushUniqueWords(words, ['reading', 'sorting', 'checking', 'extracting', 'reviewing']);
+    }
+
+    if (includesAny(['query', 'chart', 'trend', 'metric', 'metrics', 'ticket', 'tickets', 'reply', 'replies', 'conversation', 'conversations', 'volume', 'count', 'counts', 'day', 'week', 'month', 'compare', 'breakdown'])) {
+      pushUniqueWords(words, ['checking', 'grouping', 'counting', 'plotting', 'summarizing']);
+    }
+
+    if (includesAny(['welcome', 'setup', 'onboarding', 'dashboard', 'configure', 'config', 'tab', 'tabs', 'widget', 'widgets', 'team', 'teams'])) {
+      pushUniqueWords(words, ['learning', 'tailoring', 'mapping', 'preparing', 'checking']);
+    }
+
+    if (includesAny(['recover', 'retry', 'limit', 'reset', 'simplify'])) {
+      pushUniqueWords(words, ['resetting', 'narrowing', 'checking', 'simplifying', 'drafting']);
+    }
+
+    if (mode === 'assistant') {
+      pushUniqueWords(words, ['checking', 'mapping', 'querying', 'drafting', 'summarizing']);
+    } else {
+      pushUniqueWords(words, ['learning', 'preparing', 'mapping', 'checking', 'tailoring']);
+    }
+
+    pushUniqueWords(words, ['working', 'reviewing', 'organizing']);
+
+    const desiredCount = Math.min(5, Math.max(3, 3 + (hashStatusSeed(normalized || mode || 'working') % 3)));
+    if (words.length <= desiredCount) {
+      return words.slice(0, desiredCount);
+    }
+
+    const selected = [];
+    const startIndex = hashStatusSeed(`${normalized}|${desiredCount}`) % words.length;
+    for (let i = 0; i < words.length && selected.length < desiredCount; i += 1) {
+      const word = words[(startIndex + i) % words.length];
+      if (!selected.includes(word)) {
+        selected.push(word);
+      }
+    }
+    return selected;
+  }
+
+  function clearRotatingStatusWord(hostEl) {
+    if (!hostEl) return;
+    const state = _statusWordRotations.get(hostEl);
+    if (state?.intervalId) {
+      clearInterval(state.intervalId);
+    }
+    _statusWordRotations.delete(hostEl);
+  }
+
+  function applyRotatingStatusWord(hostEl, wordEl, words) {
+    clearRotatingStatusWord(hostEl);
+    if (!hostEl || !wordEl) return;
+
+    const uniqueWords = [...new Set(
+      (Array.isArray(words) ? words : [])
+        .map(word => String(word || '').trim().toLowerCase())
+        .filter(Boolean)
+    )];
+    if (uniqueWords.length === 0) return;
+
+    wordEl.style.minWidth = `${Math.max(...uniqueWords.map(word => word.length))}ch`;
+    let index = hashStatusSeed(uniqueWords.join('|')) % uniqueWords.length;
+    wordEl.textContent = uniqueWords[index];
+
+    if (uniqueWords.length === 1) return;
+
+    const intervalId = window.setInterval(() => {
+      if (!hostEl.isConnected) {
+        clearRotatingStatusWord(hostEl);
+        return;
+      }
+      index = (index + 1) % uniqueWords.length;
+      wordEl.textContent = uniqueWords[index];
+    }, WORKING_WORD_ROTATION_MS);
+
+    _statusWordRotations.set(hostEl, { intervalId });
+  }
+
+  function shouldShowWorkingIndicatorForTool(toolName) {
+    return BACKGROUND_WORKING_TOOLS.has(toolName);
+  }
+
   function summarizeThreadMessageContent(message) {
     if (!message) return '';
     if (typeof message.content === 'string') return message.content.trim();
@@ -1569,6 +1683,14 @@ ${role === 'agent'
 
       let result;
       let executed = false;
+      const shouldShowWorkingState = shouldShowWorkingIndicatorForTool(block.name);
+      if (shouldShowWorkingState) {
+        showTypingIndicator({
+          mode: 'working',
+          context: block.name,
+          detail: typeof block?.input?.question === 'string' ? block.input.question : '',
+        });
+      }
       try {
         result = await handleToolUse(block.name, block.input);
         executed = true;
@@ -1578,6 +1700,10 @@ ${role === 'agent'
           error: error?.message || 'Tool execution failed',
           tool: block.name,
         };
+      } finally {
+        if (shouldShowWorkingState) {
+          hideTypingIndicator();
+        }
       }
 
       if (executed) {
@@ -1682,10 +1808,12 @@ ${role === 'agent'
     while (iterations < MAX_LOOP_ITERATIONS) {
       if (generation !== _runGeneration) return;
       iterations++;
-      const threadSequenceToken = beginThreadRevealSequence();
-      showTypingIndicator();
-
       const mode = AssistantStorage.getMode(_session) || 'onboarding';
+      const threadSequenceToken = beginThreadRevealSequence();
+      showTypingIndicator({
+        mode: 'working',
+        context: mode === 'assistant' ? 'assistant analytics' : 'onboarding setup',
+      });
       const tools = getToolsForRole(_role, mode);
       const systemPrompt = buildSystemPrompt();
       const messages = buildModelMessages();
@@ -1785,7 +1913,10 @@ ${role === 'agent'
       ? 'Let’s simplify this. What is the most important thing this dashboard should help with next?'
       : 'Let’s simplify this. What would you like to focus on next?';
 
-    showTypingIndicator();
+    showTypingIndicator({
+      mode: 'working',
+      context: 'recovery retry',
+    });
 
     try {
       const resp = await fetch(`${PROXY_URL}/onboarding/chat`, {
@@ -2337,22 +2468,49 @@ ${role === 'agent'
     scrollThreadRevealIntoView(container, bubble);
   }
 
-  function showTypingIndicator() {
+  function removeTypingIndicators() {
+    document.querySelectorAll('.ai-setup-typing').forEach((el) => {
+      clearRotatingStatusWord(el);
+      el.remove();
+    });
+  }
+
+  function createTypingDots() {
+    const dots = document.createElement('span');
+    dots.className = 'ai-setup-typing-dots';
+    for (let i = 0; i < 3; i += 1) {
+      const dot = document.createElement('span');
+      dot.className = 'ai-setup-typing-dot';
+      dots.appendChild(dot);
+    }
+    return dots;
+  }
+
+  function showTypingIndicator(options = {}) {
+    const { mode = 'typing', context = '', detail = '' } = options;
     const container = getMessagesContainer();
-    if (!container) return;
-    // Remove existing
-    container.querySelectorAll('.ai-setup-typing').forEach(el => el.remove());
+    if (!container) return null;
+    removeTypingIndicators();
     const typing = document.createElement('div');
     typing.className = 'ai-setup-typing';
-    typing.innerHTML = '<span class="ai-setup-typing-dot"></span><span class="ai-setup-typing-dot"></span><span class="ai-setup-typing-dot"></span>';
+    typing.appendChild(createTypingDots());
+    if (mode === 'working') {
+      typing.classList.add('ai-setup-typing-working');
+      const word = document.createElement('span');
+      word.className = 'ai-setup-typing-word';
+      typing.appendChild(word);
+      applyRotatingStatusWord(typing, word, buildWorkingStatusWords({ context, detail }));
+    }
     container.appendChild(typing);
-    scrollThreadRevealIntoView(container, typing, { anchorEligible: false });
+    scrollThreadRevealIntoView(container, typing, {
+      anchorEligible: false,
+      forceBottom: mode === 'working',
+    });
+    return typing;
   }
 
   function hideTypingIndicator() {
-    const container = getMessagesContainer();
-    if (!container) return;
-    container.querySelectorAll('.ai-setup-typing').forEach(el => el.remove());
+    removeTypingIndicators();
   }
 
   function showConfigChange(text) {
@@ -3297,14 +3455,18 @@ ${role === 'agent'
       return;
     }
 
-    const processingEl = showProcessingState('Analyzing sources...');
+    const processingEl = showProcessingState('Analyzing sources...', {
+      context: 'source processing',
+    });
 
     try {
       const results = [];
       const failures = [];
 
       for (const job of jobs) {
-        processingEl.querySelector('.ai-setup-processing-text').textContent = job.label;
+        setProcessingStateText(processingEl, job.label, {
+          context: 'source processing',
+        });
         let result = null;
         try {
           result = await job.run();
@@ -3406,18 +3568,43 @@ ${role === 'agent'
     });
   }
 
-  function showProcessingState(text) {
+  function setProcessingStateText(el, text, options = {}) {
+    if (!el) return;
+    const textEl = el.querySelector('.ai-setup-processing-text');
+    const wordEl = el.querySelector('.ai-setup-processing-word');
+    if (textEl) {
+      textEl.textContent = text;
+    }
+    if (wordEl) {
+      applyRotatingStatusWord(el, wordEl, buildWorkingStatusWords({
+        context: options.context || 'source processing',
+        detail: text,
+      }));
+    }
+  }
+
+  function showProcessingState(text, options = {}) {
     const container = getMessagesContainer();
     if (!container) return null;
     const el = document.createElement('div');
     el.className = 'ai-setup-processing';
-    el.innerHTML = `<div class="spinner"></div><span class="ai-setup-processing-text">${escapeHtml(text)}</span>`;
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner';
+    const textEl = document.createElement('span');
+    textEl.className = 'ai-setup-processing-text';
+    const wordEl = document.createElement('span');
+    wordEl.className = 'ai-setup-processing-word';
+    el.appendChild(spinner);
+    el.appendChild(textEl);
+    el.appendChild(wordEl);
+    setProcessingStateText(el, text, options);
     container.appendChild(el);
-    scrollThreadRevealIntoView(container, el);
+    scrollThreadRevealIntoView(container, el, { forceBottom: true });
     return el;
   }
 
   function hideProcessingState(el) {
+    clearRotatingStatusWord(el);
     if (el) el.remove();
   }
 
@@ -3873,7 +4060,11 @@ ${role === 'agent'
     _forceNextSequenceAutoScroll = true;
   }
 
-  function scrollThreadRevealIntoView(container, element, { anchorEligible = true } = {}) {
+  function isAssistantMessagesContainer(container) {
+    return container?.id === 'assistant-panel-messages';
+  }
+
+  function scrollThreadRevealIntoView(container, element, { anchorEligible = true, forceBottom = false } = {}) {
     if (!container) return;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -3885,7 +4076,7 @@ ${role === 'agent'
         if (!state.startedNearBottom) {
           return;
         }
-        if (state.followToBottom) {
+        if (forceBottom || state.followToBottom || isAssistantMessagesContainer(container)) {
           container.scrollTop = container.scrollHeight;
           return;
         }
@@ -4221,7 +4412,10 @@ ${role === 'agent'
     const generation = _runGeneration;
     _loopRunning = true;
     const threadSequenceToken = beginThreadRevealSequence(getMessagesContainer(), { suppressAutoScroll: true });
-    showTypingIndicator();
+    showTypingIndicator({
+      mode: 'working',
+      context: 'welcome onboarding setup',
+    });
 
     try {
       const systemPrompt = buildSystemPrompt();
