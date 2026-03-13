@@ -4937,9 +4937,9 @@ ${role === 'agent'
     if (!overlay || !fab) return;
 
     const legacyCollapseEasing = 'cubic-bezier(0.2, 0.82, 0.18, 1)';
-    const legacyOverlayEasing = 'cubic-bezier(0.22, 0.78, 0.18, 1)';
     const collapseDuration = 1280;
     const introDuration = 1200;
+    const analyticsRevealDuration = 1500;
     const shrinkDuration = 1200;
 
     let surfaceAnimation = null;
@@ -4972,6 +4972,10 @@ ${role === 'agent'
         surface.style.transformOrigin = 'center center';
         overlay.style.pointerEvents = 'none';
 
+        // Clear CSS gradient so backgroundColor animation can reveal analytics underneath
+        overlay.style.background = 'none';
+        overlay.style.backgroundColor = 'rgba(247, 247, 248, 1)';
+
         surfaceAnimation = surface.animate([
           {
             offset: 0,
@@ -5000,13 +5004,13 @@ ${role === 'agent'
           fill: 'forwards',
         });
 
+        // Fade overlay to transparent, revealing the analytics dashboard underneath
         overlayAnimation = overlay.animate([
           { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
-          { offset: 0.62, backgroundColor: 'rgba(247, 247, 248, 0.22)' },
-          { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0.08)' },
+          { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
         ], {
-          duration: collapseDuration,
-          easing: legacyOverlayEasing,
+          duration: analyticsRevealDuration,
+          easing: 'ease-out',
           fill: 'forwards',
         });
 
@@ -5016,9 +5020,21 @@ ${role === 'agent'
         ]);
       } else {
         overlay.style.pointerEvents = 'none';
+        overlay.style.background = 'none';
+        overlay.style.backgroundColor = 'rgba(247, 247, 248, 1)';
+        overlayAnimation = overlay.animate([
+          { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
+          { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
+        ], { duration: analyticsRevealDuration, easing: 'ease-out', fill: 'forwards' });
       }
     } else {
       overlay.style.pointerEvents = 'none';
+      overlay.style.background = 'none';
+      overlay.style.backgroundColor = 'rgba(247, 247, 248, 1)';
+      overlayAnimation = overlay.animate([
+        { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
+        { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
+      ], { duration: analyticsRevealDuration, easing: 'ease-out', fill: 'forwards' });
     }
 
     // Phase 2: Create robot at bottom-center
@@ -5120,7 +5136,6 @@ ${role === 'agent'
     robot.style.transform = 'translateX(-50%) scale(0.15)';
     robot.style.opacity = '0';
 
-    // FAB fades in simultaneously
     fab.style.opacity = '0';
     fab.style.visibility = '';
     fab.style.pointerEvents = '';
