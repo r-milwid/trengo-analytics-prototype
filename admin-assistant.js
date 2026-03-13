@@ -366,7 +366,8 @@ const AdminAssistant = (() => {
     // Current config snapshot
     const currentConfig = {
       lens: state.lens,
-      role: state.role,
+      role: role,
+      previewRole: state.role !== role ? state.role : undefined,
       tabs: mode === 'onboarding'
         ? '(will be proposed during onboarding)'
         : state.tabs.map(t => ({ id: t.id, label: t.label })),
@@ -462,18 +463,23 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 </source_trust_boundary>
 
 <decision_policy>
-- Infer where reasonable. Ask only when the missing information would materially change the tab structure, team focus, terminology, or starting widget choices.
+- Not all decisions carry equal weight. Use this framework:
+  - Structural decisions require explicit confirmation, not inference: which teams are in scope and their capacity (support, sales, both), whether the dashboard is shared or team-specific, what the primary decision goals are, and for admins, cross-team visibility scope.
+  - Widget selection decisions benefit from depth beyond broad categories. After understanding the broad focus, follow up on the specific decision areas that would change which widgets are included — for example whether SLA tracking matters, whether the team uses CSAT surveys, whether AI/automation is in play, or whether quality monitoring or knowledge gaps are priorities. One targeted follow-up at this level is worth more than jumping to a generic widget set.
+  - Presentational decisions can be inferred and proposed: tab naming, tab ordering, widget grouping within tabs. These are easy to revise.
+- When pre-filled customer data covers a structural decision, still confirm it briefly. A one-line confirmation is not an interview.
+- Infer where reasonable for non-structural decisions. Ask only when the missing information would materially change the tab structure, team focus, terminology, or starting widget choices.
 - If confidence is high enough to make a strong draft, propose instead of continuing to question the user.
-- If confidence is too low for a good decision, briefly say what is still unclear and ask the single highest-leverage clarification question.
+- If confidence is too low for a good decision, briefly say what is still unclear and ask the highest-leverage clarification question. For structural or widget-specific topics, 1-2 follow-up questions are appropriate before proposing. For presentational topics, one is enough.
 - Short clarification exchanges are good when needed. Do not be rigid, but do not drift into open-ended chatting.
 - Prefer understanding the underlying goal or decision need over collecting lots of surface preferences.
 - If the user suggests a solution-detail directly, understand the underlying need when that would improve the decision, but do not become argumentative or pushy.
 - If the user skips something, preserve progress and continue with defaults or the best available assumption.
 - When several next steps could work, prefer the lightest reversible step that reduces user effort while preserving decision quality.
-- Before deciding the starter widget set, silently compare what you know against the available widgets and their purposes.
+- Before deciding the starter widget set, compare what you know against the available widgets and their purposes. Surface any widget-level uncertainty to the user rather than resolving it silently — a brief question about specific signals or priorities is more valuable than an internally inferred guess.
 - Only treat the widget draft as high-confidence if you can explain why the included widgets matter for this business and why the obvious alternatives are less relevant.
 - Do not assume a website, company profile, or source material is automatically enough. Those often help with terminology and context, but they do not always reveal the operating reality or decision needs behind good widget choices.
-- If the current context would still leave important widget choices underdetermined, ask the single highest-leverage clarification question first.
+- If the current context would still leave important widget choices underdetermined, ask a targeted clarification question first.
 - Useful clarification areas can include team workflows, success measures, management judgement, quality or satisfaction signals, or the decisions the dashboard needs to support, but these are examples rather than a fixed checklist.
 - A few extra targeted questions are better than a shallow proposal, but keep the total small unless the user is clearly willing to go deeper.
 </decision_policy>
@@ -495,6 +501,7 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 <tool_choice>
 - Use show_boolean_choice for yes/no questions.
 - Use show_options for simple single-choice or short multi-select decisions.
+- When using show_options for a question whose answers are suggestions or examples rather than a complete set (e.g. team names, focus areas, use-case categories), set allowOther: true so the user can specify an unlisted answer. Only omit it when the choices are truly exhaustive (derived from company data, fixed workflow steps, or binary decisions).
 - When using show_options or show_boolean_choice to ask a question, put the question itself in the tool prompt so it appears with the choices.
 - Use show_team_assignment_matrix when the user needs to classify teams as support, sales, or both.
 - Use show_tab_editor when direct editing is faster than conversational back-and-forth.
@@ -571,8 +578,21 @@ ${role === 'agent'
 - After a source step succeeds, briefly acknowledge which source types were actually used. If a website or help center was successfully analyzed, make that visible in your wording.
 - Do not say or imply that only pasted text was used when website or file source analysis also succeeded.
 - In the opening phase, focus on enough understanding to make a draft, not on collecting every possible preference.
-- After the source/context step, do a real gap check before proposing.
-- Ask follow-up questions when they materially improve the likely tab proposal, team setup, terminology, or starter widget set.
+- Recommended onboarding phases (adapt based on what is already known):
+  1. Brief greeting and context check
+  2. Source/context gathering (show_source_input)
+  3. Structural confirmation: which teams are in scope and their focus, whether the dashboard is shared or team-specific, what decisions or outcomes it should support (use show_team_assignment_matrix for admin/supervisor when 2+ teams exist)
+  4. Widget-level depth and density preference: understand what specific signals and decisions matter, and gauge whether the user prefers a focused dashboard or a comprehensive one — go one level deeper than broad categories before selecting widgets
+  5. Proposal: tab structure and widget selection (show_tab_proposal_choice), calibrated to density preference
+  6. Refinement and completion
+- Do not skip phases 3-4 even when customer data is rich. Pre-filled data should make confirmation fast, not make it unnecessary. Phases 3-4 together should typically be 2-3 exchanges total, not 2-3 per phase. Keep it tight but substantive.
+- After the source/context step, do a real gap check before proposing. At minimum, confirm:
+  - For admin/supervisor: which teams are in scope and their focus (use show_team_assignment_matrix when 2+ teams exist)
+  - For all roles: what decisions or outcomes the dashboard should support (not just what data exists, but what people need from it)
+  - Whether pre-filled customer data still reflects reality (a brief confirmation, not a re-interview)
+- This does not mean asking all these as separate questions. A single well-framed question or a pre-filled interactive component can cover multiple gaps efficiently.
+- Before proposing widgets, go one level deeper than broad categories. If the user says they care about "support quality", that is not enough to decide between CSAT, response rate, reopen rate, knowledge gaps, satisfaction trends, and suggested knowledge additions. Ask a targeted follow-up that surfaces which specific signals matter — frame it around the user's workflow and decisions, not as a widget checklist. After this, you should be able to justify each included widget and explain why you excluded the obvious alternatives. If you cannot, you need one more question — not a proposal.
+- Before building the proposal, gauge the user's preference for dashboard density. People differ on whether they prefer a focused dashboard with just the essentials vs a comprehensive one with more data available, and on how many charts feel comfortable in a single tab. A single light question can surface this — use it to calibrate both the total widget count and the tab structure. A focused user might get 8-12 widgets across 2 tabs; a comprehensive user might get 15-20 across 4 tabs. This can be asked alongside or combined with the widget-depth question.
 - Your goal is to collect enough context to propose an initial dashboard draft.
 - First decide which starter widgets to include based on the user's needs and context. Each widget should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic widgets just because they exist.
 - Do not treat the starter widget set as high-confidence unless the current context is enough to justify the included widgets against the other available options.
@@ -591,7 +611,7 @@ ${role === 'agent'
   - Admin: think company-wide, shared, and cross-team by default.
   - Supervisor: stay within the supervised teams and team-level decisions unless the user broadens the scope.
   - Agent: keep the view simpler and personal by default, with only the sections and widgets that materially help day-to-day work.
-- Once you have enough for a credible draft, move to the proposal. Do not continue questioning just because more detail could be gathered.
+- Once you have confirmed teams/scope, understood widget-level needs, and gauged density preference, move to the proposal. Do not continue questioning just because more detail could be gathered.
 - Do not ask the user to invent tab names, tab order, or starter widgets from scratch if you can infer a strong first proposal.
 - When team classification is needed, prefer show_team_assignment_matrix over generic cards.
 - When you have a concrete tab proposal, present it with show_tab_proposal_choice.
@@ -2608,7 +2628,7 @@ ${role === 'agent'
   }
 
   // ── Options UI (rendered when AI calls show_options) ───────
-  async function renderOptionsUI(prompt, options, multiSelect, style, resolve) {
+  async function renderOptionsUI(prompt, options, multiSelect, style, allowOther, resolve) {
     const container = getMessagesContainer();
     if (!container) return;
 
@@ -2623,6 +2643,7 @@ ${role === 'agent'
     }
 
     const selected = new Set();
+    let otherText = '';
 
     options.forEach(opt => {
       const el = document.createElement('button');
@@ -2669,18 +2690,96 @@ ${role === 'agent'
       wrapper.appendChild(el);
     });
 
+    // "Other" option — opens inline text input
+    if (allowOther) {
+      const otherBtn = document.createElement('button');
+      otherBtn.className = (style === 'chips' ? 'ai-setup-option-chip' : 'ai-setup-option-card') + ' ai-setup-option-other';
+      otherBtn.textContent = 'Other';
+      otherBtn.dataset.optionId = '__other__';
+
+      // Inline input row (hidden until Other is clicked)
+      const inputRow = document.createElement('div');
+      inputRow.className = 'ai-setup-other-input-row';
+      inputRow.style.display = 'none';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'ai-setup-other-input';
+      input.placeholder = 'Type your answer…';
+
+      const confirmOther = document.createElement('button');
+      confirmOther.className = 'ai-setup-other-confirm';
+      confirmOther.textContent = 'OK';
+
+      inputRow.appendChild(input);
+      inputRow.appendChild(confirmOther);
+
+      function resolveWithOther() {
+        const val = input.value.trim();
+        if (!val) return; // block empty submissions
+        otherText = val;
+        wrapper.classList.add('ai-setup-options-resolved');
+        disableOptions(wrapper);
+        input.disabled = true;
+        confirmOther.disabled = true;
+        markNextSequenceShouldFollow();
+        _pendingResolve = null;
+        resolve({ selected: ['__other__'], selectedLabels: ['Other'], otherText });
+      }
+
+      otherBtn.addEventListener('click', () => {
+        if (multiSelect) {
+          // Toggle like other options
+          otherBtn.classList.toggle('selected');
+          if (selected.has('__other__')) {
+            selected.delete('__other__');
+            inputRow.style.display = 'none';
+            otherText = '';
+          } else {
+            selected.add('__other__');
+            inputRow.style.display = '';
+            input.focus();
+          }
+        } else {
+          // Single select — deselect others, show input
+          wrapper.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+          otherBtn.classList.add('selected');
+          inputRow.style.display = '';
+          input.focus();
+        }
+      });
+
+      // Submit on Enter or OK click (single-select only — multi-select uses Continue)
+      if (!multiSelect) {
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') resolveWithOther(); });
+        confirmOther.addEventListener('click', resolveWithOther);
+      } else {
+        // For multi-select, just capture the text live
+        input.addEventListener('input', () => { otherText = input.value.trim(); });
+      }
+
+      wrapper.appendChild(otherBtn);
+      wrapper.appendChild(inputRow);
+    }
+
     // For multi-select, add confirm button
     if (multiSelect) {
       const confirmBtn = document.createElement('button');
       confirmBtn.className = 'ai-setup-option-confirm';
       confirmBtn.textContent = 'Continue';
       confirmBtn.addEventListener('click', () => {
+        // If Other is selected but empty, block
+        if (selected.has('__other__') && !otherText) return;
         wrapper.classList.add('ai-setup-options-resolved');
         disableOptions(wrapper);
-        const selectedLabels = options.filter(o => selected.has(o.id)).map(o => o.label);
+        const allOptions = [...options];
+        if (allowOther) allOptions.push({ id: '__other__', label: 'Other' });
+        const selectedLabels = allOptions.filter(o => selected.has(o.id)).map(o => o.label);
+        const result = { selected: [...selected], selectedLabels };
+        if (selected.has('__other__') && otherText) result.otherText = otherText;
         markNextSequenceShouldFollow();
         _pendingResolve = null;
-        resolve({ selected: [...selected], selectedLabels });
+        resolve(result);
       });
       wrapper.appendChild(confirmBtn);
     }
@@ -4461,7 +4560,7 @@ ${role === 'agent'
       ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
       : [];
 
-    let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please begin with a short hello and one-line orientation for a new user, then check what is already known, ask for any website or files that would help, and ask only the few extra questions you need to make strong tab and widget decisions before proposing a first draft.';
+    let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please begin with a short hello and one-line orientation for a new user, then check what is already known, ask for sources that would help, confirm the key structural decisions (teams, scope, what decisions the dashboard should support), understand the specific signals that matter, and then propose a first draft.';
     if (_role === 'supervisor') {
       initialUserMsg += ` This should stay scoped to the teams this supervisor oversees${scopedTeams.length ? `: ${scopedTeams.join(', ')}` : ''}.`;
     } else if (_role === 'agent') {

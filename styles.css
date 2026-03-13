@@ -3422,6 +3422,66 @@ body[data-panel="wide"] .ai-setup-overlay {
   color: #fff;
 }
 
+/* ── "Other" option pill and inline input ──────────────────── */
+.ai-setup-option-other {
+  border-style: dashed !important;
+}
+.ai-setup-option-other.selected {
+  border-style: solid !important;
+}
+
+.ai-setup-other-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.ai-setup-other-input {
+  flex: 1;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--gray-700);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ai-setup-other-input:focus {
+  border-color: var(--gray-400);
+}
+.ai-setup-other-input:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ai-setup-other-confirm {
+  height: 32px;
+  padding: 0 14px;
+  background: var(--gray-900);
+  color: #fff;
+  border: 1px solid var(--gray-900);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.ai-setup-other-confirm:hover {
+  background: var(--gray-700);
+}
+.ai-setup-other-confirm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ── Inline prompts and actions ────────────────────────────── */
 .ai-setup-inline-prompt {
   font-size: 13px;
