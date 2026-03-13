@@ -438,6 +438,12 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - Less is more. Give only the information the user needs to act or understand the next step. It is fine if the user asks a follow-up clarification question.
 </conversation_style>
 
+<user_facing_terminology>
+- Avoid the word "widget" in user-facing copy unless the user uses it first.
+- When speaking generally about what appears on the dashboard, prefer familiar terms like "charts and metrics". If you need a broader catch-all term, use "dashboard items".
+- Do not give estimated counts or ranges for charts, metrics, or tabs while asking about density or preference. Keep that question qualitative unless you are referring to a concrete draft you are actively showing.
+</user_facing_terminology>
+
 <ui_presentation>
 - Treat interactive UI blocks as their own communication surface, not just attachments to long chat messages.
 - Treat an adjacent chat bubble plus interactive block as one combined reading experience. Optimize the pair together, not each piece independently.
@@ -582,8 +588,8 @@ ${role === 'agent'
   1. Brief greeting and context check
   2. Source/context gathering (show_source_input)
   3. Structural confirmation: which teams are in scope and their focus, whether the dashboard is shared or team-specific, what decisions or outcomes it should support (use show_team_assignment_matrix for admin/supervisor when 2+ teams exist)
-  4. Widget-level depth and density preference: understand what specific signals and decisions matter, and gauge whether the user prefers a focused dashboard or a comprehensive one — go one level deeper than broad categories before selecting widgets
-  5. Proposal: tab structure and widget selection (show_tab_proposal_choice), calibrated to density preference
+  4. Content depth and density preference: understand what specific signals and decisions matter, and gauge whether the user prefers a focused dashboard or a broader one — go one level deeper than broad categories before selecting charts, metrics, and other dashboard items
+  5. Proposal: tab structure and dashboard content selection (show_tab_proposal_choice), calibrated to density preference
   6. Refinement and completion
 - Do not skip phases 3-4 even when customer data is rich. Pre-filled data should make confirmation fast, not make it unnecessary. Phases 3-4 together should typically be 2-3 exchanges total, not 2-3 per phase. Keep it tight but substantive.
 - After the source/context step, do a real gap check before proposing. At minimum, confirm:
@@ -591,12 +597,12 @@ ${role === 'agent'
   - For all roles: what decisions or outcomes the dashboard should support (not just what data exists, but what people need from it)
   - Whether pre-filled customer data still reflects reality (a brief confirmation, not a re-interview)
 - This does not mean asking all these as separate questions. A single well-framed question or a pre-filled interactive component can cover multiple gaps efficiently.
-- Before proposing widgets, go one level deeper than broad categories. If the user says they care about "support quality", that is not enough to decide between CSAT, response rate, reopen rate, knowledge gaps, satisfaction trends, and suggested knowledge additions. Ask a targeted follow-up that surfaces which specific signals matter — frame it around the user's workflow and decisions, not as a widget checklist. After this, you should be able to justify each included widget and explain why you excluded the obvious alternatives. If you cannot, you need one more question — not a proposal.
-- Before building the proposal, gauge the user's preference for dashboard density. People differ on whether they prefer a focused dashboard with just the essentials vs a comprehensive one with more data available, and on how many charts feel comfortable in a single tab. A single light question can surface this — use it to calibrate both the total widget count and the tab structure. A focused user might get 8-12 widgets across 2 tabs; a comprehensive user might get 15-20 across 4 tabs. This can be asked alongside or combined with the widget-depth question.
+- Before proposing charts and metrics, go one level deeper than broad categories. If the user says they care about "support quality", that is not enough to decide between CSAT, response rate, reopen rate, knowledge gaps, satisfaction trends, and suggested knowledge additions. Ask a targeted follow-up that surfaces which specific signals matter — frame it around the user's workflow and decisions, not as a feature checklist. After this, you should be able to justify each included dashboard item and explain why you excluded the obvious alternatives. If you cannot, you need one more question — not a proposal.
+- Before building the proposal, gauge the user's preference for dashboard density. People differ on whether they prefer a focused dashboard with just the essentials or a broader one with more detail available. Ask this in plain language using familiar terms like "charts and metrics", not "widgets". Use the answer qualitatively to calibrate the density and tab structure. Do not quote estimated counts unless they come from a concrete draft you are actively showing.
 - Your goal is to collect enough context to propose an initial dashboard draft.
-- First decide which starter widgets to include based on the user's needs and context. Each widget should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic widgets just because they exist.
-- Do not treat the starter widget set as high-confidence unless the current context is enough to justify the included widgets against the other available options.
-- Then group those widgets into tabs. The number and naming of tabs should follow naturally from how the selected widgets cluster by decision domain or workflow. Present the tab proposal (with show_tab_proposal_choice) only after you have a clear picture of which widgets go where.
+- First decide which starter charts, metrics, and other dashboard items to include based on the user's needs and context. Each item should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic items just because they exist.
+- Do not treat the starter set as high-confidence unless the current context is enough to justify the included items against the other available options.
+- Then group those items into tabs. The number and naming of tabs should follow naturally from how the selected items cluster by decision domain or workflow. Present the tab proposal (with show_tab_proposal_choice) only after you have a clear picture of which items go where.
 - When a tab spans multiple catalog sections, use the categories array (e.g. categories: ["understand", "improve"]) so widgets route correctly.
 - Tab count guidance:
   - 1-5 tabs are all normal outcomes. 6+ requires strong justification.
@@ -1399,7 +1405,7 @@ ${role === 'agent'
   }
 
   function buildOutOfScopeAssistantReply() {
-    return 'I’m here to help with analytics, dashboard setup, widgets, and support or sales data questions. I can’t help with general questions like that, but I can help you explore metrics, trends, tickets, teams, or dashboard changes.';
+    return 'I’m here to help with analytics, dashboard setup, charts, metrics, and support or sales data questions. I can’t help with general questions like that, but I can help you explore metrics, trends, tickets, teams, or dashboard changes.';
   }
 
   function stringifyErrorForReport(value) {
@@ -1823,12 +1829,12 @@ ${role === 'agent'
   function buildAssistantOpeningMessage() {
     const companyName = _customerData?.company ? ` for ${_customerData.company}` : '';
     if (_role === 'supervisor') {
-      return `Hi — I can help refine the dashboard${companyName}, especially tabs, teams, widgets, and team-scoped questions. I can also help analyze the data when you want to dig deeper.`;
+      return `Hi — I can help refine the dashboard${companyName}, especially tabs, teams, charts, and metrics for your team. I can also help analyze the data when you want to dig deeper.`;
     }
     if (_role === 'agent') {
       return `Hi — I can help tailor your view${companyName}, adjust what you see, and answer deeper questions using the data when useful.`;
     }
-    return `Hi — I can help refine the dashboard${companyName}, adjust tabs, teams, and widgets, and answer deeper questions using the data when useful.`;
+    return `Hi — I can help refine the dashboard${companyName}, adjust tabs, teams, charts, and metrics, and answer deeper questions using the data when useful.`;
   }
 
   function ensureAssistantDisplayThread() {
@@ -3917,7 +3923,7 @@ ${role === 'agent'
       title.textContent = tab.label;
       const count = document.createElement('span');
       count.className = 'preview-section-count';
-      count.textContent = `${widgets.length} widget${widgets.length === 1 ? '' : 's'}`;
+      count.textContent = `${widgets.length} item${widgets.length === 1 ? '' : 's'}`;
       header.appendChild(title);
       header.appendChild(count);
       section.appendChild(header);
@@ -4218,11 +4224,18 @@ ${role === 'agent'
     if (!container) return null;
     const { suppressAutoScroll = false } = options;
     const token = Symbol('thread-sequence');
-    const followToBottom = _forceNextSequenceAutoScroll;
+    const forced = _forceNextSequenceAutoScroll;
     _threadScrollSequence = {
       token,
-      startedNearBottom: !suppressAutoScroll && (followToBottom || isNearBottom(container)),
-      followToBottom,
+      startedNearBottom: !suppressAutoScroll && (forced || isNearBottom(container)),
+      // followToBottom bypasses the first-anchor safeguard entirely (scrolls
+      // straight to bottom regardless of anchor).  Only enable it when the
+      // user was already near the bottom naturally — NOT when forced by a
+      // prior interaction, because the forced flag may precede a response
+      // with text + a tall interactive block where the text must stay visible.
+      // The forced flag still guarantees startedNearBottom = true, which
+      // enables scrolling while respecting the anchor.
+      followToBottom: !suppressAutoScroll && !forced && isNearBottom(container),
       firstAnchorElement: null,
     };
     _forceNextSequenceAutoScroll = false;
