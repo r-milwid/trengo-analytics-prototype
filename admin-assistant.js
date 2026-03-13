@@ -332,7 +332,7 @@ const AdminAssistant = (() => {
   const ROLE_TOOLS = {
     admin: ALL_TOOLS.map(t => t.name),
     supervisor: ['set_lens', 'set_team_usecases', 'configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
-    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
+    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
   };
 
   function getToolsForRole(role, mode) {
@@ -578,9 +578,7 @@ ${role === 'agent'
 - When team classification is needed, prefer show_team_assignment_matrix over generic cards.
 - When you have a concrete tab proposal, present it with show_tab_proposal_choice.
 - If the user accepts a tab proposal, apply it and do not open the editor.
-${role === 'agent'
-  ? '- Agents cannot refine tab proposals directly. If they reject a proposal, ask what they would change and propose a revised set.'
-  : '- If the user wants to refine a tab proposal, refine it through show_tab_editor with the proposal already filled in.'}
+- If the user wants to refine a tab proposal, refine it through show_tab_editor with the proposal already filled in.
 - If the user keeps the defaults, respect that and move on.
 - No minimum completion is required. Defaults are valid. Preserve partial progress on skip.
 - Call complete_onboarding when the user is satisfied, wants to stop, or has enough configured for now.
@@ -1764,9 +1762,16 @@ ${role === 'agent'
       window.setGuideOnboardingState(false);
     }
 
-    await animateOnboardingCollapseToFAB();
-    hideOnboarding();
-    showFAB({ pulse: true });
+    const useRobotTransition = typeof isFeatureEnabled === 'function' && isFeatureEnabled('onboarding-transition');
+    if (useRobotTransition) {
+      await animateOnboardingCollapseToFABRobot();
+      hideOnboarding();
+      showFAB({ pulse: true });
+    } else {
+      await animateOnboardingCollapseToFAB();
+      hideOnboarding();
+      showFAB({ pulse: true });
+    }
     showConfigChange(`Setup complete!`);
     return { success: true, summary };
   }
@@ -2937,7 +2942,7 @@ ${role === 'agent'
         label: 'Reset to defaults',
         description: 'Discard this proposal and switch back to the baseline tabs.',
       },
-    ].filter(o => _role === 'agent' ? o.id !== 'refine_further' : true);
+    ];
 
     decisionOptions.forEach(option => {
       const button = document.createElement('button');
@@ -4844,16 +4849,128 @@ ${role === 'agent'
     }
   }
 
+  // ── Robot runner transition animation ─────────────────────
+  function createRobotElement() {
+    const robot = document.createElement('div');
+    robot.className = 'robot-runner';
+    robot.innerHTML = `<div class="robot-runner-inner">
+      <div class="robot-antenna"></div>
+      <div class="robot-head">
+        <div class="robot-eye robot-eye-left"></div>
+        <div class="robot-eye robot-eye-right"></div>
+      </div>
+      <div class="robot-body"></div>
+      <div class="robot-arm robot-arm-left"></div>
+      <div class="robot-arm robot-arm-right"></div>
+      <div class="robot-leg robot-leg-left"></div>
+      <div class="robot-leg robot-leg-right"></div>
+    </div>`;
+    return robot;
+  }
+
+  async function animateOnboardingCollapseToFABRobot() {
+    const overlay = document.getElementById('ai-setup-overlay');
+    const fab = document.getElementById('assistant-fab');
+    if (!overlay || !fab) return;
+
+    const legacyCollapseEasing = 'cubic-bezier(0.2, 0.82, 0.18, 1)';
+    const legacyOverlayEasing = 'cubic-bezier(0.22, 0.78, 0.18, 1)';
+    const overlayFadeDuration = 520;
+    const introDuration = 1200;
+    const shrinkDuration = 1200;
+
+    // Phase 1: Fade out onboarding overlay
+    overlay.style.transition = `opacity ${overlayFadeDuration}ms ${legacyOverlayEasing}`;
+    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = 'none';
+    await new Promise(r => setTimeout(r, overlayFadeDuration));
+
+    // Prepare FAB position (hidden) so we can measure its target
+    showFAB({ hidden: true });
+    const fabRect = fab.getBoundingClientRect();
+    const fabCenterX = fabRect.left + fabRect.width / 2;
+    const fabCenterY = fabRect.top + fabRect.height / 2;
+
+    // Phase 2: Create robot at bottom-center
+    const robot = createRobotElement();
+    const startX = window.innerWidth / 2;
+    const bottomY = window.innerHeight - 24 - 64; // 24px margin + robot height
+    robot.style.left = startX + 'px';
+    robot.style.top = bottomY + 'px';
+    robot.style.opacity = '0';
+    robot.style.transform = 'translateX(-50%) translateY(20px)';
+    document.body.appendChild(robot);
+
+    // Slide robot in from below
+    await new Promise(r => setTimeout(r, 50)); // let DOM paint
+    robot.style.transition = `opacity ${introDuration}ms ${legacyCollapseEasing}, transform ${introDuration}ms ${legacyCollapseEasing}`;
+    robot.style.opacity = '1';
+    robot.style.transform = 'translateX(-50%) translateY(0)';
+    await new Promise(r => setTimeout(r, introDuration));
+
+    // Phase 3: Robot runs to FAB position
+    robot.classList.add('running');
+    const targetX = fabCenterX;
+    const targetY = fabCenterY - 32; // center robot on FAB
+    const dx = targetX - startX;
+    const dy = targetY - bottomY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const runDuration = Math.max(1900, Math.min(3200, distance * 3.6));
+
+    robot.style.transition = `left ${runDuration}ms ${legacyCollapseEasing}, top ${runDuration}ms ${legacyCollapseEasing}`;
+    robot.style.left = targetX + 'px';
+    robot.style.top = targetY + 'px';
+    await new Promise(r => setTimeout(r, runDuration));
+
+    // Phase 4: Stop and wave
+    robot.classList.remove('running');
+    robot.classList.add('waving');
+    await new Promise(r => setTimeout(r, 1600)); // 3 waves at 0.5s each
+
+    // Phase 5: Shrink into FAB
+    robot.classList.remove('waving');
+    robot.style.transition = `transform ${shrinkDuration}ms ease-in, opacity ${shrinkDuration}ms ease-in`;
+    robot.style.transform = 'translateX(-50%) scale(0.15)';
+    robot.style.opacity = '0';
+
+    // FAB fades in simultaneously
+    fab.style.opacity = '0';
+    fab.style.visibility = '';
+    fab.style.pointerEvents = '';
+    fab.style.display = '';
+    fab.style.transition = `opacity ${shrinkDuration}ms ease`;
+    fab.style.opacity = '1';
+
+    await new Promise(r => setTimeout(r, shrinkDuration));
+
+    // Cleanup
+    robot.remove();
+    overlay.style.transition = '';
+    overlay.style.opacity = '';
+    overlay.style.pointerEvents = '';
+    fab.style.transition = '';
+  }
+
+  const COMPACT_PREF_KEY = 'trengo_assistant_compact';
+
   function initFAB() {
     const fab = document.getElementById('assistant-fab');
     const panel = document.getElementById('assistant-panel');
     const closeBtn = document.getElementById('assistant-panel-close');
+    const compactToggle = document.getElementById('assistant-panel-compact-toggle');
 
     if (fab) {
       fab.addEventListener('click', () => openAssistantPanel());
     }
     if (closeBtn) {
       closeBtn.addEventListener('click', () => closeAssistantPanel());
+    }
+    if (compactToggle && panel) {
+      compactToggle.addEventListener('click', () => {
+        const isCompact = panel.classList.toggle('is-compact');
+        compactToggle.title = isCompact ? 'Expand view' : 'Compact view';
+        localStorage.setItem(COMPACT_PREF_KEY, isCompact ? '1' : '');
+      });
     }
   }
 
@@ -4864,6 +4981,16 @@ ${role === 'agent'
 
     panel.style.display = '';
     if (fab) fab.style.display = 'none';
+
+    // Restore compact preference
+    const compactToggle = document.getElementById('assistant-panel-compact-toggle');
+    if (localStorage.getItem(COMPACT_PREF_KEY)) {
+      panel.classList.add('is-compact');
+      if (compactToggle) compactToggle.title = 'Expand view';
+    } else {
+      panel.classList.remove('is-compact');
+      if (compactToggle) compactToggle.title = 'Compact view';
+    }
 
     // Collapse prototype guide if open
     if (window.setPanelState) {
@@ -4902,6 +5029,7 @@ ${role === 'agent'
     if (panel) {
       panel.style.display = 'none';
       panel.classList.remove('has-wide-artifact');
+      panel.classList.remove('is-compact');
     }
     if (fab) showFAB();
   }

@@ -106,6 +106,7 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
   { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: false },
+  { id: 'onboarding-transition', label: 'Onboarding transition', desc: 'Animation style when onboarding completes', toggleLabels: { off: 'Old', on: 'New' } },
 ];
 
 function isFeatureEnabled(id) {
@@ -4573,20 +4574,40 @@ const flagClose  = document.getElementById('flag-popout-close');
 function renderFlagList() {
   const list = document.getElementById('flag-list');
   if (!list) return;
-  list.innerHTML = FEATURE_FLAGS.map(f => `
-    <div class="flag-item">
+  list.innerHTML = FEATURE_FLAGS.map(f => {
+    const checked = isFeatureEnabled(f.id);
+    const tl = f.toggleLabels;
+    const toggleHTML = tl
+      ? `<div class="flag-toggle-group">
+           <span class="flag-toggle-label${!checked ? ' active' : ''}">${tl.off}</span>
+           <label class="flag-toggle" title="${f.label}">
+             <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
+             <span class="flag-track"></span>
+           </label>
+           <span class="flag-toggle-label${checked ? ' active' : ''}">${tl.on}</span>
+         </div>`
+      : `<label class="flag-toggle" title="${f.label}">
+           <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
+           <span class="flag-track"></span>
+         </label>`;
+    return `<div class="flag-item">
       <div>
         <div class="flag-label">${f.label}</div>
         <div class="flag-desc">${f.desc}</div>
       </div>
-      <label class="flag-toggle" title="${f.label}">
-        <input type="checkbox" data-flag="${f.id}"${isFeatureEnabled(f.id) ? ' checked' : ''}>
-        <span class="flag-track"></span>
-      </label>
-    </div>`).join('');
+      ${toggleHTML}
+    </div>`;
+  }).join('');
   list.querySelectorAll('.flag-toggle input').forEach(cb => {
     cb.addEventListener('change', () => {
       setFeatureFlag(cb.dataset.flag, cb.checked);
+      // Update toggle label active states
+      const group = cb.closest('.flag-toggle-group');
+      if (group) {
+        const labels = group.querySelectorAll('.flag-toggle-label');
+        if (labels[0]) labels[0].classList.toggle('active', !cb.checked);
+        if (labels[1]) labels[1].classList.toggle('active', cb.checked);
+      }
       // Flags with immediate side-effects
       if (cb.dataset.flag === 'anchors-nav') {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
@@ -6210,7 +6231,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     _pendingContextApproval = null;
     clearChatHistory();
     chatMessages.innerHTML = '';
-    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it.', 'assistant');
+    addBubble('Ask me anything about the prototype, and report bugs or feedback here as you go — I\'ll log them for the team.', 'assistant');
     chatInput.focus();
   });
 
@@ -7029,7 +7050,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       addBubble(msg.content, msg.role === 'user' ? 'user' : 'assistant');
     });
   } else {
-    addBubble('Ask me anything about the prototype and share feedback as you go — I\'ll capture it.', 'assistant');
+    addBubble('Ask me anything about the prototype, and report bugs or feedback here as you go — I\'ll log them for the team.', 'assistant');
   }
 
   // Nav toast — show "Outside prototype scope." for non-settings nav clicks
