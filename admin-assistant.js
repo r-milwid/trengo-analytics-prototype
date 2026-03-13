@@ -163,13 +163,15 @@ const AdminAssistant = (() => {
                 id: { type: 'string' },
                 label: { type: 'string' },
                 description: { type: 'string' },
-                icon: { type: 'string' }
+                icon: { type: 'string' },
+                completesOnboarding: { type: 'boolean', description: 'If true, clicking this option immediately completes onboarding without an extra LLM round-trip. Use on the "looks good" / "done" option in the final review.' }
               },
               required: ['id', 'label']
             }
           },
           multiSelect: { type: 'boolean', description: 'Allow multiple selections (default: false)' },
-          style: { type: 'string', enum: ['cards', 'chips', 'list'], description: 'Display style (default: cards)' }
+          style: { type: 'string', enum: ['cards', 'chips', 'list'], description: 'Display style (default: cards)' },
+          allowOther: { type: 'boolean', description: 'When true, an "Other" pill is appended that opens an inline text input on click. Use for open-ended sets (team names, categories). Omit or set false for exhaustive sets (fixed lists, binary decisions).' }
         },
         required: ['options']
       }
@@ -598,6 +600,7 @@ ${role === 'agent'
 - If the user keeps the defaults, respect that and move on.
 - No minimum completion is required. Defaults are valid. Preserve partial progress on skip.
 - Call complete_onboarding when the user is satisfied, wants to stop, or has enough configured for now.
+- When presenting a final review with show_options that includes a "done" / "looks good" option, set completesOnboarding: true on that option so clicking it skips the extra LLM round-trip.
 </onboarding>`;
     } else {
       prompt += `
@@ -1205,11 +1208,11 @@ ${role === 'agent'
     return { success: true };
   }
 
-  function handleShowOptions({ prompt, options, multiSelect, style }) {
+  function handleShowOptions({ prompt, options, multiSelect, style, allowOther }) {
     // This is a "blocking" UI tool — we render the options and pause the loop
     return new Promise(resolve => {
       _pendingResolve = resolve;
-      void renderOptionsUI(prompt, options, multiSelect || false, style || 'cards', resolve);
+      void renderOptionsUI(prompt, options, multiSelect || false, style || 'cards', allowOther || false, resolve);
     });
   }
 
@@ -1787,13 +1790,13 @@ ${role === 'agent'
     if (useRobotTransition) {
       await animateOnboardingCollapseToFABRobot();
       hideOnboarding();
-      showFAB({ pulse: true });
     } else {
-      await animateOnboardingCollapseToFAB();
       hideOnboarding();
-      showFAB({ pulse: true });
     }
     showConfigChange(`Setup complete!`);
+    // Open assistant panel directly at compact height
+    localStorage.setItem(COMPACT_PREF_KEY, '1');
+    openAssistantPanel();
     return { success: true, summary };
   }
 
@@ -2647,6 +2650,16 @@ ${role === 'agent'
           el.classList.add('selected');
           wrapper.classList.add('ai-setup-options-resolved');
           disableOptions(wrapper);
+
+          // Short-circuit: complete onboarding instantly without LLM round-trip
+          if (opt.completesOnboarding && (AssistantStorage.getMode(_session) || 'onboarding') === 'onboarding') {
+            _pendingResolve = null;
+            _runGeneration++;
+            _loopRunning = false;
+            handleCompleteOnboarding({ summary: opt.label });
+            return;
+          }
+
           markNextSequenceShouldFollow();
           _pendingResolve = null;
           resolve({ selected: [opt.id], selectedLabels: [opt.label] });
@@ -4952,7 +4965,7 @@ ${role === 'agent'
     const fabCenterY = fabRect.top + fabRect.height / 2;
     const robotWidth = 48;
     const robotHeight = 64;
-    const introStartX = window.innerWidth * 0.38;
+    const introStartX = window.innerWidth * 0.5;
     const startX = introStartX;
     const bottomY = window.innerHeight - 24 - robotHeight; // 24px margin + robot height
     const robotStartCenterY = bottomY + robotHeight / 2;
@@ -5064,11 +5077,11 @@ ${role === 'agent'
     const slideToFloorDuration = Math.round(travelDuration * 0.25);
     const floorMoveDuration = Math.round(travelDuration * 0.25);
     const freestyleDuration = travelDuration - walkIntroDuration - slideToFloorDuration - floorMoveDuration;
-    const climbDuration = 1800;
+    const climbDuration = 1350;        // 1.5 cycles of 0.9s climbing animation (was 1800 = 2 cycles)
     const fallDuration = 950;
-    const standDuration = 2400;
-    const speechDuration = 1400;
-    const finaleDanceDuration = 1800;
+    const standDuration = 1700;         // cubic-bezier front-loads motion; visually upright by ~70% (was 2400)
+    const speechDuration = 1000;        // just reading time (was 1400)
+    const finaleDanceDuration = 1200;   // 0.75 cycles — cut short into shrink (was 1800)
 
     const moveRobotTo = (progress, duration) => {
       const nextX = danceStartX + dx * progress;
@@ -5127,7 +5140,7 @@ ${role === 'agent'
     await wait(finaleDanceDuration);
 
     setRobotMotion(robot, 'waving');
-    await wait(1600); // 3 waves at 0.5s each
+    await wait(1500); // 3 waves at 0.5s each
 
     // Phase 5: Shrink into FAB
     setRobotMotion(robot, null);

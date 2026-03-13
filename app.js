@@ -106,7 +106,7 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
   { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: false },
-  { id: 'onboarding-transition', label: 'Onboarding transition', desc: 'Animation style when onboarding completes', toggleLabels: { off: 'Old', on: 'New' } },
+  { id: 'onboarding-transition', label: 'Onboarding transition', desc: 'Animation when onboarding completes', toggleLabels: { off: 'No', on: 'Yes' } },
 ];
 
 function isFeatureEnabled(id) {
