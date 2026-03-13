@@ -2637,8 +2637,9 @@ body[data-viewmode="view"] .empty-tile          { display: none !important; }
 body[data-viewmode="view"] #manage-widgets-btn  { display: none !important; }
 body[data-viewmode="view"] .edit-only-ui        { display: none !important; }
 
-/* Agent role — hide edit/manage actions (supervisor only) */
-body[data-role="agent"] .sub-nav-actions { display: none !important; }
+/* Agent role — hide manage-widgets (supervisor only), keep view/edit toggle visible */
+body[data-role="agent"] #manage-widgets-btn  { display: none !important; }
+body[data-role="agent"] .edit-only-ui        { display: none !important; }
 
 /* ============================================================
    WIDGET CHART / NUMBERS VIEW TOGGLE
@@ -3857,6 +3858,21 @@ body[data-panel="wide"] .ai-setup-overlay {
 .ai-setup-source-paste-input:focus {
   border-color: var(--gray-400);
   box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
+}
+
+/* Read-only company context block for agent source input */
+.ai-setup-source-context-readonly {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
 }
 
 .ai-setup-source-submit {

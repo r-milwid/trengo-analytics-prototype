@@ -8,6 +8,7 @@
 
 const DashboardConfig = (() => {
   const PROXY_URL = 'https://trengo-chatbot-proxy.analytics-chatbot.workers.dev';
+  const LOCAL_STORAGE_KEY = 'trengo_dashboard_config';
   let _currentRevision = 0;
   let _saveTimer = null;
   let _userId = null;
@@ -72,6 +73,8 @@ const DashboardConfig = (() => {
         isDefault: !!t.isDefault,
       })),
       tabWidgets,
+      hiddenWidgets: state.hiddenWidgets instanceof Set ? [...state.hiddenWidgets] : [],
+      addedWidgets: state.addedWidgets instanceof Set ? [...state.addedWidgets] : [],
       sectionOrder: state.sectionOrder ? { ...state.sectionOrder } : {},
       widgetSpans: state.widgetSpans ? { ...state.widgetSpans } : {},
     };
@@ -148,6 +151,14 @@ const DashboardConfig = (() => {
       }
     }
 
+    // Widget visibility
+    if (Array.isArray(config.hiddenWidgets)) {
+      state.hiddenWidgets = new Set(config.hiddenWidgets);
+    }
+    if (Array.isArray(config.addedWidgets)) {
+      state.addedWidgets = new Set(config.addedWidgets);
+    }
+
     // Widget spans
     if (config.widgetSpans) {
       state.widgetSpans = { ...config.widgetSpans };
@@ -215,17 +226,48 @@ const DashboardConfig = (() => {
     }
   }
 
+  // ── Local persistence (localStorage) ──────────────────────
+  function saveLocal(config) {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config));
+    } catch (e) {
+      console.warn('[DashboardConfig] localStorage save failed:', e);
+    }
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.warn('[DashboardConfig] localStorage load failed:', e);
+      return null;
+    }
+  }
+
+  function clearLocal() {
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    } catch (e) { /* ignore */ }
+  }
+
   // ── Notify Changed: debounced auto-save ────────────────────
   function notifyChanged() {
+    // Always save to localStorage immediately for persistence across refreshes
+    if (typeof state !== 'undefined') {
+      const config = serialize(state, 'ui');
+      saveLocal(config);
+    }
+
+    // Also save to Cloudflare KV if user is identified (debounced)
     if (!_userId) {
       _userId = localStorage.getItem('trengo_session_user_name');
     }
-    if (!_userId) return; // No user, can't save
+    if (!_userId) return;
 
     if (_saveTimer) clearTimeout(_saveTimer);
     _saveTimer = setTimeout(() => {
       _saveTimer = null;
-      // `state` is a global in app.js
       if (typeof state !== 'undefined') {
         const config = serialize(state, 'ui');
         save(_userId, config);
@@ -248,6 +290,9 @@ const DashboardConfig = (() => {
     apply,
     load,
     save,
+    loadLocal,
+    saveLocal,
+    clearLocal,
     notifyChanged,
     setUserId,
     getRevision,

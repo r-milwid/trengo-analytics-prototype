@@ -27,5 +27,145 @@
     "avgMonthlyConversations": 8500,
     "topPainPoints": ["Long first-response times during peak demand", "Difficulty tracking escalated coordination issues across teams"]
   },
+  "analyticsDataInventory": {
+    "coverageSummary": "Northstar has support, sales, voice, survey, automation, and knowledge-base source coverage with event, hourly, daily, monthly, and quarterly rollups.",
+    "sourceSystems": [
+      { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "15-minute", "hourly", "daily"], "retention": "18 months" },
+      { "name": "Voice platform", "entities": ["call", "queue event", "callback request"], "grains": ["event", "hourly", "daily"], "retention": "15 months" },
+      { "name": "CRM", "entities": ["lead", "deal", "account"], "grains": ["event", "daily snapshot", "monthly"], "retention": "24 months" },
+      { "name": "CSAT tooling", "entities": ["survey send", "survey response"], "grains": ["event", "daily", "monthly"], "retention": "24 months" },
+      { "name": "Automation logs", "entities": ["journey run", "handoff", "guardrail stop"], "grains": ["event", "hourly", "daily"], "retention": "12 months" },
+      { "name": "Knowledge base analytics", "entities": ["article", "article view", "AI citation"], "grains": ["daily", "weekly", "monthly"], "retention": "18 months" }
+    ],
+    "historyWindows": {
+      "eventDays": 180,
+      "hourlyDays": 365,
+      "dailyMonths": 24,
+      "monthlyMonths": 36,
+      "quarterlyYears": 3
+    },
+    "granularities": ["event", "15-minute", "hourly", "daily", "weekly", "monthly", "quarterly"],
+    "joinKeys": ["conversation_id", "ticket_id", "contact_id", "account_id", "deal_id", "call_id", "survey_id", "journey_run_id", "article_id", "agent_id"],
+    "timeDimensions": ["15-minute", "hour", "day", "week", "month", "quarter", "fiscal quarter", "holiday"],
+    "factTables": [
+      { "name": "conversation_events", "grain": "event", "fields": ["conversation_id", "message_id", "ticket_id", "created_at", "first_response_at", "resolved_at", "channel", "team", "agent"] },
+      { "name": "ticket_status_history", "grain": "event", "fields": ["ticket_event_id", "ticket_id", "from_status", "to_status", "queue", "priority", "sla_policy", "changed_at"] },
+      { "name": "deal_stage_history", "grain": "event", "fields": ["stage_event_id", "deal_id", "deal_owner", "stage", "stage_entered_at", "stage_exited_at", "close_reason", "competitor"] },
+      { "name": "call_legs", "grain": "event", "fields": ["call_leg_id", "call_id", "voice_line", "direction", "connection_result", "recording_flag", "hold_seconds", "transfer_count", "queue_entered_at", "answered_at", "ended_at"] },
+      { "name": "survey_responses", "grain": "event", "fields": ["survey_id", "ticket_id", "survey_template", "survey_question", "delivery_channel", "respondent_type", "sentiment_label", "response_at"] },
+      { "name": "agent_presence_intervals", "grain": "interval", "fields": ["agent_id", "schedule_id", "shift_id", "availability_status", "started_at", "ended_at", "online_minutes", "busy_minutes"] },
+      { "name": "journey_step_events", "grain": "event", "fields": ["journey_run_id", "journey_version", "trigger_type", "node_path", "exit_reason", "retry_count", "event_at"] }
+    ],
+    "availableDimensions": {
+      "geography": ["region", "country", "city", "language", "business unit"],
+      "customer": ["account segment", "account tier", "plan", "lifecycle stage", "cohort"],
+      "operations": ["team", "agent", "queue", "priority", "SLA policy", "channel", "hour"],
+      "product": ["product line", "feature area", "issue type", "intent", "intent version"],
+      "goToMarket": ["campaign", "lead source", "partner source", "channel attribution"],
+      "aiAndAutomation": ["AI model", "prompt version", "confidence band", "guardrail type", "journey", "journey version", "trigger type", "exit reason"],
+      "knowledge": ["article", "article category"],
+      "revenueAndSales": ["deal owner", "deal amount", "currency", "close reason", "competitor"],
+      "voice": ["voice line", "connection result", "recording flag", "transfer count", "hold duration"],
+      "feedback": ["survey template", "survey question", "delivery channel", "respondent type", "sentiment label"],
+      "workforce": ["schedule", "shift", "planned capacity", "occupancy band"],
+      "governance": ["source system", "sync timestamp", "quality flag", "fiscal quarter"]
+    },
+    "businessDefinitions": {
+      "openTicket": "Cases not yet resolved or closed, including waiting-on-customer states.",
+      "firstResponse": "Time from ticket creation to first human or approved AI response, excluding auto-acknowledgements.",
+      "resolutionTime": "Time from ticket creation to final resolved state; reopened cases restart the timer from the reopen event.",
+      "newContact": "First contact from a patient, clinic, or care organization in the trailing 180 days.",
+      "aiResolved": "Cases closed without human handoff after an approved AI response path.",
+      "attributedChannel": "First meaningful inbound channel unless the case is converted to voice within 10 minutes."
+    },
+    "dataQuality": {
+      "refreshCadence": "Hourly for operational metrics, nightly for CRM and finance snapshots.",
+      "lateArrivingWindow": "Up to 48 hours for survey and CRM corrections.",
+      "knownBlindSpots": ["Manual notes from external care systems are not joined automatically", "Older SMS metadata before 2025-Q2 is daily-only"]
+    },
+    "auditability": {
+      "recordFields": ["source_system", "synced_at", "quality_flag", "is_late_arriving"],
+      "changeHistory": ["merge history", "correction log", "backfill window"],
+      "piiHandling": "PHI-sensitive fields remain tokenized outside aggregated analytics views."
+    },
+    "knownGaps": [
+      "No direct EHR outcome join for clinical follow-up completion",
+      "Some partner-generated referrals still rely on campaign tags instead of a stable source id"
+    ]
+  },
+  "analyticsDataModel": {
+    "geographies": [
+      { "region": "Benelux", "country": "Netherlands", "city": "Amsterdam", "language": "nl-NL", "businessUnit": "Care Operations", "weight": 4 },
+      { "region": "France", "country": "France", "city": "Paris", "language": "fr-FR", "businessUnit": "Strategic Care", "weight": 3 },
+      { "region": "DACH", "country": "Germany", "city": "Berlin", "language": "de-DE", "businessUnit": "Enterprise Growth", "weight": 2 }
+    ],
+    "accountSegments": [
+      { "accountSegment": "Independent clinics", "accountTier": "Growth", "plan": "Scale", "lifecycleStage": "Active", "cohort": "2024-Q4", "weight": 4 },
+      { "accountSegment": "Hospital groups", "accountTier": "Enterprise", "plan": "Enterprise", "lifecycleStage": "Expansion", "cohort": "2024-Q1", "weight": 3 },
+      { "accountSegment": "Specialty networks", "accountTier": "Strategic", "plan": "Enterprise Plus", "lifecycleStage": "Renewal", "cohort": "2023-Q3", "weight": 2 }
+    ],
+    "queues": [
+      { "queue": "Patient Access", "priority": "High", "slaPolicy": "P2 30m / 8h", "weight": 4 },
+      { "queue": "Care Coordination", "priority": "Standard", "slaPolicy": "P3 4h / 24h", "weight": 3 },
+      { "queue": "Clinical Incidents", "priority": "Urgent", "slaPolicy": "P1 15m / 4h", "weight": 2 }
+    ],
+    "productAreas": [
+      { "productLine": "Patient Messaging", "featureArea": "Appointment reminders", "issueType": "Appointment change", "weight": 4 },
+      { "productLine": "Care Coordination", "featureArea": "Referral workflows", "issueType": "Referral follow-up", "weight": 3 },
+      { "productLine": "Voice & Callback", "featureArea": "Triage queue", "issueType": "Missed call or callback", "weight": 2 },
+      { "productLine": "Admin", "featureArea": "Staff access", "issueType": "Login or SSO", "weight": 2 }
+    ],
+    "campaigns": [
+      { "campaign": "Digital clinic acquisition", "source": "Paid search", "weight": 3 },
+      { "campaign": "Hospital ABM", "source": "Outbound", "weight": 2 },
+      { "campaign": "Partner referrals", "source": "Partner", "weight": 2 },
+      { "campaign": "Webinar follow-up", "source": "Website", "weight": 1 }
+    ],
+    "knowledgeArticles": [
+      { "article": "Reset MFA for staff", "articleCategory": "Access", "weight": 3 },
+      { "article": "Reschedule patient appointment", "articleCategory": "Scheduling", "weight": 4 },
+      { "article": "Route urgent referral", "articleCategory": "Coordination", "weight": 2 },
+      { "article": "Handle no-answer callbacks", "articleCategory": "Voice", "weight": 2 }
+    ],
+    "aiModels": [
+      { "aiModel": "patient-triage-gpt-5-mini", "promptVersion": "patient-triage-v4", "guardrailType": "PHI", "weight": 4 },
+      { "aiModel": "care-routing-gpt-5-mini", "promptVersion": "care-routing-v3", "guardrailType": "Escalation", "weight": 3 },
+      { "aiModel": "voice-summary-gpt-5-mini", "promptVersion": "voice-summary-v2", "guardrailType": "Compliance", "weight": 2 }
+    ],
+    "automationJourneys": [
+      { "journey": "Appointment confirmation", "journeyVersion": "v3.2", "triggerType": "Booking created", "exitReason": "Confirmed automatically", "weight": 4 },
+      { "journey": "Referral triage", "journeyVersion": "v2.8", "triggerType": "Referral submitted", "exitReason": "Handed to coordination", "weight": 3 },
+      { "journey": "Missed-call callback", "journeyVersion": "v1.9", "triggerType": "Missed call", "exitReason": "Callback booked", "weight": 2 }
+    ],
+    "dealAttributes": [
+      { "dealOwner": "Emma Laurent", "currency": "EUR", "closeReason": "Care-network expansion", "competitor": "Intercom Health", "weight": 3 },
+      { "dealOwner": "Noah Muller", "currency": "EUR", "closeReason": "Procurement approved", "competitor": "Salesforce Health Cloud", "weight": 2 },
+      { "dealOwner": "Luca Vermeer", "currency": "GBP", "closeReason": "Pilot converted", "competitor": "Zendesk", "weight": 2 }
+    ],
+    "callAttributes": [
+      { "voiceLine": "Patient Support line", "connectionResult": "Connected", "recordingFlag": "Recorded", "weight": 4 },
+      { "voiceLine": "Clinic Priority line", "connectionResult": "Transferred", "recordingFlag": "Recorded", "weight": 3 },
+      { "voiceLine": "Referral callback queue", "connectionResult": "Voicemail", "recordingFlag": "Not recorded", "weight": 2 }
+    ],
+    "surveyDetails": [
+      { "surveyTemplate": "Patient support follow-up", "surveyQuestion": "How satisfied were you with the support you received?", "deliveryChannel": "Email", "respondentType": "Patient", "sentimentLabel": "Positive", "weight": 3 },
+      { "surveyTemplate": "Clinic admin follow-up", "surveyQuestion": "Was your care-team issue resolved quickly enough?", "deliveryChannel": "SMS", "respondentType": "Clinic admin", "sentimentLabel": "Neutral", "weight": 2 },
+      { "surveyTemplate": "Voice callback survey", "surveyQuestion": "How would you rate the callback experience?", "deliveryChannel": "SMS", "respondentType": "Caller", "sentimentLabel": "Negative", "weight": 1 }
+    ],
+    "workforcePlans": [
+      { "schedule": "Weekday triage coverage", "shift": "Morning", "weight": 4 },
+      { "schedule": "Care coordination coverage", "shift": "Afternoon", "weight": 3 },
+      { "schedule": "After-hours clinic support", "shift": "Evening", "weight": 2 },
+      { "schedule": "Weekend callback coverage", "shift": "Weekend", "weight": 1 }
+    ],
+    "intentVersions": {
+      "support": "care-support-2026.1",
+      "sales": "care-sales-2026.1",
+      "default": "care-shared-2026.1"
+    },
+    "voiceLines": ["Patient Support line", "Clinic Priority line", "Referral callback queue"],
+    "supportIntents": ["Appointment changes", "Patient portal access", "Referral status", "Billing help", "Prescription query", "Lab result follow-up", "Care-team coordination"],
+    "salesIntents": ["Demo request", "Multi-site rollout", "Pricing request", "Procurement review", "Renewal expansion", "Partner inquiry", "Integration consult"]
+  },
   "suggestedPreviewContext": "Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams."
 }

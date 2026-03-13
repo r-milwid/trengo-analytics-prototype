@@ -324,7 +324,7 @@ const AdminAssistant = (() => {
   const ROLE_TOOLS = {
     admin: ALL_TOOLS.map(t => t.name),
     supervisor: ['set_lens', 'set_team_usecases', 'configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
-    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
+    agent: ['configure_tabs', 'set_widget_visibility', 'show_options', 'show_boolean_choice', 'show_tab_proposal_choice', 'show_source_input', 'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result', 'complete_onboarding'],
   };
 
   function getToolsForRole(role, mode) {
@@ -548,7 +548,9 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 - At the true start of a new onboarding session, prefer a brief greeting and orientation in chat before the first interactive step. Keep it light and non-scripted. A pattern like "Hi, I'm here to help you get set up. So far I know..." is good when useful, but only as an example rather than fixed wording.
 - If the user is clearly resuming, do not re-greet or re-explain unnecessarily.
 - Open by using known customer context and gathering source context early.
-- If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.
+${role === 'agent'
+  ? '- Use show_source_input early so the agent can upload a file or add personal notes. Do not ask for website URLs — company context is already shown as read-only reference in the source UI.'
+  : '- If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.'}
 - For the first source step, do not dump the full customer profile into chat. Keep the recap very short, usually 1-2 lines or a few very compact bullets covering only the most decision-relevant facts.
 - For the first source step, choose the lightest structure that makes the next action clear. Use a short lead-in only when it materially improves clarity; otherwise let the source block carry the practical instruction.
 - After a source step succeeds, briefly acknowledge which source types were actually used. If a website or help center was successfully analyzed, make that visible in your wording.
@@ -568,7 +570,9 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 - When team classification is needed, prefer show_team_assignment_matrix over generic cards.
 - When you have a concrete tab proposal, present it with show_tab_proposal_choice.
 - If the user accepts a tab proposal, apply it and do not open the editor.
-- If the user wants to refine a tab proposal, refine it through show_tab_editor with the proposal already filled in.
+${role === 'agent'
+  ? '- Agents cannot refine tab proposals directly. If they reject a proposal, ask what they would change and propose a revised set.'
+  : '- If the user wants to refine a tab proposal, refine it through show_tab_editor with the proposal already filled in.'}
 - If the user keeps the defaults, respect that and move on.
 - No minimum completion is required. Defaults are valid. Preserve partial progress on skip.
 - Call complete_onboarding when the user is satisfied, wants to stop, or has enough configured for now.
@@ -591,6 +595,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 - The summarize_query_result tool renders rich inline charts in the chat panel: line charts for trends, bar charts for periodic data, horizontal bar rankings for breakdowns, donut charts for distributions (≤5 categories), and data tables for detailed breakdowns. You CAN and SHOULD show charts — always use the full pipeline (plan → run → summarize) for any data or visualization request.
 - If the user asks for a specific chart type (e.g., "as a bar chart", "show as a donut"), pass the chartHint parameter to summarize_query_result with one of: "line", "bar", "ranking", "donut", or "table". This overrides the default visualization. You do NOT need to re-plan or re-run the query — just pass chartHint when calling summarize.
 - When summarize_query_result renders a chart, keep your text answer to 1–2 sentences of insight. NEVER repeat the data as a markdown table, bullet list, or numbered breakdown — the chart already shows it. Do not restate the exact numbers the chart displays.
+- After answering a data question, check whether any widget in the <widgets> catalog covers the same or closely related data and is NOT currently visible on the dashboard (cross-reference <current_config> hiddenWidgets and tab widget sets). If a good match exists, add one short line after your answer: name the widget, briefly note any difference between what it shows and what you just answered (e.g. different time range, different breakdown, or exact same metric), and ask whether the user wants it added. Use show_boolean_choice for the yes/no. Do not suggest widgets that are already visible, and skip the suggestion entirely if no widget is a close match.
 - Keep the same user-made-vs-AI-made confirmation rule in this mode.
 </assistant_mode>`;
     }
@@ -865,6 +870,63 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     }));
   }
 
+  function refreshDashboardAfterAssistantChange({ rerenderStructure = false, affectedTabs = [] } = {}) {
+    const loadedBefore = state.loadedSections ? [...state.loadedSections] : [];
+    const validTabIds = new Set((state.tabs || []).map(tab => tab.id));
+    const fallbackActive = state.tabs?.[0]?.id || null;
+    const activeSection = validTabIds.has(state.activeSection) ? state.activeSection : fallbackActive;
+    if (activeSection) {
+      state.activeSection = activeSection;
+    }
+
+    if (rerenderStructure) {
+      if (typeof renderTabs === 'function') renderTabs();
+      if (typeof renderSections === 'function') renderSections();
+
+      const sectionsToRestore = state.navMode === 'tabs'
+        ? [activeSection]
+        : (loadedBefore.length
+            ? loadedBefore.filter(sectionId => validTabIds.has(sectionId))
+            : [activeSection]);
+
+      if (typeof updateSectionsVisibility === 'function') updateSectionsVisibility();
+      sectionsToRestore.filter(Boolean).forEach((sectionId) => {
+        if (typeof mountSection === 'function') {
+          mountSection(sectionId);
+        }
+      });
+    } else {
+      const sectionsToRefresh = new Set(
+        (affectedTabs || []).filter(sectionId => loadedBefore.includes(sectionId))
+      );
+      if (sectionsToRefresh.size === 0) {
+        loadedBefore.forEach(sectionId => sectionsToRefresh.add(sectionId));
+      }
+      if (sectionsToRefresh.size === 0 && activeSection) {
+        sectionsToRefresh.add(activeSection);
+      }
+
+      sectionsToRefresh.forEach((sectionId) => {
+        if (typeof remountSection === 'function') {
+          remountSection(sectionId);
+        } else if (typeof mountSection === 'function') {
+          mountSection(sectionId);
+        }
+      });
+
+      if (state.navMode === 'tabs') {
+        if (typeof updateSectionsVisibility === 'function') updateSectionsVisibility();
+        if (activeSection && typeof mountSection === 'function' && !state.loadedSections.has(activeSection)) {
+          mountSection(activeSection);
+        }
+      }
+    }
+
+    if (document.body.classList.contains('drawer-open') && typeof renderDrawerWidgets === 'function') {
+      renderDrawerWidgets();
+    }
+  }
+
   function commitTabDraft(tabs, options = {}) {
     const draft = buildTabDraftForApply(tabs);
     state.tabs = draft.map(tab => ({
@@ -893,11 +955,10 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       });
     }
 
-    renderTabs();
-    renderSections();
-    if (state.tabs.length > 0) {
-      scrollToSection(state.tabs[0].id || 'overview', true);
+    if (!state.tabs.some(tab => tab.id === state.activeSection) && state.tabs.length > 0) {
+      state.activeSection = state.tabs[0].id;
     }
+    refreshDashboardAfterAssistantChange({ rerenderStructure: true });
     DashboardConfig.notifyChanged();
 
     const existingDraft = _session?.structured?.suggestedConfigDraft || {};
@@ -953,7 +1014,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   function handleSetLens({ lens }) {
     state.lens = lens;
     syncLensButtons();
-    [...state.loadedSections].forEach(s => remountSection(s));
+    refreshDashboardAfterAssistantChange();
     DashboardConfig.notifyChanged();
     AssistantStorage.updateFacts(_session, { lens });
     renderPreview();
@@ -971,7 +1032,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
     document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.role === (state.personaRole || role));
     });
-    [...state.loadedSections].forEach(s => remountSection(s));
+    refreshDashboardAfterAssistantChange();
     DashboardConfig.notifyChanged();
     renderPreview();
     updatePreviewRoleBadge();
@@ -1004,7 +1065,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         window.persistPrototypeTeams('user');
       }
     }
-    [...state.loadedSections].forEach(s => remountSection(s));
+    refreshDashboardAfterAssistantChange();
     DashboardConfig.notifyChanged();
     AssistantStorage.setTeamAssignments(_session, storedAssignments);
     renderPreview();
@@ -1021,19 +1082,53 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   }
 
   function handleSetWidgetVisibility({ show, hide }) {
+    const affectedTabs = new Set();
+
+    // Helper: find the right tab for a widget (by catalog category → tab category match)
+    function findTabForWidget(widgetId) {
+      const section = getSectionForWidget(widgetId);
+      if (section) {
+        const tab = state.tabs.find(t => t.category === section);
+        if (tab) return tab.id;
+      }
+      // Fallback: active tab
+      return state.activeSection || state.tabs[0]?.id;
+    }
+
     if (show) {
       show.forEach(id => {
         state.hiddenWidgets.delete(id);
         state.addedWidgets.add(id);
+        // Add to the appropriate tab's widget set so the dashboard actually renders it
+        const tabId = findTabForWidget(id);
+        if (tabId) {
+          if (!state.tabWidgets[tabId]) state.tabWidgets[tabId] = new Set();
+          state.tabWidgets[tabId].add(id);
+          affectedTabs.add(tabId);
+        }
       });
     }
     if (hide) {
       hide.forEach(id => {
         state.hiddenWidgets.add(id);
         state.addedWidgets.delete(id);
+        // Remove from all tab widget sets
+        for (const [tabId, widgetSet] of Object.entries(state.tabWidgets)) {
+          if (widgetSet.has(id)) {
+            widgetSet.delete(id);
+            affectedTabs.add(tabId);
+          }
+        }
       });
     }
-    [...state.loadedSections].forEach(s => remountSection(s));
+
+    // Clear cached order/layout for affected tabs so they rebuild
+    affectedTabs.forEach(tabId => {
+      delete state.sectionOrder[tabId];
+      delete state.sectionLayout[tabId];
+    });
+
+    refreshDashboardAfterAssistantChange({ affectedTabs: [...affectedTabs] });
     DashboardConfig.notifyChanged();
     updateSuggestedWidgetPreview();
     renderPreview();
@@ -1120,11 +1215,14 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
   function handleShowSourceInput({ prompt, allowedTypes }) {
     // Also a blocking tool
+    let types = allowedTypes || ['file', 'url', 'paste'];
+    // Agents cannot add or edit company URLs — file + paste (notes) only
+    if (_role === 'agent') types = types.filter(t => t !== 'url');
     return new Promise(resolve => {
       AssistantStorage.setSourceStatus(_session, { requested: true });
       AssistantStorage.save(_session);
       _pendingResolve = resolve;
-      void renderSourceInputUI(prompt, allowedTypes || ['file', 'url', 'paste'], resolve);
+      void renderSourceInputUI(prompt, types, resolve);
     });
   }
 
@@ -2312,7 +2410,7 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
         label: 'Reset to defaults',
         description: 'Discard this proposal and switch back to the baseline tabs.',
       },
-    ];
+    ].filter(o => _role === 'agent' ? o.id !== 'refine_further' : true);
 
     decisionOptions.forEach(option => {
       const button = document.createElement('button');
@@ -2608,7 +2706,9 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
     const helper = document.createElement('div');
     helper.className = 'ai-setup-source-helper';
-    helper.textContent = 'Known source context is shown here. Edit it, remove it, or add more.';
+    helper.textContent = _role === 'agent'
+      ? 'Company context is shown below for reference. Upload a file or add notes.'
+      : 'Known source context is shown here. Edit it, remove it, or add more.';
     wrapper.appendChild(helper);
 
     const grid = document.createElement('div');
@@ -2695,13 +2795,26 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       const pastePanel = document.createElement('div');
       pastePanel.className = 'ai-setup-source-column';
       pastePanel.dataset.panel = 'paste';
-      pastePanel.innerHTML = `
-        <div class="ai-setup-source-column-header">
-          <div class="ai-setup-source-column-title">Pasted text</div>
-          <div class="ai-setup-source-column-subtitle">${initialPasteText ? 'Edit the starter context below, or add more.' : 'Paste notes, docs, or copied content'}</div>
-        </div>
-        <textarea class="ai-setup-source-paste-input" placeholder="Paste text here..." rows="5" id="ai-setup-paste-input">${escapeHtml(initialPasteText)}</textarea>
-      `;
+
+      if (_role === 'agent') {
+        // Agent: read-only company context + separate editable notes textarea
+        pastePanel.innerHTML = `
+          <div class="ai-setup-source-column-header">
+            <div class="ai-setup-source-column-title">Context & notes</div>
+            <div class="ai-setup-source-column-subtitle">Known company context is shown for reference</div>
+          </div>
+          ${initialPasteText ? `<div class="ai-setup-source-context-readonly">${escapeHtml(initialPasteText)}</div>` : ''}
+          <textarea class="ai-setup-source-paste-input" placeholder="Add your own notes here..." rows="3" id="ai-setup-paste-input"></textarea>
+        `;
+      } else {
+        pastePanel.innerHTML = `
+          <div class="ai-setup-source-column-header">
+            <div class="ai-setup-source-column-title">Pasted text</div>
+            <div class="ai-setup-source-column-subtitle">${initialPasteText ? 'Edit the starter context below, or add more.' : 'Paste notes, docs, or copied content'}</div>
+          </div>
+          <textarea class="ai-setup-source-paste-input" placeholder="Paste text here..." rows="5" id="ai-setup-paste-input">${escapeHtml(initialPasteText)}</textarea>
+        `;
+      }
       grid.appendChild(pastePanel);
     }
 
@@ -2807,7 +2920,19 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
 
     if (allowedTypes.includes('paste')) {
       const text = wrapper.querySelector('#ai-setup-paste-input')?.value?.trim();
-      if (text) {
+      if (_role === 'agent') {
+        // Agent: always include company context (same data admin/supervisor get
+        // via the prefilled paste textarea, but agents see it read-only).
+        // Append any agent notes on top.
+        const companyContext = buildInitialSourceContextText();
+        const combined = [companyContext, text].filter(Boolean).join('\n\n--- Agent notes ---\n');
+        if (combined) {
+          jobs.push({
+            label: 'Loading context...',
+            run: async () => ({ text: combined, title: text ? 'Company context + agent notes' : 'Company context', source: 'paste' }),
+          });
+        }
+      } else if (text) {
         jobs.push({
           label: 'Analyzing pasted text...',
           run: async () => ({ text, title: 'Pasted text', source: 'paste' }),
@@ -2815,7 +2940,15 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       }
     }
 
-    if (!jobs.length) return;
+    if (!jobs.length) {
+      // Nothing to analyze — resolve so onboarding continues
+      wrapper.classList.add('ai-setup-source-resolved');
+      disableSourceInput(wrapper);
+      markNextSequenceShouldFollow();
+      _pendingResolve = null;
+      resolve({ success: true, sourceCount: 0, sources: [], partialFailures: 0 });
+      return;
+    }
 
     const processingEl = showProcessingState('Analyzing sources...');
 
@@ -3712,14 +3845,17 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       }
       if (_customerData) {
         initialUserMsg += ` I'm from ${_customerData.company}.`;
-        if (_customerData.website) {
-          initialUserMsg += ` The company website is ${_customerData.website}.`;
-        }
-        if (_customerData.helpCenterUrl) {
-          initialUserMsg += ` The help center is ${_customerData.helpCenterUrl}.`;
-        }
-        if (Array.isArray(_customerData.extraSourceUrls) && _customerData.extraSourceUrls.length) {
-          initialUserMsg += ` Additional source URLs are ${_customerData.extraSourceUrls.join(', ')}.`;
+        // Agents don't own company URLs — skip seeding them so the AI doesn't ask about them
+        if (_role !== 'agent') {
+          if (_customerData.website) {
+            initialUserMsg += ` The company website is ${_customerData.website}.`;
+          }
+          if (_customerData.helpCenterUrl) {
+            initialUserMsg += ` The help center is ${_customerData.helpCenterUrl}.`;
+          }
+          if (Array.isArray(_customerData.extraSourceUrls) && _customerData.extraSourceUrls.length) {
+            initialUserMsg += ` Additional source URLs are ${_customerData.extraSourceUrls.join(', ')}.`;
+          }
         }
       }
 
@@ -3917,8 +4053,47 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
   }
 
   function handleSkip() {
+    // ── Cancel any running agentic loop ──
+    _runGeneration++;                       // stale-generation guard stops in-flight iterations
+    _loopRunning = false;                   // allow assistant-panel sendMessage() to work afterwards
+    _queuedUserMessage = null;              // drop any queued user text from the onboarding chat
+
+    // Resolve any pending blocking-UI promise so it doesn't dangle
+    if (_pendingResolve) {
+      const resolve = _pendingResolve;
+      _pendingResolve = null;
+      resolve({ skipped: true });
+    }
+
+    hideTypingIndicator();                  // remove "..." bubble if still visible
+
+    // ── Patch orphaned tool_use blocks in message history ──
+    // The agentic loop stores the assistant response (with tool_use) BEFORE executing tools.
+    // If skip fires mid-execution, the history ends with tool_use but no tool_result,
+    // which makes the Claude API reject subsequent requests.
+    if (_session) {
+      const msgs = AssistantStorage.getMessages(_session);
+      if (msgs.length > 0) {
+        const last = msgs[msgs.length - 1];
+        if (last.role === 'assistant' && Array.isArray(last.content)) {
+          const orphanedToolUses = last.content.filter(b => b.type === 'tool_use');
+          if (orphanedToolUses.length > 0) {
+            AssistantStorage.appendToolResult(_session, orphanedToolUses.map(tu => ({
+              type: 'tool_result',
+              tool_use_id: tu.id,
+              content: JSON.stringify({ skipped: true, reason: 'User skipped onboarding' }),
+            })));
+          }
+        }
+      }
+    }
+
     // Preserve partial progress, switch to assistant mode
-    void handleCompleteOnboarding({ summary: 'User skipped setup — defaults applied.' });
+    handleCompleteOnboarding({ summary: 'User skipped setup — defaults applied.' }).then(() => {
+      // Re-render the main dashboard so any partial changes from onboarding are visible
+      if (typeof renderTabs === 'function')     renderTabs();
+      if (typeof renderSections === 'function') renderSections();
+    });
   }
 
   function autoGrow(textarea) {

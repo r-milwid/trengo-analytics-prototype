@@ -405,6 +405,44 @@ function normalizeCustomerProfile(profile = {}, index = 0) {
   return normalized;
 }
 
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function hasMeaningfulProfileValue(value) {
+  if (value == null) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (isPlainObject(value)) return Object.keys(value).length > 0;
+  return true;
+}
+
+function mergeCustomerProfileValue(baseValue, overrideValue) {
+  if (Array.isArray(baseValue) || Array.isArray(overrideValue)) {
+    return hasMeaningfulProfileValue(overrideValue)
+      ? cloneJson(overrideValue)
+      : cloneJson(baseValue || []);
+  }
+
+  if (isPlainObject(baseValue) || isPlainObject(overrideValue)) {
+    const result = cloneJson(baseValue || {});
+    Object.entries(overrideValue || {}).forEach(([key, value]) => {
+      const existing = result[key];
+      if (!hasMeaningfulProfileValue(value) && hasMeaningfulProfileValue(existing)) return;
+      result[key] = mergeCustomerProfileValue(existing, value);
+    });
+    return result;
+  }
+
+  return hasMeaningfulProfileValue(overrideValue) ? overrideValue : baseValue;
+}
+
+function mergeCustomerProfileRecords(baseProfile, overrideProfile) {
+  return normalizeCustomerProfile(
+    mergeCustomerProfileValue(baseProfile || {}, overrideProfile || {})
+  );
+}
+
 function ensureUniqueCustomerIds(profiles = []) {
   const seen = new Set();
   return profiles.map((profile, index) => {
@@ -573,11 +611,18 @@ function saveCustomerProfiles(profiles = []) {
 function mergeCustomerProfiles(baseProfiles = [], storedProfiles = []) {
   const merged = [];
   const seen = new Set();
+  const baseById = new Map(
+    baseProfiles
+      .map((profile, index) => normalizeCustomerProfile(profile, index))
+      .filter(profile => profile.id)
+      .map(profile => [profile.id, profile])
+  );
 
   storedProfiles.forEach((profile, index) => {
     const normalized = normalizeCustomerProfile(profile, index);
     if (!normalized.id) return;
-    merged.push(normalized);
+    const baseProfile = baseById.get(normalized.id);
+    merged.push(baseProfile ? mergeCustomerProfileRecords(baseProfile, normalized) : normalized);
     seen.add(normalized.id);
   });
 
@@ -1025,6 +1070,9 @@ function isNonVoiceChannelActive() {
 }
 
 function getEffectiveVisibility(w) {
+  // Explicit user/AI overrides take priority over catalog state rules
+  if (state.hiddenWidgets.has(w.id)) return 'hidden';
+  if (state.addedWidgets.has(w.id)) return w.vis === 'hidden' ? 'default' : w.vis;
   // Hide "by team" charts when a specific team is selected — they become redundant
   if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') {
     return 'hidden';
@@ -1089,6 +1137,9 @@ function getTooltip(w) {
 }
 
 function isWidgetRenderable(w) {
+  // Explicit user/AI overrides take priority over catalog state rules
+  if (state.hiddenWidgets.has(w.id)) return false;
+  if (state.addedWidgets.has(w.id)) return true;
   const stateOverride = getStateOverride(w);
   if (stateOverride === 'hide') return false;
   // Filter-reactive hides (team, channel, voice)
@@ -3573,13 +3624,20 @@ const SORT_OPTIONS = [
   { value: 'name-desc', label: 'Name Z-A' },
   { value: 'status',    label: 'Visible first' },
 ];
+const DRAWER_SECTION_LABELS = {
+  overview:   'Key Metrics',
+  understand: 'Patterns & Insights',
+  operate:    'Operations & Performance',
+  improve:    'Quality & Improvement',
+  automate:   'AI & Automation',
+};
 const CATEGORY_OPTIONS = [
   { value: 'all',        label: 'All' },
-  { value: 'overview',   label: 'Overview' },
-  { value: 'understand', label: 'Understand' },
-  { value: 'operate',    label: 'Operate' },
-  { value: 'improve',    label: 'Improve' },
-  { value: 'automate',   label: 'Automate' },
+  { value: 'overview',   label: 'Key Metrics' },
+  { value: 'understand', label: 'Patterns & Insights' },
+  { value: 'operate',    label: 'Operations' },
+  { value: 'improve',    label: 'Quality' },
+  { value: 'automate',   label: 'AI & Automation' },
 ];
 
 function updateDrawerCategoryLabel() {
@@ -3723,7 +3781,7 @@ function renderDrawerWidgets() {
   allWidgets.forEach(w => {
     const secId = w._secId;
     if (showSectionHeaders && secId !== lastSecId) {
-      html += `<div style="margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;">${secId.charAt(0).toUpperCase() + secId.slice(1)}</div>`;
+      html += `<div style="margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;">${DRAWER_SECTION_LABELS[secId] || secId.charAt(0).toUpperCase() + secId.slice(1)}</div>`;
       lastSecId = secId;
     }
     // Visibility is now based on whether the widget is in the current tab's set
@@ -4446,6 +4504,7 @@ if (resetSubnavBtn) {
     resetSubnavBtn.textContent = 'Resetting…';
 
     resetPrototypeStateToDefaults();
+    DashboardConfig.clearLocal();
     history.replaceState(null, '', '#analytics/overview');
 
     const userId = localStorage.getItem('trengo_session_user_name');
@@ -4471,6 +4530,7 @@ if (resetOnboardingSessionBtn) {
     userPopout.classList.remove('open');
     setTimeout(() => { userPopout.style.display = 'none'; }, 200);
 
+    DashboardConfig.clearLocal();
     if (typeof AdminAssistant !== 'undefined') {
       await AdminAssistant.resetOnboarding();
     }
@@ -4489,6 +4549,7 @@ if (resetOnboardingBtn) {
   resetOnboardingBtn.addEventListener('click', async () => {
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
+    DashboardConfig.clearLocal();
     if (typeof AdminAssistant !== 'undefined') await AdminAssistant.resetAll();
     resetOnboardingBtn.textContent = 'Reset complete ✓';
     setTimeout(() => { location.reload(); }, 800);
@@ -5413,24 +5474,39 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
 
 // ── INIT (async config bootstrap) ────────────────────────────
 (async function bootstrapDashboard() {
-  // Try to load user's saved config from Cloudflare KV
+  let configLoaded = false;
+
+  // 1. Instant: load from localStorage (survives refresh without network)
+  const localConfig = DashboardConfig.loadLocal();
+  if (localConfig) {
+    DashboardConfig.apply(localConfig, state);
+    configLoaded = true;
+  }
+
+  // 2. Authoritative: load from Cloudflare KV if user is identified
   const userId = localStorage.getItem('trengo_session_user_name');
   if (userId) {
     DashboardConfig.setUserId(userId);
     try {
-      const config = await DashboardConfig.load(userId);
-      if (config) {
-        DashboardConfig.apply(config, state);
-        persistPrototypeTeams('user');
-        updateTeamFilterOptions();
-        syncRoleToggleButtons();
-        // Re-initialize tabWidgets from the loaded config
-        // (initTabWidgets was already called with defaults at top-level;
-        //  apply() overwrites state.tabWidgets, so we're good)
+      const kvConfig = await DashboardConfig.load(userId);
+      if (kvConfig) {
+        DashboardConfig.apply(kvConfig, state);
+        // Update localStorage with the authoritative KV version
+        DashboardConfig.saveLocal(kvConfig);
+        configLoaded = true;
       }
     } catch (e) {
-      console.warn('[bootstrap] Config load failed, using defaults:', e);
+      console.warn('[bootstrap] KV config load failed, using localStorage fallback:', e);
     }
+  }
+
+  if (configLoaded) {
+    persistPrototypeTeams('user');
+    updateTeamFilterOptions();
+    syncRoleToggleButtons();
+    // Apply role to body dataset so CSS role selectors work
+    if (state.role) document.body.dataset.role = state.role;
+    syncLensButtons();
   }
 
   // Proceed with rendering (whether config loaded or defaults)

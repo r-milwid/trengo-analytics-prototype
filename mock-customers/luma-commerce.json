@@ -27,5 +27,146 @@
     "avgMonthlyConversations": 15200,
     "topPainPoints": ["Low visibility into which channels drive merchant conversion", "Partner and support conversations are mixed in the same queues"]
   },
+  "analyticsDataInventory": {
+    "coverageSummary": "Luma has joined support, commerce, CRM, campaign, automation, knowledge-base, and CSAT data with hourly through quarterly rollups.",
+    "sourceSystems": [
+      { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "hourly", "daily"], "retention": "18 months" },
+      { "name": "Commerce platform", "entities": ["merchant", "order", "refund", "checkout event"], "grains": ["event", "daily", "monthly"], "retention": "24 months" },
+      { "name": "CRM", "entities": ["lead", "deal", "account", "partner"], "grains": ["event", "daily snapshot", "monthly"], "retention": "30 months" },
+      { "name": "Campaign analytics", "entities": ["campaign", "session", "attributed lead"], "grains": ["daily", "weekly", "monthly"], "retention": "24 months" },
+      { "name": "Automation logs", "entities": ["journey run", "handoff", "guardrail stop"], "grains": ["event", "hourly", "daily"], "retention": "12 months" },
+      { "name": "Knowledge base analytics", "entities": ["article", "article view", "AI citation"], "grains": ["daily", "weekly", "monthly"], "retention": "18 months" }
+    ],
+    "historyWindows": {
+      "eventDays": 180,
+      "hourlyDays": 365,
+      "dailyMonths": 24,
+      "monthlyMonths": 36,
+      "quarterlyYears": 3
+    },
+    "granularities": ["event", "hourly", "daily", "weekly", "monthly", "quarterly"],
+    "joinKeys": ["conversation_id", "ticket_id", "merchant_id", "account_id", "deal_id", "order_id", "campaign_id", "survey_id", "journey_run_id", "article_id", "agent_id"],
+    "timeDimensions": ["hour", "day", "week", "month", "quarter", "fiscal quarter", "holiday"],
+    "factTables": [
+      { "name": "conversation_events", "grain": "event", "fields": ["conversation_id", "message_id", "ticket_id", "created_at", "first_response_at", "resolved_at", "channel", "team", "agent"] },
+      { "name": "ticket_status_history", "grain": "event", "fields": ["ticket_event_id", "ticket_id", "from_status", "to_status", "queue", "priority", "sla_policy", "changed_at"] },
+      { "name": "deal_stage_history", "grain": "event", "fields": ["stage_event_id", "deal_id", "deal_owner", "stage", "stage_entered_at", "stage_exited_at", "close_reason", "competitor"] },
+      { "name": "call_legs", "grain": "event", "fields": ["call_leg_id", "call_id", "voice_line", "direction", "connection_result", "recording_flag", "hold_seconds", "transfer_count", "queue_entered_at", "answered_at", "ended_at"] },
+      { "name": "survey_responses", "grain": "event", "fields": ["survey_id", "ticket_id", "survey_template", "survey_question", "delivery_channel", "respondent_type", "sentiment_label", "response_at"] },
+      { "name": "agent_presence_intervals", "grain": "interval", "fields": ["agent_id", "schedule_id", "shift_id", "availability_status", "started_at", "ended_at", "online_minutes", "busy_minutes"] },
+      { "name": "journey_step_events", "grain": "event", "fields": ["journey_run_id", "journey_version", "trigger_type", "node_path", "exit_reason", "retry_count", "event_at"] }
+    ],
+    "availableDimensions": {
+      "geography": ["region", "country", "city", "language", "business unit"],
+      "customer": ["account segment", "account tier", "plan", "lifecycle stage", "cohort"],
+      "operations": ["team", "agent", "queue", "priority", "SLA policy", "channel", "hour"],
+      "product": ["product line", "feature area", "issue type", "intent", "intent version"],
+      "goToMarket": ["campaign", "lead source", "partner source", "channel attribution"],
+      "aiAndAutomation": ["AI model", "prompt version", "confidence band", "guardrail type", "journey", "journey version", "trigger type", "exit reason"],
+      "knowledge": ["article", "article category"],
+      "revenueAndSales": ["deal owner", "deal amount", "currency", "close reason", "competitor"],
+      "voice": ["voice line", "connection result", "recording flag", "transfer count", "hold duration"],
+      "feedback": ["survey template", "survey question", "delivery channel", "respondent type", "sentiment label"],
+      "workforce": ["schedule", "shift", "planned capacity", "occupancy band"],
+      "governance": ["source system", "sync timestamp", "quality flag", "fiscal quarter"]
+    },
+    "businessDefinitions": {
+      "openTicket": "Merchant inquiries not yet resolved or archived, including partner follow-up waiting states.",
+      "firstResponse": "Time from inquiry creation to first human or approved AI reply, excluding autoresponders.",
+      "resolutionTime": "Time from inquiry creation to resolved state; refund and chargeback loops reopen the same inquiry.",
+      "newContact": "Merchant or partner with no prior inbound contact in the trailing 180 days.",
+      "aiResolved": "Conversations closed without merchant-facing human intervention after an approved AI flow.",
+      "attributedChannel": "First meaningful commerce or messaging touchpoint tied to the inquiry or lead."
+    },
+    "dataQuality": {
+      "refreshCadence": "Hourly for support and campaigns, nightly for CRM and commerce finance snapshots.",
+      "lateArrivingWindow": "Up to 72 hours for conversion and revenue attribution fixes.",
+      "knownBlindSpots": ["Offline partner events rely on manual campaign tagging", "Pre-2025 Instagram DM attribution is daily-only"]
+    },
+    "auditability": {
+      "recordFields": ["source_system", "synced_at", "quality_flag", "is_late_arriving"],
+      "changeHistory": ["merge history", "correction log", "backfill window"],
+      "piiHandling": "Merchant identifiers are hashed before they land in the shared analytics layer."
+    },
+    "knownGaps": [
+      "B2B partner contract amendments still arrive as weekly batch updates",
+      "Some merchant success notes remain outside the joined warehouse model"
+    ]
+  },
+  "analyticsDataModel": {
+    "geographies": [
+      { "region": "Benelux", "country": "Netherlands", "city": "Amsterdam", "language": "nl-NL", "businessUnit": "Merchant Operations", "weight": 4 },
+      { "region": "Southern Europe", "country": "Spain", "city": "Madrid", "language": "es-ES", "businessUnit": "Partner Growth", "weight": 3 },
+      { "region": "UK & Ireland", "country": "United Kingdom", "city": "London", "language": "en-GB", "businessUnit": "Enterprise Sales", "weight": 2 },
+      { "region": "DACH", "country": "Germany", "city": "Berlin", "language": "de-DE", "businessUnit": "VIP Support", "weight": 2 }
+    ],
+    "accountSegments": [
+      { "accountSegment": "Boutique merchants", "accountTier": "Growth", "plan": "Scale", "lifecycleStage": "Active", "cohort": "2025-Q1", "weight": 4 },
+      { "accountSegment": "Mid-market retailers", "accountTier": "Enterprise", "plan": "Enterprise", "lifecycleStage": "Expansion", "cohort": "2024-Q2", "weight": 3 },
+      { "accountSegment": "Agency partners", "accountTier": "Strategic", "plan": "Partner Plus", "lifecycleStage": "Renewal", "cohort": "2023-Q4", "weight": 2 }
+    ],
+    "queues": [
+      { "queue": "Merchant Setup", "priority": "High", "slaPolicy": "P2 1h / 8h", "weight": 4 },
+      { "queue": "Storefront Support", "priority": "Standard", "slaPolicy": "P3 4h / 24h", "weight": 3 },
+      { "queue": "VIP Merchant Desk", "priority": "Urgent", "slaPolicy": "P1 15m / 4h", "weight": 2 }
+    ],
+    "productAreas": [
+      { "productLine": "Merchant Operations", "featureArea": "Catalog & listings", "issueType": "Product sync", "weight": 4 },
+      { "productLine": "Checkout & Payments", "featureArea": "Payment failures", "issueType": "Charge issue", "weight": 3 },
+      { "productLine": "Social Commerce", "featureArea": "Instagram & WhatsApp sales", "issueType": "Campaign attribution", "weight": 2 },
+      { "productLine": "Partner Platform", "featureArea": "Agency onboarding", "issueType": "Access or contract", "weight": 2 }
+    ],
+    "campaigns": [
+      { "campaign": "Merchant SEO inbound", "source": "Website", "weight": 3 },
+      { "campaign": "Agency partner push", "source": "Partner", "weight": 2 },
+      { "campaign": "Seasonal retailer expansion", "source": "Paid search", "weight": 2 },
+      { "campaign": "Enterprise ABM", "source": "Outbound", "weight": 1 }
+    ],
+    "knowledgeArticles": [
+      { "article": "Reconnect payment provider", "articleCategory": "Payments", "weight": 3 },
+      { "article": "Fix catalog sync", "articleCategory": "Catalog", "weight": 4 },
+      { "article": "Enable Instagram storefront", "articleCategory": "Social commerce", "weight": 2 },
+      { "article": "Route VIP merchant escalations", "articleCategory": "VIP support", "weight": 2 }
+    ],
+    "aiModels": [
+      { "aiModel": "merchant-triage-gpt-5-mini", "promptVersion": "merchant-triage-v5", "guardrailType": "Policy", "weight": 4 },
+      { "aiModel": "partner-routing-gpt-5-mini", "promptVersion": "partner-routing-v3", "guardrailType": "Commercial", "weight": 3 },
+      { "aiModel": "campaign-assist-gpt-5-mini", "promptVersion": "campaign-assist-v2", "guardrailType": "Brand safety", "weight": 2 }
+    ],
+    "automationJourneys": [
+      { "journey": "Merchant onboarding", "journeyVersion": "v4.1", "triggerType": "Signup completed", "exitReason": "Routed to onboarding", "weight": 4 },
+      { "journey": "Abandoned checkout recovery", "journeyVersion": "v3.4", "triggerType": "Checkout abandoned", "exitReason": "Converted automatically", "weight": 3 },
+      { "journey": "VIP escalation", "journeyVersion": "v2.1", "triggerType": "VIP detected", "exitReason": "Handed to team", "weight": 2 }
+    ],
+    "dealAttributes": [
+      { "dealOwner": "Ava Laurent", "currency": "EUR", "closeReason": "Merchant expansion approved", "competitor": "Shopify Plus", "weight": 3 },
+      { "dealOwner": "Youssef El Idrissi", "currency": "GBP", "closeReason": "Agency bundle accepted", "competitor": "BigCommerce", "weight": 2 },
+      { "dealOwner": "Sofia Ivanova", "currency": "USD", "closeReason": "Lost to incumbent", "competitor": "Salesforce Commerce Cloud", "weight": 1 }
+    ],
+    "callAttributes": [
+      { "voiceLine": "Merchant hotline", "connectionResult": "Connected", "recordingFlag": "Recorded", "weight": 4 },
+      { "voiceLine": "VIP merchant line", "connectionResult": "Transferred", "recordingFlag": "Recorded", "weight": 2 },
+      { "voiceLine": "Partner callback queue", "connectionResult": "Voicemail", "recordingFlag": "Not recorded", "weight": 1 }
+    ],
+    "surveyDetails": [
+      { "surveyTemplate": "Merchant support follow-up", "surveyQuestion": "How satisfied were you with the merchant support experience?", "deliveryChannel": "Email", "respondentType": "Merchant", "sentimentLabel": "Positive", "weight": 3 },
+      { "surveyTemplate": "Partner onboarding survey", "surveyQuestion": "Was partner onboarding clear and timely?", "deliveryChannel": "Email", "respondentType": "Partner", "sentimentLabel": "Neutral", "weight": 2 },
+      { "surveyTemplate": "Checkout recovery follow-up", "surveyQuestion": "Did the recovery flow help you finish setup?", "deliveryChannel": "WhatsApp", "respondentType": "Merchant", "sentimentLabel": "Negative", "weight": 1 }
+    ],
+    "workforcePlans": [
+      { "schedule": "Merchant support core coverage", "shift": "Morning", "weight": 4 },
+      { "schedule": "Commerce ops coverage", "shift": "Afternoon", "weight": 3 },
+      { "schedule": "VIP support coverage", "shift": "Evening", "weight": 2 },
+      { "schedule": "Weekend merchant overflow", "shift": "Weekend", "weight": 1 }
+    ],
+    "intentVersions": {
+      "support": "merchant-support-2026.1",
+      "sales": "commerce-sales-2026.1",
+      "default": "commerce-shared-2026.1"
+    },
+    "voiceLines": ["Merchant hotline", "VIP merchant line", "Partner callback queue"],
+    "supportIntents": ["Catalog sync issue", "Payment failure", "Refund request", "Order status", "Storefront setup", "Instagram storefront", "Login issue"],
+    "salesIntents": ["Demo request", "Agency partnership", "Pricing request", "Plan upgrade", "Enterprise rollout", "Renewal expansion", "Partner contract review"]
+  },
   "suggestedPreviewContext": "Focus on channel-level performance, merchant support health, and separating partner-growth work from operational support metrics."
 }

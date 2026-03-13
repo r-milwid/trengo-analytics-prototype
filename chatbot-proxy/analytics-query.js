@@ -8,6 +8,19 @@ import {
 const ENTITY_ROW_MAP = {
   team_daily: 'teamDaily',
   agent_daily: 'agentDaily',
+  region_daily: 'regionDaily',
+  account_daily: 'accountDaily',
+  queue_daily: 'queueDaily',
+  product_daily: 'productDaily',
+  campaign_daily: 'campaignDaily',
+  knowledge_article_daily: 'knowledgeArticleDaily',
+  ai_model_daily: 'aiModelDaily',
+  journey_daily: 'journeyDaily',
+  deal_attribute_daily: 'dealAttributeDaily',
+  call_quality_daily: 'callQualityDaily',
+  survey_detail_daily: 'surveyDetailDaily',
+  workforce_daily: 'workforceDaily',
+  agent_presence_daily: 'agentPresenceDaily',
   intent_daily: 'intentDaily',
   stage_daily: 'stageDaily',
   hourly_daily: 'hourlyDaily',
@@ -30,6 +43,7 @@ const DIMENSION_FIELD_MAP = {
   channel: 'channel',
   agent: 'agent',
   intent: 'intent',
+  intent_version: 'intentVersion',
   stage: 'stage',
   hour: 'hour',
   status: 'status',
@@ -42,7 +56,106 @@ const DIMENSION_FIELD_MAP = {
   source: 'source',
   outcome: 'outcome',
   confidence_band: 'confidenceBand',
+  region: 'region',
+  country: 'country',
+  city: 'city',
+  language: 'language',
+  business_unit: 'businessUnit',
+  account_segment: 'accountSegment',
+  account_tier: 'accountTier',
+  plan: 'plan',
+  lifecycle_stage: 'lifecycleStage',
+  cohort: 'cohort',
+  queue: 'queue',
+  priority: 'priority',
+  sla_policy: 'slaPolicy',
+  product_line: 'productLine',
+  feature_area: 'featureArea',
+  issue_type: 'issueType',
+  campaign: 'campaign',
+  article: 'article',
+  article_category: 'articleCategory',
+  ai_model: 'aiModel',
+  prompt_version: 'promptVersion',
+  guardrail_type: 'guardrailType',
+  journey: 'journey',
+  journey_version: 'journeyVersion',
+  trigger_type: 'triggerType',
+  exit_reason: 'exitReason',
+  deal_owner: 'dealOwner',
+  currency: 'currency',
+  close_reason: 'closeReason',
+  competitor: 'competitor',
+  voice_line: 'voiceLine',
+  connection_result: 'connectionResult',
+  recording_flag: 'recordingFlag',
+  survey_template: 'surveyTemplate',
+  survey_question: 'surveyQuestion',
+  delivery_channel: 'deliveryChannel',
+  respondent_type: 'respondentType',
+  sentiment_label: 'sentimentLabel',
+  schedule: 'schedule',
+  shift: 'shift',
+  availability_status: 'availabilityStatus',
   date: 'date',
+};
+
+const DIMENSION_ENTITY_MAP = {
+  agent: 'agent_daily',
+  intent: 'intent_daily',
+  intent_version: 'intent_daily',
+  stage: 'stage_daily',
+  hour: 'hourly_daily',
+  status: 'workflow_status_daily',
+  contact_type: 'contact_type_daily',
+  direction: 'voice_direction_daily',
+  age_band: 'aging_band_daily',
+  risk_band: 'sla_risk_daily',
+  theme: 'satisfaction_theme_daily',
+  source: 'lead_source_daily',
+  outcome: 'call_outcome_daily',
+  confidence_band: 'ai_confidence_daily',
+  region: 'region_daily',
+  country: 'region_daily',
+  city: 'region_daily',
+  language: 'region_daily',
+  business_unit: 'region_daily',
+  account_segment: 'account_daily',
+  account_tier: 'account_daily',
+  plan: 'account_daily',
+  lifecycle_stage: 'account_daily',
+  cohort: 'account_daily',
+  queue: 'queue_daily',
+  priority: 'queue_daily',
+  sla_policy: 'queue_daily',
+  product_line: 'product_daily',
+  feature_area: 'product_daily',
+  issue_type: 'product_daily',
+  campaign: 'campaign_daily',
+  article: 'knowledge_article_daily',
+  article_category: 'knowledge_article_daily',
+  ai_model: 'ai_model_daily',
+  prompt_version: 'ai_model_daily',
+  guardrail_type: 'ai_model_daily',
+  journey: 'journey_daily',
+  journey_version: 'journey_daily',
+  trigger_type: 'journey_daily',
+  exit_reason: 'journey_daily',
+  deal_owner: 'deal_attribute_daily',
+  currency: 'deal_attribute_daily',
+  close_reason: 'deal_attribute_daily',
+  competitor: 'deal_attribute_daily',
+  voice_line: 'call_quality_daily',
+  connection_result: 'call_quality_daily',
+  recording_flag: 'call_quality_daily',
+  survey_template: 'survey_detail_daily',
+  survey_question: 'survey_detail_daily',
+  delivery_channel: 'survey_detail_daily',
+  respondent_type: 'survey_detail_daily',
+  sentiment_label: 'survey_detail_daily',
+  schedule: 'workforce_daily',
+  shift: 'workforce_daily',
+  availability_status: 'agent_presence_daily',
 };
 
 function lower(value) {
@@ -55,6 +168,34 @@ function canonicalDimension(value) {
   if (normalized === 'ageband' || normalized === 'age band' || normalized === 'backlog age') return 'age_band';
   if (normalized === 'riskband' || normalized === 'risk band' || normalized === 'breach risk') return 'risk_band';
   if (normalized === 'confidenceband' || normalized === 'confidence band' || normalized === 'confidence bucket') return 'confidence_band';
+  if (normalized === 'intent version' || normalized === 'taxonomy version') return 'intent_version';
+  if (normalized === 'business unit' || normalized === 'businessunit') return 'business_unit';
+  if (normalized === 'account segment' || normalized === 'segment' || normalized === 'customer segment') return 'account_segment';
+  if (normalized === 'account tier' || normalized === 'tier') return 'account_tier';
+  if (normalized === 'lifecycle stage' || normalized === 'lifecycle') return 'lifecycle_stage';
+  if (normalized === 'sla policy' || normalized === 'slapolicy') return 'sla_policy';
+  if (normalized === 'product line' || normalized === 'productline') return 'product_line';
+  if (normalized === 'feature area' || normalized === 'featurearea' || normalized === 'feature') return 'feature_area';
+  if (normalized === 'issue type' || normalized === 'issuetype') return 'issue_type';
+  if (normalized === 'article category' || normalized === 'articlecategory' || normalized === 'knowledge category') return 'article_category';
+  if (normalized === 'ai model' || normalized === 'model') return 'ai_model';
+  if (normalized === 'prompt version' || normalized === 'prompt') return 'prompt_version';
+  if (normalized === 'guardrail type' || normalized === 'guardrail') return 'guardrail_type';
+  if (normalized === 'journey version' || normalized === 'workflow version') return 'journey_version';
+  if (normalized === 'trigger type' || normalized === 'trigger') return 'trigger_type';
+  if (normalized === 'exit reason' || normalized === 'exit') return 'exit_reason';
+  if (normalized === 'deal owner' || normalized === 'owner') return 'deal_owner';
+  if (normalized === 'close reason' || normalized === 'closed reason') return 'close_reason';
+  if (normalized === 'voice line' || normalized === 'phone line') return 'voice_line';
+  if (normalized === 'connection result' || normalized === 'call result') return 'connection_result';
+  if (normalized === 'recording flag' || normalized === 'recorded') return 'recording_flag';
+  if (normalized === 'survey template' || normalized === 'survey type') return 'survey_template';
+  if (normalized === 'survey question' || normalized === 'question') return 'survey_question';
+  if (normalized === 'delivery channel') return 'delivery_channel';
+  if (normalized === 'respondent type') return 'respondent_type';
+  if (normalized === 'sentiment label' || normalized === 'sentiment') return 'sentiment_label';
+  if (normalized === 'work schedule' || normalized === 'schedule type') return 'schedule';
+  if (normalized === 'availability status' || normalized === 'presence status') return 'availability_status';
   return normalized;
 }
 
@@ -62,7 +203,7 @@ function parseTimeRange(value, question = '') {
   const source = `${value || ''} ${question || ''}`.toLowerCase();
   const daysMatch = source.match(/(?:last|past)\s+(\d+)\s+days?/);
   if (daysMatch) {
-    const days = Math.max(1, Math.min(180, Number(daysMatch[1])));
+    const days = Math.max(1, Math.min(400, Number(daysMatch[1])));
     return { key: `last_${days}_days`, days, label: `Last ${days} days` };
   }
   if (source.includes('this month')) return { key: 'last_30_days', days: 30, label: 'This month' };
@@ -72,7 +213,7 @@ function parseTimeRange(value, question = '') {
   if (source.includes('last 7') || source.includes('past 7') || source.includes('this week')) return { key: 'last_7_days', days: 7, label: 'Last 7 days' };
   if (source.includes('last 90') || source.includes('past 90') || source.includes('quarter')) return { key: 'last_90_days', days: 90, label: 'Last 90 days' };
   if (source.includes('last 60') || source.includes('past 60')) return { key: 'last_60_days', days: 60, label: 'Last 60 days' };
-  if (source.includes('year') || source.includes('annual')) return { key: 'last_180_days', days: 180, label: 'Last 180 days' };
+  if (source.includes('year') || source.includes('annual')) return { key: 'last_365_days', days: 365, label: 'Last 365 days' };
   return { key: 'last_30_days', days: 30, label: 'Last 30 days' };
 }
 
@@ -91,8 +232,26 @@ function inferMetric(question, requestedMetrics = []) {
   if (q.includes('call') && (q.includes('ending') || q.includes('outcome') || q.includes('end'))) return 'call_outcome_count';
   if (q.includes('lead source') && q.includes('win rate')) return 'lead_source_win_rate';
   if (q.includes('lead source') && q.includes('pipeline')) return 'lead_source_pipeline_value';
+  if (q.includes('lead source') && (q.includes('revenue') || q.includes('won revenue') || q.includes('closed won'))) return 'won_revenue';
   if (q.includes('lead source')) return 'lead_source_count';
   if (q.includes('near breach') && (q.includes('how many') || q.includes('tickets'))) return 'near_breach_tickets';
+  if ((q.includes('lost') || q.includes('lose')) && (q.includes('deal') || q.includes('opportunit') || q.includes('competitor'))) return 'lost_deals';
+  if (q.includes('renewal risk')) return 'renewal_risk_accounts';
+  if (q.includes('churn risk')) return 'churn_risk_revenue';
+  if (q.includes('occupancy')) return 'occupancy_rate';
+  if (q.includes('journey completion')) return 'journey_completion_minutes';
+  if (q.includes('journey runs') || q.includes('automation runs')) return 'journey_runs';
+  if (q.includes('survey') && q.includes('sent')) return 'surveys_sent';
+  if (q.includes('transfer')) return 'transfer_count';
+  if ((q.includes('recorded') || q.includes('recording')) && q.includes('call')) return 'recorded_calls';
+  if (q.includes('hold') && q.includes('average')) return 'avg_hold_minutes';
+  if (q.includes('hold')) return 'hold_minutes';
+  if (q.includes('planned capacity')) return 'planned_capacity_hours';
+  if (q.includes('scheduled hours')) return 'scheduled_hours';
+  if (q.includes('overtime')) return 'overtime_hours';
+  if ((q.includes('article') || q.includes('knowledge base') || q.includes('kb')) && q.includes('citation')) return 'ai_article_citations';
+  if ((q.includes('article') || q.includes('knowledge base') || q.includes('kb')) && q.includes('fallback')) return 'article_fallback_tickets';
+  if ((q.includes('article') || q.includes('knowledge base') || q.includes('kb')) && q.includes('view')) return 'article_views';
 
   const ranked = Object.entries(METRIC_ALIASES)
     .filter(([alias]) => alias && q.includes(alias))
@@ -115,6 +274,47 @@ function inferDimension(question, requestedDimensions = []) {
   if (explicit) return explicit;
 
   const q = lower(question);
+  if (q.includes('region')) return 'region';
+  if (q.includes('country')) return 'country';
+  if (q.includes('city')) return 'city';
+  if (q.includes('language')) return 'language';
+  if (q.includes('intent version') || q.includes('taxonomy version')) return 'intent_version';
+  if (q.includes('business unit')) return 'business_unit';
+  if (q.includes('segment')) return 'account_segment';
+  if (q.includes('tier')) return 'account_tier';
+  if (q.includes('plan')) return 'plan';
+  if (q.includes('lifecycle')) return 'lifecycle_stage';
+  if (q.includes('cohort')) return 'cohort';
+  if (q.includes('queue')) return 'queue';
+  if (q.includes('priority')) return 'priority';
+  if (q.includes('sla policy')) return 'sla_policy';
+  if (q.includes('product line')) return 'product_line';
+  if (q.includes('feature area') || q.includes('feature')) return 'feature_area';
+  if (q.includes('issue type')) return 'issue_type';
+  if (q.includes('campaign')) return 'campaign';
+  if (q.includes('article category') || q.includes('knowledge category')) return 'article_category';
+  if (q.includes('article') || q.includes('knowledge base') || q.includes('knowledge article') || q.includes('kb')) return 'article';
+  if (q.includes('prompt version') || q.includes('prompt')) return 'prompt_version';
+  if (q.includes('ai model') || q.includes('model version') || q.includes('model')) return 'ai_model';
+  if (q.includes('guardrail')) return 'guardrail_type';
+  if (q.includes('journey version') || q.includes('workflow version')) return 'journey_version';
+  if (q.includes('trigger')) return 'trigger_type';
+  if (q.includes('exit reason')) return 'exit_reason';
+  if (q.includes('deal owner') || q.includes('owner')) return 'deal_owner';
+  if (q.includes('currency')) return 'currency';
+  if (q.includes('close reason')) return 'close_reason';
+  if (q.includes('competitor')) return 'competitor';
+  if (q.includes('voice line') || q.includes('phone line')) return 'voice_line';
+  if (q.includes('connection result') || q.includes('call result')) return 'connection_result';
+  if (q.includes('recording')) return 'recording_flag';
+  if (q.includes('survey template') || q.includes('survey type')) return 'survey_template';
+  if (q.includes('survey question')) return 'survey_question';
+  if (q.includes('delivery channel')) return 'delivery_channel';
+  if (q.includes('respondent type')) return 'respondent_type';
+  if (q.includes('sentiment')) return 'sentiment_label';
+  if (q.includes('shift')) return 'shift';
+  if (q.includes('schedule')) return 'schedule';
+  if (q.includes('availability status') || q.includes('presence status')) return 'availability_status';
   if (q.includes('agent') || q.includes('advisor')) return 'agent';
   if (q.includes('team')) return 'team';
   if (q.includes('channel')) return 'channel';
@@ -141,6 +341,7 @@ function inferGrain(question, requestedGrain) {
   if (q.includes('rising') || q.includes('falling') || q.includes('increasing') || q.includes('decreasing') || q.includes('trajectory')) return 'date';
   if (q.includes('by week') || q.includes('weekly')) return 'week';
   if (q.includes('by month') || q.includes('monthly')) return 'month';
+  if (q.includes('by quarter') || q.includes('quarterly')) return 'quarter';
   if (q.includes('trend') || q.includes('over time') || q.includes('how has') || q.includes('changed') || q.includes('by day') || q.includes('daily')) return 'date';
   return null;
 }
@@ -151,6 +352,7 @@ function normalizeGrain(value) {
   if (normalized === 'date' || normalized === 'day' || normalized === 'daily' || normalized.includes('day')) return 'date';
   if (normalized === 'week' || normalized === 'weekly' || normalized.includes('week')) return 'week';
   if (normalized === 'month' || normalized === 'monthly' || normalized.includes('month')) return 'month';
+  if (normalized === 'quarter' || normalized === 'quarterly' || normalized.includes('quarter')) return 'quarter';
   return null;
 }
 
@@ -172,6 +374,12 @@ function inferLimit(question, requestedLimit) {
   if (q.includes('top 5')) return 5;
   if (q.includes('top')) return 5;
   return 5;
+}
+
+function resolveEntity(metric, dimension, explicitEntity = null) {
+  if (explicitEntity && ENTITY_ROW_MAP[explicitEntity]) return explicitEntity;
+  if (dimension && DIMENSION_ENTITY_MAP[dimension]) return DIMENSION_ENTITY_MAP[dimension];
+  return METRIC_DEFINITIONS[metric]?.entity || 'team_daily';
 }
 
 function normalizeFilters(filters = {}, context = {}) {
@@ -231,6 +439,10 @@ function bucketForRow(row, dimension, grain) {
   }
 
   if (grain === 'month') return row.date.slice(0, 7);
+  if (grain === 'quarter') {
+    const date = new Date(`${row.date}T00:00:00Z`);
+    return `${date.getUTCFullYear()}-Q${Math.floor(date.getUTCMonth() / 3) + 1}`;
+  }
   if (grain === 'week') {
     const date = new Date(`${row.date}T00:00:00Z`);
     const day = date.getUTCDay() || 7;
@@ -449,9 +661,10 @@ function normalizeQuerySpec(querySpec = {}, context = {}) {
       querySpec.timeRange?.label || querySpec.timeRange?.key || querySpec.timeRange,
       ''
     );
+  const entity = resolveEntity(metric, dimension, querySpec.entity);
 
   return {
-    entity: ENTITY_ROW_MAP[querySpec.entity] ? querySpec.entity : (meta.entity || 'team_daily'),
+    entity,
     metric,
     dimension,
     filters: normalizeFilters(querySpec.filters || {}, context),
@@ -562,14 +775,15 @@ function planSemanticQuery(payload = {}, context = {}) {
   const timeRange = parseTimeRange(payload.timeRange, question);
   const filters = normalizeFilters(payload.filters || {}, context);
   const limit = inferLimit(question, payload.limit);
+  const entity = resolveEntity(metric, dimension, payload.entity);
 
   const needsClarification = !dimension && !grain && /(which|who|best|worst|top|where)/i.test(question)
-    ? 'Do you want that broken down by team, channel, agent, or over time?'
+    ? 'Do you want that broken down by team, channel, region, plan, agent, or over time?'
     : null;
 
   return {
     querySpec: {
-      entity: meta.entity || 'team_daily',
+      entity,
       metric,
       dimension,
       filters,

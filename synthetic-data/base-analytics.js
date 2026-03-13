@@ -1,6 +1,5 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
-const START_DATE_UTC = Date.UTC(2025, 8, 15);
-const TOTAL_DAYS = 210;
+const TOTAL_DAYS = 400;
 
 const DEFAULT_CHANNELS = ['email', 'whatsapp', 'live-chat', 'voice', 'instagram', 'facebook-messenger'];
 const DEFAULT_VOICE_LINES = ['Support line', 'Priority line', 'Callback queue'];
@@ -38,6 +37,73 @@ const DEFAULT_REOPEN_REASONS = ['Knowledge gap', 'Incorrect resolution', 'Cross-
 const DEFAULT_LEAD_SOURCES = ['Website', 'Paid search', 'Referral', 'Partner', 'Outbound'];
 const DEFAULT_CALL_OUTCOMES = ['Connected', 'Missed', 'Callback requested', 'Voicemail', 'Escalated on call'];
 const DEFAULT_AI_CONFIDENCE_BANDS = ['High', 'Medium', 'Low', 'Very low'];
+const DEFAULT_GEOGRAPHIES = [
+  { region: 'Benelux', country: 'Netherlands', city: 'Amsterdam', language: 'nl-NL', businessUnit: 'Customer Operations' },
+  { region: 'DACH', country: 'Germany', city: 'Berlin', language: 'de-DE', businessUnit: 'Revenue Operations' },
+  { region: 'UK & Ireland', country: 'United Kingdom', city: 'London', language: 'en-GB', businessUnit: 'Strategic Accounts' },
+];
+const DEFAULT_ACCOUNT_SEGMENTS = [
+  { accountSegment: 'SMB', accountTier: 'Growth', plan: 'Scale', lifecycleStage: 'Active', cohort: '2025-Q1' },
+  { accountSegment: 'Mid-market', accountTier: 'Enterprise', plan: 'Enterprise', lifecycleStage: 'Expansion', cohort: '2024-Q3' },
+  { accountSegment: 'Strategic', accountTier: 'Strategic', plan: 'Enterprise Plus', lifecycleStage: 'Renewal', cohort: '2023-Q4' },
+];
+const DEFAULT_QUEUE_DEFINITIONS = [
+  { queue: 'General support', priority: 'Standard', slaPolicy: 'P3 4h / 24h' },
+  { queue: 'Priority support', priority: 'High', slaPolicy: 'P2 1h / 8h' },
+  { queue: 'Urgent cases', priority: 'Urgent', slaPolicy: 'P1 15m / 4h' },
+];
+const DEFAULT_PRODUCT_AREAS = [
+  { productLine: 'Core platform', featureArea: 'Inbox & routing', issueType: 'Routing configuration' },
+  { productLine: 'Core platform', featureArea: 'Automation', issueType: 'Journey failure' },
+  { productLine: 'Voice', featureArea: 'Queues & callbacks', issueType: 'Missed call handling' },
+  { productLine: 'Analytics', featureArea: 'Dashboarding', issueType: 'Reporting question' },
+];
+const DEFAULT_CAMPAIGNS = [
+  { campaign: 'Website conversion', source: 'Website' },
+  { campaign: 'Partner expansion', source: 'Partner' },
+  { campaign: 'Referral program', source: 'Referral' },
+  { campaign: 'Outbound sequence', source: 'Outbound' },
+];
+const DEFAULT_KNOWLEDGE_ARTICLES = [
+  { article: 'Reset account access', articleCategory: 'Access' },
+  { article: 'Configure routing rules', articleCategory: 'Administration' },
+  { article: 'Handle billing exceptions', articleCategory: 'Billing' },
+  { article: 'Callback and queue setup', articleCategory: 'Voice' },
+];
+const DEFAULT_AI_MODELS = [
+  { aiModel: 'triage-gpt-5-mini', promptVersion: 'triage-v4', guardrailType: 'Policy' },
+  { aiModel: 'assist-gpt-5-mini', promptVersion: 'assist-v3', guardrailType: 'Compliance' },
+  { aiModel: 'routing-gpt-5-mini', promptVersion: 'routing-v2', guardrailType: 'Escalation' },
+];
+const DEFAULT_AUTOMATION_JOURNEYS = [
+  { journey: 'Welcome flow', journeyVersion: 'v3.1', triggerType: 'New conversation', exitReason: 'Resolved automatically' },
+  { journey: 'Priority handoff', journeyVersion: 'v2.4', triggerType: 'Priority detected', exitReason: 'Handed to team' },
+  { journey: 'Callback recovery', journeyVersion: 'v1.9', triggerType: 'Missed call', exitReason: 'Callback booked' },
+];
+const DEFAULT_DEAL_ATTRIBUTES = [
+  { dealOwner: 'Alex Rivera', currency: 'EUR', closeReason: 'Budget approved', competitor: 'Zendesk' },
+  { dealOwner: 'Mila Santos', currency: 'EUR', closeReason: 'Multi-team fit', competitor: 'Intercom' },
+  { dealOwner: 'Noah Muller', currency: 'GBP', closeReason: 'Pilot converted', competitor: 'Freshdesk' },
+  { dealOwner: 'Sofia Ivanova', currency: 'USD', closeReason: 'Lost to incumbent', competitor: 'Salesforce' },
+];
+const DEFAULT_CALL_ATTRIBUTES = [
+  { voiceLine: 'Support line', connectionResult: 'Connected', recordingFlag: 'Recorded' },
+  { voiceLine: 'Priority line', connectionResult: 'Transferred', recordingFlag: 'Recorded' },
+  { voiceLine: 'Callback queue', connectionResult: 'Voicemail', recordingFlag: 'Not recorded' },
+  { voiceLine: 'Support line', connectionResult: 'Dropped', recordingFlag: 'Not recorded' },
+];
+const DEFAULT_SURVEY_DETAILS = [
+  { surveyTemplate: 'Post-resolution CSAT', surveyQuestion: 'How satisfied were you with this interaction?', deliveryChannel: 'Email', respondentType: 'Customer', sentimentLabel: 'Positive' },
+  { surveyTemplate: 'Post-resolution CSAT', surveyQuestion: 'Was your issue resolved quickly enough?', deliveryChannel: 'WhatsApp', respondentType: 'Customer', sentimentLabel: 'Neutral' },
+  { surveyTemplate: 'Voice follow-up', surveyQuestion: 'How would you rate the call experience?', deliveryChannel: 'SMS', respondentType: 'Caller', sentimentLabel: 'Negative' },
+  { surveyTemplate: 'Sales follow-up', surveyQuestion: 'How clear was the demo or proposal?', deliveryChannel: 'Email', respondentType: 'Lead', sentimentLabel: 'Positive' },
+];
+const DEFAULT_WORKFORCE_PLANS = [
+  { schedule: 'Weekday core coverage', shift: 'Morning' },
+  { schedule: 'Weekday core coverage', shift: 'Afternoon' },
+  { schedule: 'Extended support', shift: 'Evening' },
+  { schedule: 'Weekend coverage', shift: 'Weekend' },
+];
 
 const SUPPORT_CHANNEL_WEIGHTS = {
   email: 1.0,
@@ -140,6 +206,7 @@ const METRIC_DEFINITIONS = {
   lead_source_count: { entity: 'lead_source_daily', label: 'Lead sources', kind: 'count', aggregate: 'sum', sourceKey: 'leadCount', defaultDimension: 'source', preferredChart: 'bar' },
   lead_source_win_rate: { entity: 'lead_source_daily', label: 'Lead source win rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'dealsWon', denominatorKey: 'dealsCreated', defaultDimension: 'source', preferredChart: 'bar' },
   lead_source_pipeline_value: { entity: 'lead_source_daily', label: 'Pipeline by lead source', kind: 'currency', aggregate: 'sum', sourceKey: 'pipelineValue', defaultDimension: 'source', preferredChart: 'bar' },
+  lost_deals: { entity: 'deal_attribute_daily', label: 'Lost deals', kind: 'count', aggregate: 'sum', sourceKey: 'lostDeals', preferredChart: 'bar' },
   call_outcome_count: { entity: 'call_outcome_daily', label: 'Call outcomes', kind: 'count', aggregate: 'sum', sourceKey: 'outcomeCount', defaultDimension: 'outcome', preferredChart: 'bar' },
   ai_confidence_count: { entity: 'ai_confidence_daily', label: 'AI confidence mix', kind: 'count', aggregate: 'sum', sourceKey: 'ticketCount', defaultDimension: 'confidence_band', preferredChart: 'bar' },
   ai_confidence_handoffs: { entity: 'ai_confidence_daily', label: 'Handoffs by AI confidence', kind: 'count', aggregate: 'sum', sourceKey: 'handoffCount', defaultDimension: 'confidence_band', preferredChart: 'bar' },
@@ -150,6 +217,28 @@ const METRIC_DEFINITIONS = {
   voice_channel_calls: { entity: 'voice_channel_daily', label: 'Voice channel calls', kind: 'count', aggregate: 'sum', sourceKey: 'totalCalls', defaultDimension: 'channel', preferredChart: 'table' },
   voice_channel_wait: { entity: 'voice_channel_daily', label: 'Voice channel wait time', kind: 'duration_minutes', aggregate: 'weighted_average', sourceKey: 'avgWaitMinutes', weightKey: 'totalCalls', defaultDimension: 'channel', preferredChart: 'table' },
   direction_calls: { entity: 'voice_direction_daily', label: 'Calls by direction', kind: 'count', aggregate: 'sum', sourceKey: 'callCount', defaultDimension: 'direction', preferredChart: 'bar' },
+  won_revenue: { entity: 'team_daily', label: 'Won revenue', kind: 'currency', aggregate: 'sum', sourceKey: 'wonRevenue' },
+  renewal_risk_accounts: { entity: 'account_daily', label: 'Renewal risk accounts', kind: 'count', aggregate: 'sum', sourceKey: 'renewalRiskAccounts', preferredChart: 'bar' },
+  churn_risk_revenue: { entity: 'account_daily', label: 'Churn risk revenue', kind: 'currency', aggregate: 'sum', sourceKey: 'churnRiskRevenue', preferredChart: 'bar' },
+  expansion_pipeline_value: { entity: 'account_daily', label: 'Expansion pipeline', kind: 'currency', aggregate: 'sum', sourceKey: 'expansionPipelineValue', preferredChart: 'bar' },
+  article_views: { entity: 'knowledge_article_daily', label: 'Article views', kind: 'count', aggregate: 'sum', sourceKey: 'articleViews', preferredChart: 'bar' },
+  ai_article_citations: { entity: 'knowledge_article_daily', label: 'AI article citations', kind: 'count', aggregate: 'sum', sourceKey: 'aiCitations', preferredChart: 'bar' },
+  article_fallback_tickets: { entity: 'knowledge_article_daily', label: 'Fallback tickets', kind: 'count', aggregate: 'sum', sourceKey: 'fallbackTickets', preferredChart: 'bar' },
+  journey_runs: { entity: 'journey_daily', label: 'Journey runs', kind: 'count', aggregate: 'sum', sourceKey: 'automationRuns', preferredChart: 'bar' },
+  journey_completion_minutes: { entity: 'journey_daily', label: 'Journey completion time', kind: 'duration_minutes', aggregate: 'weighted_average', sourceKey: 'avgCompletionMinutes', weightKey: 'automationRuns' },
+  transfer_count: { entity: 'call_quality_daily', label: 'Transfer count', kind: 'count', aggregate: 'sum', sourceKey: 'transferCount', preferredChart: 'bar' },
+  recorded_calls: { entity: 'call_quality_daily', label: 'Recorded calls', kind: 'count', aggregate: 'sum', sourceKey: 'recordedCalls', preferredChart: 'bar' },
+  hold_minutes: { entity: 'call_quality_daily', label: 'Hold time', kind: 'duration_minutes', aggregate: 'sum', sourceKey: 'holdMinutes', preferredChart: 'bar' },
+  avg_hold_minutes: { entity: 'call_quality_daily', label: 'Average hold time', kind: 'duration_minutes', aggregate: 'weighted_average', sourceKey: 'avgHoldMinutes', weightKey: 'totalCalls', preferredChart: 'bar' },
+  surveys_sent: { entity: 'survey_detail_daily', label: 'Surveys sent', kind: 'count', aggregate: 'sum', sourceKey: 'surveysSent', preferredChart: 'bar' },
+  planned_capacity_hours: { entity: 'workforce_daily', label: 'Planned capacity hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'plannedCapacityHours', preferredChart: 'bar' },
+  scheduled_hours: { entity: 'workforce_daily', label: 'Scheduled hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'scheduledHours', preferredChart: 'bar' },
+  overtime_hours: { entity: 'workforce_daily', label: 'Overtime hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'overtimeHours', preferredChart: 'bar' },
+  online_hours: { entity: 'agent_presence_daily', label: 'Online hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'onlineHours', preferredChart: 'bar' },
+  busy_hours: { entity: 'agent_presence_daily', label: 'Busy hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'busyHours', preferredChart: 'bar' },
+  away_hours: { entity: 'agent_presence_daily', label: 'Away hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'awayHours', preferredChart: 'bar' },
+  offline_hours: { entity: 'agent_presence_daily', label: 'Offline hours', kind: 'duration_hours', aggregate: 'sum', sourceKey: 'offlineHours', preferredChart: 'bar' },
+  occupancy_rate: { entity: 'agent_presence_daily', label: 'Occupancy rate', kind: 'rate', aggregate: 'ratio', numeratorKey: 'busyHours', denominatorKey: 'onlineHours', preferredChart: 'bar' },
 };
 
 const METRIC_ALIASES = {
@@ -227,6 +316,9 @@ const METRIC_ALIASES = {
   'automation conflicts': 'automation_conflicts',
   pipeline: 'pipeline_value',
   'pipeline value': 'pipeline_value',
+  revenue: 'won_revenue',
+  'won revenue': 'won_revenue',
+  'closed won revenue': 'won_revenue',
   'deals created': 'deals_created',
   'deals won': 'deals_won',
   'win rate': 'win_rate',
@@ -293,6 +385,9 @@ const METRIC_ALIASES = {
   'best lead source': 'lead_source_win_rate',
   'lead source win rate': 'lead_source_win_rate',
   'pipeline by source': 'lead_source_pipeline_value',
+  'lost deals': 'lost_deals',
+  'deals lost': 'lost_deals',
+  'lost opportunities': 'lost_deals',
   'channel x stage': 'stage_count',
   'ticket counts per status': 'status_count',
   bottlenecks: 'status_count',
@@ -307,6 +402,41 @@ const METRIC_ALIASES = {
   'voice channel performance': 'voice_channel_wait',
   'performance by channel': 'voice_channel_wait',
   'calls by direction': 'direction_calls',
+  'renewal risk': 'renewal_risk_accounts',
+  'renewal risk accounts': 'renewal_risk_accounts',
+  'churn risk revenue': 'churn_risk_revenue',
+  'expansion pipeline': 'expansion_pipeline_value',
+  'article views': 'article_views',
+  'knowledge article views': 'article_views',
+  'kb article views': 'article_views',
+  'ai article citations': 'ai_article_citations',
+  'article citations': 'ai_article_citations',
+  'fallback tickets': 'article_fallback_tickets',
+  'journey runs': 'journey_runs',
+  'automation runs': 'journey_runs',
+  'journey completion time': 'journey_completion_minutes',
+  'journey completion': 'journey_completion_minutes',
+  'surveys sent': 'surveys_sent',
+  'transfer count': 'transfer_count',
+  transfers: 'transfer_count',
+  'recorded calls': 'recorded_calls',
+  recordings: 'recorded_calls',
+  'hold time': 'hold_minutes',
+  'total hold time': 'hold_minutes',
+  'average hold time': 'avg_hold_minutes',
+  'planned capacity': 'planned_capacity_hours',
+  'planned capacity hours': 'planned_capacity_hours',
+  'scheduled hours': 'scheduled_hours',
+  overtime: 'overtime_hours',
+  'overtime hours': 'overtime_hours',
+  'online hours': 'online_hours',
+  'busy hours': 'busy_hours',
+  'away hours': 'away_hours',
+  'offline hours': 'offline_hours',
+  occupancy: 'occupancy_rate',
+  'occupancy rate': 'occupancy_rate',
+  'agent availability': 'online_hours',
+  'agent online status': 'online_hours',
 };
 
 function hashSeed(value) {
@@ -348,6 +478,162 @@ function normalizeFocus(likelyFocus) {
   if (likelyFocus === 'convert' || likelyFocus === 'sales') return 'sales';
   if (likelyFocus === 'both') return 'both';
   return null;
+}
+
+function normalizeLabel(value, fallback = 'Unknown') {
+  const normalized = String(value || '').trim();
+  return normalized || fallback;
+}
+
+function getCustomerModelArray(customerProfile, key, fallback = []) {
+  const values = customerProfile?.analyticsDataModel?.[key];
+  return Array.isArray(values) && values.length ? values : fallback;
+}
+
+function buildShareVector(definitions = [], seedKey = 'default') {
+  if (!definitions.length) return [];
+  const raw = definitions.map((definition, index) => {
+    const rand = mulberry32(hashSeed(`${seedKey}:${index}`));
+    const configuredWeight = Number(definition?.weight || definition?.shareWeight || 0);
+    const baseWeight = configuredWeight > 0 ? configuredWeight : (definitions.length - index);
+    return Math.max(0.12, baseWeight * (0.82 + rand() * 0.34));
+  });
+  const total = raw.reduce((sum, value) => sum + value, 0) || 1;
+  return raw.map(value => value / total);
+}
+
+function buildGeographies(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'geographies', DEFAULT_GEOGRAPHIES).map((geo) => ({
+    region: normalizeLabel(geo.region),
+    country: normalizeLabel(geo.country),
+    city: normalizeLabel(geo.city),
+    language: normalizeLabel(geo.language, 'en-US'),
+    businessUnit: normalizeLabel(geo.businessUnit, 'Operations'),
+    weight: Number(geo.weight || geo.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildAccountSegments(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'accountSegments', DEFAULT_ACCOUNT_SEGMENTS).map((segment) => ({
+    accountSegment: normalizeLabel(segment.accountSegment),
+    accountTier: normalizeLabel(segment.accountTier, 'Standard'),
+    plan: normalizeLabel(segment.plan, customerProfile?.plan || 'Scale'),
+    lifecycleStage: normalizeLabel(segment.lifecycleStage, 'Active'),
+    cohort: normalizeLabel(segment.cohort, '2025-Q1'),
+    weight: Number(segment.weight || segment.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildQueueDefinitions(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'queues', DEFAULT_QUEUE_DEFINITIONS).map((queue) => ({
+    queue: normalizeLabel(queue.queue),
+    priority: normalizeLabel(queue.priority, 'Standard'),
+    slaPolicy: normalizeLabel(queue.slaPolicy, 'P3 4h / 24h'),
+    weight: Number(queue.weight || queue.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildProductAreas(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'productAreas', DEFAULT_PRODUCT_AREAS).map((area) => ({
+    productLine: normalizeLabel(area.productLine),
+    featureArea: normalizeLabel(area.featureArea),
+    issueType: normalizeLabel(area.issueType),
+    weight: Number(area.weight || area.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildCampaignDefinitions(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'campaigns', DEFAULT_CAMPAIGNS).map((campaign) => ({
+    campaign: normalizeLabel(campaign.campaign),
+    source: normalizeLabel(campaign.source, 'Website'),
+    weight: Number(campaign.weight || campaign.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildKnowledgeArticles(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'knowledgeArticles', DEFAULT_KNOWLEDGE_ARTICLES).map((article) => ({
+    article: normalizeLabel(article.article),
+    articleCategory: normalizeLabel(article.articleCategory, 'General'),
+    weight: Number(article.weight || article.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildAiModels(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'aiModels', DEFAULT_AI_MODELS).map((model) => ({
+    aiModel: normalizeLabel(model.aiModel),
+    promptVersion: normalizeLabel(model.promptVersion, 'default-v1'),
+    guardrailType: normalizeLabel(model.guardrailType, 'Policy'),
+    weight: Number(model.weight || model.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildAutomationJourneys(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'automationJourneys', DEFAULT_AUTOMATION_JOURNEYS).map((journey) => ({
+    journey: normalizeLabel(journey.journey),
+    journeyVersion: normalizeLabel(journey.journeyVersion, 'v1.0'),
+    triggerType: normalizeLabel(journey.triggerType, 'Conversation started'),
+    exitReason: normalizeLabel(journey.exitReason, 'Resolved automatically'),
+    weight: Number(journey.weight || journey.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildVoiceLines(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'voiceLines', DEFAULT_VOICE_LINES).map(line => normalizeLabel(line));
+}
+
+function buildDealAttributes(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'dealAttributes', DEFAULT_DEAL_ATTRIBUTES).map((attribute) => ({
+    dealOwner: normalizeLabel(attribute.dealOwner, 'Unassigned'),
+    currency: normalizeLabel(attribute.currency, 'EUR'),
+    closeReason: normalizeLabel(attribute.closeReason, 'General fit'),
+    competitor: normalizeLabel(attribute.competitor, 'No competitor'),
+    weight: Number(attribute.weight || attribute.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildCallAttributes(customerProfile, voiceLines = []) {
+  const configured = getCustomerModelArray(customerProfile, 'callAttributes', []);
+  const fallback = configured.length
+    ? configured
+    : voiceLines.length
+      ? [
+          { voiceLine: voiceLines[0] || DEFAULT_VOICE_LINES[0], connectionResult: 'Connected', recordingFlag: 'Recorded', weight: 4 },
+          { voiceLine: voiceLines[1] || voiceLines[0] || DEFAULT_VOICE_LINES[1], connectionResult: 'Transferred', recordingFlag: 'Recorded', weight: 3 },
+          { voiceLine: voiceLines[2] || voiceLines[0] || DEFAULT_VOICE_LINES[2], connectionResult: 'Voicemail', recordingFlag: 'Not recorded', weight: 2 },
+          { voiceLine: voiceLines[0] || DEFAULT_VOICE_LINES[0], connectionResult: 'Dropped', recordingFlag: 'Not recorded', weight: 1 },
+        ]
+      : DEFAULT_CALL_ATTRIBUTES;
+  return (configured.length ? configured : fallback).map((attribute) => ({
+    voiceLine: normalizeLabel(attribute.voiceLine, voiceLines[0] || DEFAULT_VOICE_LINES[0]),
+    connectionResult: normalizeLabel(attribute.connectionResult, 'Connected'),
+    recordingFlag: normalizeLabel(attribute.recordingFlag, 'Recorded'),
+    weight: Number(attribute.weight || attribute.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildSurveyDetails(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'surveyDetails', DEFAULT_SURVEY_DETAILS).map((detail) => ({
+    surveyTemplate: normalizeLabel(detail.surveyTemplate, 'Post-resolution CSAT'),
+    surveyQuestion: normalizeLabel(detail.surveyQuestion, 'How satisfied were you?'),
+    deliveryChannel: normalizeLabel(detail.deliveryChannel, 'Email'),
+    respondentType: normalizeLabel(detail.respondentType, 'Customer'),
+    sentimentLabel: normalizeLabel(detail.sentimentLabel, 'Neutral'),
+    weight: Number(detail.weight || detail.shareWeight || 0) || undefined,
+  }));
+}
+
+function buildWorkforcePlans(customerProfile) {
+  return getCustomerModelArray(customerProfile, 'workforcePlans', DEFAULT_WORKFORCE_PLANS).map((plan) => ({
+    schedule: normalizeLabel(plan.schedule, 'Weekday core coverage'),
+    shift: normalizeLabel(plan.shift, 'Morning'),
+    weight: Number(plan.weight || plan.shareWeight || 0) || undefined,
+  }));
+}
+
+function getIntentVersion(customerProfile, focus) {
+  const versions = customerProfile?.analyticsDataModel?.intentVersions || {};
+  const focusKey = focus === 'sales' ? 'sales' : 'support';
+  return normalizeLabel(versions[focusKey] || versions.default, '2026.1');
 }
 
 function buildTeamDefinitions(customerProfile) {
@@ -401,10 +687,12 @@ function getOverlayFactors(customerProfile) {
   };
 }
 
-function getIntentCatalog(focus) {
-  if (focus === 'support') return DEFAULT_SUPPORT_INTENTS;
-  if (focus === 'sales') return DEFAULT_SALES_INTENTS;
-  return [...DEFAULT_SUPPORT_INTENTS.slice(0, 4), ...DEFAULT_SALES_INTENTS.slice(0, 3)];
+function getIntentCatalog(focus, customerProfile = {}) {
+  const configuredSupport = getCustomerModelArray(customerProfile, 'supportIntents', DEFAULT_SUPPORT_INTENTS).map(intent => normalizeLabel(intent));
+  const configuredSales = getCustomerModelArray(customerProfile, 'salesIntents', DEFAULT_SALES_INTENTS).map(intent => normalizeLabel(intent));
+  if (focus === 'support') return configuredSupport;
+  if (focus === 'sales') return configuredSales;
+  return [...configuredSupport.slice(0, 4), ...configuredSales.slice(0, 3)];
 }
 
 function getStatusWeights(focus) {
@@ -428,11 +716,39 @@ function getStageWeights() {
 function buildSyntheticDataset(customerProfile = {}, context = {}) {
   const teams = buildTeamDefinitions(customerProfile);
   const channels = buildChannels(customerProfile);
+  const geographies = buildGeographies(customerProfile);
+  const accountSegments = buildAccountSegments(customerProfile);
+  const queueDefinitions = buildQueueDefinitions(customerProfile);
+  const productAreas = buildProductAreas(customerProfile);
+  const campaigns = buildCampaignDefinitions(customerProfile);
+  const knowledgeArticles = buildKnowledgeArticles(customerProfile);
+  const aiModels = buildAiModels(customerProfile);
+  const automationJourneys = buildAutomationJourneys(customerProfile);
+  const voiceLines = buildVoiceLines(customerProfile);
+  const dealAttributes = buildDealAttributes(customerProfile);
+  const callAttributes = buildCallAttributes(customerProfile, voiceLines);
+  const surveyDetails = buildSurveyDetails(customerProfile);
+  const workforcePlans = buildWorkforcePlans(customerProfile);
   const overlay = getOverlayFactors(customerProfile);
   const seedBase = hashSeed(`${customerProfile?.id || customerProfile?.company || 'prototype'}:${context.role || 'admin'}`);
+  const datasetEndUtc = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+  const startDateUtc = datasetEndUtc - ((TOTAL_DAYS - 1) * DAY_MS);
 
   const teamDaily = [];
   const agentDaily = [];
+  const regionDaily = [];
+  const accountDaily = [];
+  const queueDaily = [];
+  const productDaily = [];
+  const campaignDaily = [];
+  const knowledgeArticleDaily = [];
+  const aiModelDaily = [];
+  const journeyDaily = [];
+  const dealAttributeDaily = [];
+  const callQualityDaily = [];
+  const surveyDetailDaily = [];
+  const workforceDaily = [];
+  const agentPresenceDaily = [];
   const intentDaily = [];
   const stageDaily = [];
   const hourlyDaily = [];
@@ -458,7 +774,7 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
     const teamCapacityBase = team.size * (supportLike ? 7.3 : 6.8);
 
     for (let dayIndex = 0; dayIndex < TOTAL_DAYS; dayIndex += 1) {
-      const dateTs = START_DATE_UTC + (dayIndex * DAY_MS);
+      const dateTs = startDateUtc + (dayIndex * DAY_MS);
       const weekday = new Date(dateTs).getUTCDay();
       const weekdayFactor = weekday === 0 ? 0.72 : weekday === 6 ? 0.82 : weekday === 1 ? 1.06 : 1.0;
       const trendFactor = 0.92 + ((dayIndex / TOTAL_DAYS) * 0.16 * overlay.growthBias);
@@ -700,7 +1016,8 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
       });
 
       const date = formatDate(dateTs);
-      const intentCatalog = getIntentCatalog(team.focus);
+      const intentCatalog = getIntentCatalog(team.focus, customerProfile);
+      const intentVersion = getIntentVersion(customerProfile, team.focus);
       const intentSeed = mulberry32(hashSeed(`${seedBase}:${team.key}:intent:${dayIndex}`));
       let remainingIntentVolume = Math.max(12, teamTotals.ticketsCreated + Math.round(teamTotals.leadsCreated * 0.5));
       intentCatalog.forEach((intent, intentIndex) => {
@@ -718,6 +1035,7 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
           date,
           team: team.name,
           intent,
+          intentVersion,
           teamFocus: team.focus,
           intentVolume,
           escalationCount,
@@ -851,6 +1169,7 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
       let remainingDealsCreated = Math.max(0, teamTotals.dealsCreated);
       let remainingDealsWon = Math.max(0, teamTotals.dealsWon);
       let remainingPipeline = Math.max(0, teamTotals.pipelineValue);
+      let remainingWonRevenue = Math.max(0, teamTotals.wonRevenue);
       DEFAULT_LEAD_SOURCES.forEach((source, sourceIndex) => {
         const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:source:${source}:${dayIndex}`));
         const leadCount = sourceIndex === DEFAULT_LEAD_SOURCES.length - 1
@@ -869,6 +1188,10 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
           ? remainingPipeline
           : Math.max(0, Math.round(remainingPipeline * (0.14 + ((DEFAULT_LEAD_SOURCES.length - sourceIndex) * 0.04)) * (0.8 + localRand() * 0.24)));
         remainingPipeline = Math.max(0, remainingPipeline - pipelineValue);
+        const wonRevenue = sourceIndex === DEFAULT_LEAD_SOURCES.length - 1
+          ? remainingWonRevenue
+          : Math.max(0, Math.round(remainingWonRevenue * (0.14 + ((DEFAULT_LEAD_SOURCES.length - sourceIndex) * 0.04)) * (0.8 + localRand() * 0.24)));
+        remainingWonRevenue = Math.max(0, remainingWonRevenue - wonRevenue);
         leadSourceDaily.push({
           date,
           team: team.name,
@@ -877,6 +1200,298 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
           dealsCreated,
           dealsWon,
           pipelineValue,
+          wonRevenue,
+        });
+      });
+
+      const geoShares = buildShareVector(geographies, `${seedBase}:${team.key}:geo:${dayIndex}`);
+      geographies.forEach((geo, geoIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:geo:${geo.region}:${dayIndex}`));
+        const share = geoShares[geoIndex] || 0;
+        const surveyResponses = Math.max(1, Math.round(teamTotals.surveyResponses * share * (0.84 + localRand() * 0.22)));
+        regionDaily.push({
+          date,
+          team: team.name,
+          region: geo.region,
+          country: geo.country,
+          city: geo.city,
+          language: geo.language,
+          businessUnit: geo.businessUnit,
+          conversations: Math.max(0, Math.round(teamTotals.conversations * share * (0.9 + localRand() * 0.16))),
+          ticketsCreated: Math.max(0, Math.round(teamTotals.ticketsCreated * share * (0.88 + localRand() * 0.18))),
+          ticketsResolved: Math.max(0, Math.round(teamTotals.ticketsResolved * share * (0.88 + localRand() * 0.18))),
+          openTickets: Math.max(0, Math.round(teamTotals.openTickets * share * (0.9 + localRand() * 0.18))),
+          dealsCreated: Math.max(0, Math.round(teamTotals.dealsCreated * share * (0.86 + localRand() * 0.22))),
+          dealsWon: Math.max(0, Math.round(teamTotals.dealsWon * share * (0.86 + localRand() * 0.22))),
+          totalCalls: Math.max(0, Math.round(teamTotals.totalCalls * share * (0.88 + localRand() * 0.18))),
+          pipelineValue: Math.max(0, Math.round(teamTotals.pipelineValue * share * (0.86 + localRand() * 0.22))),
+          wonRevenue: Math.max(0, Math.round(teamTotals.wonRevenue * share * (0.86 + localRand() * 0.22))),
+          aiTickets: Math.max(0, Math.round(teamTotals.aiTickets * share * (0.88 + localRand() * 0.18))),
+          aiResolvedCount: Math.max(0, Math.round(teamTotals.aiResolvedCount * share * (0.88 + localRand() * 0.18))),
+          handoffCount: Math.max(0, Math.round(teamTotals.handoffCount * share * (0.88 + localRand() * 0.18))),
+          afterHoursVolume: Math.max(0, Math.round(teamTotals.afterHoursVolume * share * (0.88 + localRand() * 0.2))),
+          surveyResponses,
+          csatScore: round(clamp((supportLike ? 4.24 : 4.08) * (0.96 + localRand() * 0.08), 3.4, 4.95), 2),
+        });
+      });
+
+      const accountShares = buildShareVector(accountSegments, `${seedBase}:${team.key}:accounts:${dayIndex}`);
+      accountSegments.forEach((segment, segmentIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:segment:${segment.accountSegment}:${dayIndex}`));
+        const share = accountShares[segmentIndex] || 0;
+        const surveyResponses = Math.max(1, Math.round(teamTotals.surveyResponses * share * (0.84 + localRand() * 0.22)));
+        const renewalRiskAccounts = Math.max(
+          0,
+          Math.round((0.8 + localRand() * 2.4) * (segment.lifecycleStage.toLowerCase().includes('renew') ? 1.8 : segment.lifecycleStage.toLowerCase().includes('at risk') ? 2.2 : 1))
+        );
+        accountDaily.push({
+          date,
+          team: team.name,
+          accountSegment: segment.accountSegment,
+          accountTier: segment.accountTier,
+          plan: segment.plan,
+          lifecycleStage: segment.lifecycleStage,
+          cohort: segment.cohort,
+          conversations: Math.max(0, Math.round(teamTotals.conversations * share * (0.88 + localRand() * 0.18))),
+          ticketsCreated: Math.max(0, Math.round(teamTotals.ticketsCreated * share * (0.88 + localRand() * 0.18))),
+          ticketsResolved: Math.max(0, Math.round(teamTotals.ticketsResolved * share * (0.88 + localRand() * 0.18))),
+          openTickets: Math.max(0, Math.round(teamTotals.openTickets * share * (0.9 + localRand() * 0.18))),
+          dealsCreated: Math.max(0, Math.round(teamTotals.dealsCreated * share * (0.86 + localRand() * 0.24))),
+          dealsWon: Math.max(0, Math.round(teamTotals.dealsWon * share * (0.86 + localRand() * 0.22))),
+          pipelineValue: Math.max(0, Math.round(teamTotals.pipelineValue * share * (0.86 + localRand() * 0.24))),
+          wonRevenue: Math.max(0, Math.round(teamTotals.wonRevenue * share * (0.86 + localRand() * 0.24))),
+          aiTickets: Math.max(0, Math.round(teamTotals.aiTickets * share * (0.88 + localRand() * 0.18))),
+          aiResolvedCount: Math.max(0, Math.round(teamTotals.aiResolvedCount * share * (0.88 + localRand() * 0.18))),
+          handoffCount: Math.max(0, Math.round(teamTotals.handoffCount * share * (0.88 + localRand() * 0.18))),
+          expansionPipelineValue: Math.max(0, Math.round(teamTotals.pipelineValue * share * clamp(0.24 + localRand() * 0.18, 0.08, 0.68))),
+          churnRiskRevenue: Math.max(0, Math.round(teamTotals.wonRevenue * share * clamp(0.08 + localRand() * 0.12, 0.02, 0.42))),
+          renewalRiskAccounts,
+          surveyResponses,
+          csatScore: round(clamp((supportLike ? 4.18 : 4.02) * (0.96 + localRand() * 0.08), 3.32, 4.92), 2),
+        });
+      });
+
+      const queueShares = buildShareVector(queueDefinitions, `${seedBase}:${team.key}:queue:${dayIndex}`);
+      queueDefinitions.forEach((queueDef, queueIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:queue:${queueDef.queue}:${dayIndex}`));
+        const share = queueShares[queueIndex] || 0;
+        queueDaily.push({
+          date,
+          team: team.name,
+          queue: queueDef.queue,
+          priority: queueDef.priority,
+          slaPolicy: queueDef.slaPolicy,
+          ticketsCreated: Math.max(0, Math.round(teamTotals.ticketsCreated * share * (0.9 + localRand() * 0.18))),
+          openTickets: Math.max(0, Math.round(teamTotals.openTickets * share * (0.92 + localRand() * 0.18))),
+          assignedTickets: Math.max(0, Math.round(teamTotals.assignedTickets * share * (0.9 + localRand() * 0.18))),
+          nearBreachTickets: Math.max(0, Math.round(teamTotals.nearBreachTickets * share * (0.94 + localRand() * 0.18))),
+          slaBreaches: Math.max(0, Math.round(teamTotals.slaBreaches * share * (0.94 + localRand() * 0.18))),
+          firstResponseMinutes: round((supportLike ? 20 : 16) * (queueDef.priority === 'Urgent' ? 0.54 : queueDef.priority === 'High' ? 0.72 : 1.08) * (0.9 + localRand() * 0.16), 1),
+          avgWaitMinutes: round((supportLike ? 2.5 : 1.7) * (queueDef.priority === 'Urgent' ? 0.62 : queueDef.priority === 'High' ? 0.84 : 1.12) * (0.9 + localRand() * 0.16), 1),
+          queueOverflowTickets: Math.max(0, Math.round(teamTotals.queueOverflowTickets * share * (0.92 + localRand() * 0.18))),
+          capacityHours: round(teamTotals.capacityHours * share * (0.9 + localRand() * 0.12), 1),
+          demandHours: round(teamTotals.demandHours * share * (0.92 + localRand() * 0.14), 1),
+        });
+      });
+
+      const productShares = buildShareVector(productAreas, `${seedBase}:${team.key}:product:${dayIndex}`);
+      productAreas.forEach((area, areaIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:product:${area.featureArea}:${dayIndex}`));
+        const share = productShares[areaIndex] || 0;
+        const surveyResponses = Math.max(1, Math.round(teamTotals.surveyResponses * share * (0.84 + localRand() * 0.22)));
+        productDaily.push({
+          date,
+          team: team.name,
+          productLine: area.productLine,
+          featureArea: area.featureArea,
+          issueType: area.issueType,
+          ticketsCreated: Math.max(0, Math.round(teamTotals.ticketsCreated * share * (0.9 + localRand() * 0.18))),
+          ticketsResolved: Math.max(0, Math.round(teamTotals.ticketsResolved * share * (0.9 + localRand() * 0.18))),
+          reopenedTickets: Math.max(0, Math.round(teamTotals.reopenedTickets * share * (0.92 + localRand() * 0.18))),
+          knowledgeGapCount: Math.max(0, Math.round(teamTotals.knowledgeGapCount * share * (0.94 + localRand() * 0.18))),
+          dealsCreated: Math.max(0, Math.round(teamTotals.dealsCreated * share * clamp(0.12 + localRand() * 0.12, 0.02, 0.34))),
+          surveyResponses,
+          csatScore: round(clamp((supportLike ? 4.16 : 4.04) * (0.96 + localRand() * 0.08), 3.28, 4.9), 2),
+        });
+      });
+
+      const campaignShares = buildShareVector(campaigns, `${seedBase}:${team.key}:campaign:${dayIndex}`);
+      campaigns.forEach((campaign, campaignIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:campaign:${campaign.campaign}:${dayIndex}`));
+        const share = campaignShares[campaignIndex] || 0;
+        campaignDaily.push({
+          date,
+          team: team.name,
+          campaign: campaign.campaign,
+          source: campaign.source,
+          conversations: Math.max(0, Math.round(teamTotals.conversations * share * (0.88 + localRand() * 0.18))),
+          leadsCreated: Math.max(0, Math.round(teamTotals.leadsCreated * share * (0.9 + localRand() * 0.18))),
+          dealsCreated: Math.max(0, Math.round(teamTotals.dealsCreated * share * (0.88 + localRand() * 0.2))),
+          dealsWon: Math.max(0, Math.round(teamTotals.dealsWon * share * (0.88 + localRand() * 0.2))),
+          pipelineValue: Math.max(0, Math.round(teamTotals.pipelineValue * share * (0.88 + localRand() * 0.2))),
+          wonRevenue: Math.max(0, Math.round(teamTotals.wonRevenue * share * (0.88 + localRand() * 0.2))),
+        });
+      });
+
+      const articleShares = buildShareVector(knowledgeArticles, `${seedBase}:${team.key}:article:${dayIndex}`);
+      knowledgeArticles.forEach((article, articleIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:article:${article.article}:${dayIndex}`));
+        const share = articleShares[articleIndex] || 0;
+        knowledgeArticleDaily.push({
+          date,
+          team: team.name,
+          article: article.article,
+          articleCategory: article.articleCategory,
+          articleViews: Math.max(1, Math.round(teamTotals.conversations * share * (0.28 + localRand() * 0.18))),
+          aiCitations: Math.max(0, Math.round(teamTotals.aiTickets * share * (0.18 + localRand() * 0.16))),
+          fallbackTickets: Math.max(0, Math.round(teamTotals.knowledgeGapCount * share * (0.86 + localRand() * 0.22))),
+          knowledgeGapCount: Math.max(0, Math.round(teamTotals.knowledgeGapCount * share * (0.92 + localRand() * 0.16))),
+          ticketsResolved: Math.max(0, Math.round(teamTotals.ticketsResolved * share * (0.18 + localRand() * 0.12))),
+        });
+      });
+
+      const modelShares = buildShareVector(aiModels, `${seedBase}:${team.key}:model:${dayIndex}`);
+      aiModels.forEach((model, modelIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:model:${model.aiModel}:${dayIndex}`));
+        const share = modelShares[modelIndex] || 0;
+        aiModelDaily.push({
+          date,
+          team: team.name,
+          aiModel: model.aiModel,
+          promptVersion: model.promptVersion,
+          guardrailType: model.guardrailType,
+          aiTickets: Math.max(0, Math.round(teamTotals.aiTickets * share * (0.92 + localRand() * 0.18))),
+          aiResolvedCount: Math.max(0, Math.round(teamTotals.aiResolvedCount * share * (0.9 + localRand() * 0.18))),
+          handoffCount: Math.max(0, Math.round(teamTotals.handoffCount * share * (0.92 + localRand() * 0.18))),
+          safetyViolations: Math.max(0, Math.round(teamTotals.safetyViolations * share * (0.94 + localRand() * 0.22))),
+          lowConfidenceAiTickets: Math.max(0, Math.round(teamTotals.lowConfidenceAiTickets * share * (0.92 + localRand() * 0.18))),
+          automationConflicts: Math.max(0, Math.round(teamTotals.automationConflicts * share * (0.9 + localRand() * 0.2))),
+        });
+      });
+
+      const journeyShares = buildShareVector(automationJourneys, `${seedBase}:${team.key}:journey:${dayIndex}`);
+      automationJourneys.forEach((journey, journeyIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:journey:${journey.journey}:${dayIndex}`));
+        const share = journeyShares[journeyIndex] || 0;
+        journeyDaily.push({
+          date,
+          team: team.name,
+          journey: journey.journey,
+          journeyVersion: journey.journeyVersion,
+          triggerType: journey.triggerType,
+          exitReason: journey.exitReason,
+          automationRuns: Math.max(0, Math.round(teamTotals.automationRuns * share * (0.92 + localRand() * 0.18))),
+          automationSuccessCount: Math.max(0, Math.round(teamTotals.automationSuccessCount * share * (0.92 + localRand() * 0.18))),
+          journeysEscalations: Math.max(0, Math.round(teamTotals.journeysEscalations * share * (0.94 + localRand() * 0.18))),
+          safetyViolations: Math.max(0, Math.round(teamTotals.safetyViolations * share * (0.92 + localRand() * 0.2))),
+          automationConflicts: Math.max(0, Math.round(teamTotals.automationConflicts * share * (0.92 + localRand() * 0.2))),
+          avgCompletionMinutes: round((supportLike ? 6.2 : 8.4) * (0.9 + localRand() * 0.18), 1),
+        });
+      });
+
+      const dealAttributeShares = buildShareVector(dealAttributes, `${seedBase}:${team.key}:deal-attributes:${dayIndex}`);
+      dealAttributes.forEach((attribute, attributeIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:deal-attributes:${attribute.dealOwner}:${dayIndex}`));
+        const share = dealAttributeShares[attributeIndex] || 0;
+        const dealsCreated = Math.max(0, Math.round(teamTotals.dealsCreated * share * (0.88 + localRand() * 0.18)));
+        const dealsWon = Math.max(0, Math.round(teamTotals.dealsWon * share * (0.88 + localRand() * 0.18)));
+        dealAttributeDaily.push({
+          date,
+          team: team.name,
+          dealOwner: attribute.dealOwner,
+          currency: attribute.currency,
+          closeReason: attribute.closeReason,
+          competitor: attribute.competitor,
+          dealsCreated,
+          dealsWon,
+          lostDeals: Math.max(0, dealsCreated - dealsWon + Math.round(localRand() * 2)),
+          pipelineValue: Math.max(0, Math.round(teamTotals.pipelineValue * share * (0.88 + localRand() * 0.18))),
+          wonRevenue: Math.max(0, Math.round(teamTotals.wonRevenue * share * (0.88 + localRand() * 0.18))),
+        });
+      });
+
+      const callAttributeShares = buildShareVector(callAttributes, `${seedBase}:${team.key}:call-attributes:${dayIndex}`);
+      callAttributes.forEach((attribute, attributeIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:call-attributes:${attribute.voiceLine}:${attribute.connectionResult}:${dayIndex}`));
+        const share = callAttributeShares[attributeIndex] || 0;
+        const totalCalls = Math.max(0, Math.round(teamTotals.totalCalls * share * (0.9 + localRand() * 0.18)));
+        const transferCount = Math.max(
+          0,
+          Math.round(totalCalls * (attribute.connectionResult === 'Transferred' ? 0.72 : attribute.connectionResult === 'Connected' ? 0.18 : 0.05) * (0.84 + localRand() * 0.22))
+        );
+        const holdMinutes = round(totalCalls * (attribute.connectionResult === 'Transferred' ? 1.8 : attribute.connectionResult === 'Connected' ? 0.9 : 0.36) * (0.84 + localRand() * 0.22), 1);
+        const recordedCalls = Math.max(0, Math.round(totalCalls * (attribute.recordingFlag === 'Recorded' ? 0.86 : 0.08) * (0.9 + localRand() * 0.18)));
+        callQualityDaily.push({
+          date,
+          team: team.name,
+          voiceLine: attribute.voiceLine,
+          connectionResult: attribute.connectionResult,
+          recordingFlag: attribute.recordingFlag,
+          totalCalls,
+          missedCalls: Math.max(0, Math.round(totalCalls * (attribute.connectionResult === 'Dropped' ? 0.62 : attribute.connectionResult === 'Voicemail' ? 0.34 : 0.08))),
+          callbackRequests: Math.max(0, Math.round(totalCalls * (attribute.connectionResult === 'Voicemail' ? 0.28 : 0.08) * (0.9 + localRand() * 0.18))),
+          avgWaitMinutes: round((attribute.connectionResult === 'Transferred' ? 2.9 : attribute.connectionResult === 'Connected' ? 1.8 : 1.2) * (0.88 + localRand() * 0.18), 1),
+          avgCallDurationMinutes: round((attribute.connectionResult === 'Connected' ? 5.1 : attribute.connectionResult === 'Transferred' ? 6.3 : 2.2) * (0.88 + localRand() * 0.18), 1),
+          transferCount,
+          holdMinutes,
+          avgHoldMinutes: round(totalCalls > 0 ? holdMinutes / totalCalls : 0, 1),
+          recordedCalls,
+        });
+      });
+
+      const surveyDetailShares = buildShareVector(surveyDetails, `${seedBase}:${team.key}:survey-details:${dayIndex}`);
+      surveyDetails.forEach((detail, detailIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:survey-details:${detail.surveyTemplate}:${detail.deliveryChannel}:${dayIndex}`));
+        const share = surveyDetailShares[detailIndex] || 0;
+        const surveyResponses = Math.max(1, Math.round(teamTotals.surveyResponses * share * (0.88 + localRand() * 0.18)));
+        const surveysSent = Math.max(surveyResponses, Math.round(teamTotals.surveysSent * share * (0.88 + localRand() * 0.18)));
+        const sentiment = detail.sentimentLabel.toLowerCase();
+        const promoterResponses = Math.max(
+          0,
+          Math.min(surveyResponses, Math.round(surveyResponses * (sentiment === 'positive' ? 0.74 : sentiment === 'neutral' ? 0.22 : 0.08) * (0.9 + localRand() * 0.14)))
+        );
+        const detractorResponses = Math.max(
+          0,
+          Math.min(surveyResponses - promoterResponses, Math.round(surveyResponses * (sentiment === 'negative' ? 0.62 : sentiment === 'neutral' ? 0.18 : 0.06) * (0.9 + localRand() * 0.14)))
+        );
+        surveyDetailDaily.push({
+          date,
+          team: team.name,
+          surveyTemplate: detail.surveyTemplate,
+          surveyQuestion: detail.surveyQuestion,
+          deliveryChannel: detail.deliveryChannel,
+          respondentType: detail.respondentType,
+          sentimentLabel: detail.sentimentLabel,
+          surveysSent,
+          surveyResponses,
+          promoterResponses,
+          detractorResponses,
+          csatScore: round(clamp((sentiment === 'positive' ? 4.7 : sentiment === 'negative' ? 3.46 : 4.02) * (0.96 + localRand() * 0.08), 3.2, 4.94), 2),
+        });
+      });
+
+      const workforceShares = buildShareVector(workforcePlans, `${seedBase}:${team.key}:workforce:${dayIndex}`);
+      workforcePlans.forEach((plan, planIndex) => {
+        const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:workforce:${plan.schedule}:${plan.shift}:${dayIndex}`));
+        const share = workforceShares[planIndex] || 0;
+        const plannedCapacityHours = round(teamTotals.capacityHours * share * (0.9 + localRand() * 0.14), 1);
+        const demandHours = round(teamTotals.demandHours * share * (0.92 + localRand() * 0.16), 1);
+        const scheduledHours = round(plannedCapacityHours * (0.92 + localRand() * 0.1), 1);
+        const overtimeHours = round(Math.max(0, demandHours - scheduledHours) * (0.42 + localRand() * 0.22), 1);
+        const onlineHours = round(scheduledHours * (0.76 + localRand() * 0.16), 1);
+        const busyHours = round(Math.min(onlineHours, demandHours * (0.82 + localRand() * 0.14)), 1);
+        workforceDaily.push({
+          date,
+          team: team.name,
+          schedule: plan.schedule,
+          shift: plan.shift,
+          plannedCapacityHours,
+          scheduledHours,
+          overtimeHours,
+          capacityHours: plannedCapacityHours,
+          demandHours,
+          onlineHours,
+          busyHours,
         });
       });
 
@@ -932,9 +1547,13 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
       }
 
       if (channels.includes('voice') || teamTotals.totalCalls > 0) {
-        DEFAULT_VOICE_LINES.forEach((voiceLine, lineIndex) => {
+        const voiceLineShares = buildShareVector(
+          voiceLines.map((voiceLine, lineIndex) => ({ voiceLine, weight: lineIndex === 0 ? 3 : lineIndex === 1 ? 2 : 1 })),
+          `${seedBase}:${team.key}:voice-line:${dayIndex}`
+        );
+        voiceLines.forEach((voiceLine, lineIndex) => {
           const localRand = mulberry32(hashSeed(`${seedBase}:${team.key}:${voiceLine}:${dayIndex}`));
-          const share = lineIndex === 0 ? 0.48 : lineIndex === 1 ? 0.31 : 0.21;
+          const share = voiceLineShares[lineIndex] || 0;
           voiceChannelDaily.push({
             date,
             team: team.name,
@@ -963,20 +1582,42 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
         const conversationsHandled = Math.max(1, Math.round((teamTotals.conversations / agents.length) * contribution * (0.78 + localRand() * 0.22)));
         const resolved = Math.max(0, Math.round((teamTotals.ticketsResolved / agents.length) * contribution * (0.8 + localRand() * 0.18)));
         const surveyResponses = Math.max(1, Math.round((teamTotals.surveyResponses / agents.length) * contribution * (0.8 + localRand() * 0.18)));
+        const assignedOpenTickets = Math.max(0, Math.round((teamTotals.assignedTickets / agents.length) * contribution * (0.82 + localRand() * 0.18)));
         agentDaily.push({
           date,
           team: team.name,
           agent: agentName,
           teamFocus: team.focus,
+          conversations: conversationsHandled,
           conversationsHandled,
+          openTickets: assignedOpenTickets,
           ticketsResolved: resolved,
-          assignedOpenTickets: Math.max(0, Math.round((teamTotals.assignedTickets / agents.length) * contribution * (0.82 + localRand() * 0.18))),
+          assignedOpenTickets,
           firstResponseMinutes: round((supportLike ? 22 : 17) * (0.88 + localRand() * 0.22), 1),
           csatScore: round(clamp((supportLike ? 4.3 : 4.1) * (0.97 + localRand() * 0.06), 3.4, 4.96), 2),
           surveyResponses,
           dealsWon: salesLike ? Math.round((teamTotals.dealsWon / agents.length) * contribution * (0.8 + localRand() * 0.26)) : 0,
           pipelineValue: round((teamTotals.pipelineValue / agents.length) * (0.7 + localRand() * 0.56), 0),
           aiAssistCount: Math.round(conversationsHandled * clamp(0.18 + localRand() * 0.18, 0.06, 0.52)),
+        });
+
+        const onlineHours = round(clamp((supportLike ? 6.8 : 6.1) * (0.9 + localRand() * 0.14), 3.6, 8.6), 1);
+        const busyHours = round(onlineHours * clamp(0.42 + localRand() * 0.22, 0.18, 0.88), 1);
+        const awayHours = round(clamp((8.5 - onlineHours) * (0.4 + localRand() * 0.3), 0.2, 2.4), 1);
+        const offlineHours = round(Math.max(0, 24 - onlineHours - awayHours), 1);
+        const availabilityRoll = localRand();
+        const availabilityStatus = availabilityRoll > 0.8 ? 'Offline' : availabilityRoll > 0.56 ? 'Away' : availabilityRoll > 0.28 ? 'Busy' : 'Online';
+        agentPresenceDaily.push({
+          date,
+          team: team.name,
+          agent: agentName,
+          availabilityStatus,
+          onlineHours,
+          busyHours,
+          awayHours,
+          offlineHours,
+          totalCalls: Math.max(0, Math.round((teamTotals.totalCalls / agents.length) * contribution * (0.82 + localRand() * 0.18))),
+          conversationsHandled,
         });
       });
     }
@@ -1001,6 +1642,19 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
     channels,
     teamDaily,
     agentDaily,
+    regionDaily,
+    accountDaily,
+    queueDaily,
+    productDaily,
+    campaignDaily,
+    knowledgeArticleDaily,
+    aiModelDaily,
+    journeyDaily,
+    dealAttributeDaily,
+    callQualityDaily,
+    surveyDetailDaily,
+    workforceDaily,
+    agentPresenceDaily,
     intentDaily,
     stageDaily,
     hourlyDaily,
@@ -1020,29 +1674,107 @@ function buildSyntheticDataset(customerProfile = {}, context = {}) {
   };
 }
 
+function metricSupportedByRows(metricId, rows = []) {
+  const meta = METRIC_DEFINITIONS[metricId];
+  const sample = rows[0];
+  if (!meta || !sample) return false;
+  if (meta.aggregate === 'ratio' || meta.aggregate === 'difference') {
+    return meta.numeratorKey in sample && meta.denominatorKey in sample;
+  }
+  if (meta.aggregate === 'weighted_average') {
+    return meta.sourceKey in sample && meta.weightKey in sample;
+  }
+  if (meta.sourceKey) return meta.sourceKey in sample;
+  return false;
+}
+
+function metricsForEntity(entityId, dataset) {
+  const rows = dataset[{
+    team_daily: 'teamDaily',
+    agent_daily: 'agentDaily',
+    region_daily: 'regionDaily',
+    account_daily: 'accountDaily',
+    queue_daily: 'queueDaily',
+    product_daily: 'productDaily',
+    campaign_daily: 'campaignDaily',
+    knowledge_article_daily: 'knowledgeArticleDaily',
+    ai_model_daily: 'aiModelDaily',
+    journey_daily: 'journeyDaily',
+    deal_attribute_daily: 'dealAttributeDaily',
+    call_quality_daily: 'callQualityDaily',
+    survey_detail_daily: 'surveyDetailDaily',
+    workforce_daily: 'workforceDaily',
+    agent_presence_daily: 'agentPresenceDaily',
+    intent_daily: 'intentDaily',
+    stage_daily: 'stageDaily',
+    hourly_daily: 'hourlyDaily',
+    voice_channel_daily: 'voiceChannelDaily',
+    voice_direction_daily: 'voiceDirectionDaily',
+    workflow_status_daily: 'workflowStatusDaily',
+    handoff_reason_daily: 'handoffReasonDaily',
+    contact_type_daily: 'contactTypeDaily',
+    aging_band_daily: 'agingBandDaily',
+    sla_risk_daily: 'slaRiskDaily',
+    satisfaction_theme_daily: 'satisfactionThemeDaily',
+    reopen_reason_daily: 'reopenReasonDaily',
+    lead_source_daily: 'leadSourceDaily',
+    call_outcome_daily: 'callOutcomeDaily',
+    ai_confidence_daily: 'aiConfidenceDaily',
+  }[entityId]] || [];
+  return Object.keys(METRIC_DEFINITIONS).filter(metricId => metricSupportedByRows(metricId, rows));
+}
+
 function getSemanticSchema(customerProfile = {}, context = {}) {
   const dataset = buildSyntheticDataset(customerProfile, context);
   return {
     entities: [
-      { id: 'team_daily', label: 'Team daily performance', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'team_daily') },
-      { id: 'agent_daily', label: 'Agent daily performance', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'agent_daily') },
-      { id: 'intent_daily', label: 'Intent trend and quality data', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'intent_daily') },
-      { id: 'stage_daily', label: 'Sales stage and channel funnel data', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'stage_daily') },
-      { id: 'hourly_daily', label: 'Hourly volume patterns', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'hourly_daily') },
-      { id: 'voice_channel_daily', label: 'Voice channel performance', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'voice_channel_daily') },
-      { id: 'voice_direction_daily', label: 'Inbound vs outbound voice activity', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'voice_direction_daily') },
-      { id: 'workflow_status_daily', label: 'Workflow status distribution', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'workflow_status_daily') },
-      { id: 'handoff_reason_daily', label: 'Automation handoff reasons', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'handoff_reason_daily') },
-      { id: 'contact_type_daily', label: 'New vs returning contacts', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'contact_type_daily') },
-      { id: 'aging_band_daily', label: 'Backlog aging buckets', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'aging_band_daily') },
-      { id: 'sla_risk_daily', label: 'SLA risk buckets', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'sla_risk_daily') },
-      { id: 'satisfaction_theme_daily', label: 'Satisfaction themes and detractors', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'satisfaction_theme_daily') },
-      { id: 'reopen_reason_daily', label: 'Reopen reasons', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'reopen_reason_daily') },
-      { id: 'lead_source_daily', label: 'Lead source quality and value', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'lead_source_daily') },
-      { id: 'call_outcome_daily', label: 'Voice call outcomes', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'call_outcome_daily') },
-      { id: 'ai_confidence_daily', label: 'AI confidence mix', metrics: Object.keys(METRIC_DEFINITIONS).filter(key => METRIC_DEFINITIONS[key].entity === 'ai_confidence_daily') },
+      { id: 'team_daily', label: 'Team daily performance', metrics: metricsForEntity('team_daily', dataset) },
+      { id: 'agent_daily', label: 'Agent daily performance', metrics: metricsForEntity('agent_daily', dataset) },
+      { id: 'region_daily', label: 'Regional and language mix', metrics: metricsForEntity('region_daily', dataset) },
+      { id: 'account_daily', label: 'Account segment and lifecycle mix', metrics: metricsForEntity('account_daily', dataset) },
+      { id: 'queue_daily', label: 'Queue, priority, and SLA slices', metrics: metricsForEntity('queue_daily', dataset) },
+      { id: 'product_daily', label: 'Product line and issue mix', metrics: metricsForEntity('product_daily', dataset) },
+      { id: 'campaign_daily', label: 'Campaign and acquisition performance', metrics: metricsForEntity('campaign_daily', dataset) },
+      { id: 'knowledge_article_daily', label: 'Knowledge base coverage', metrics: metricsForEntity('knowledge_article_daily', dataset) },
+      { id: 'ai_model_daily', label: 'AI model and prompt performance', metrics: metricsForEntity('ai_model_daily', dataset) },
+      { id: 'journey_daily', label: 'Automation journey performance', metrics: metricsForEntity('journey_daily', dataset) },
+      { id: 'deal_attribute_daily', label: 'Deal owner, competitor, and close-reason slices', metrics: metricsForEntity('deal_attribute_daily', dataset) },
+      { id: 'call_quality_daily', label: 'Call transfer, recording, and hold-time slices', metrics: metricsForEntity('call_quality_daily', dataset) },
+      { id: 'survey_detail_daily', label: 'Survey template and respondent slices', metrics: metricsForEntity('survey_detail_daily', dataset) },
+      { id: 'workforce_daily', label: 'Shift and staffing plan slices', metrics: metricsForEntity('workforce_daily', dataset) },
+      { id: 'agent_presence_daily', label: 'Agent availability and occupancy', metrics: metricsForEntity('agent_presence_daily', dataset) },
+      { id: 'intent_daily', label: 'Intent trend and quality data', metrics: metricsForEntity('intent_daily', dataset) },
+      { id: 'stage_daily', label: 'Sales stage and channel funnel data', metrics: metricsForEntity('stage_daily', dataset) },
+      { id: 'hourly_daily', label: 'Hourly volume patterns', metrics: metricsForEntity('hourly_daily', dataset) },
+      { id: 'voice_channel_daily', label: 'Voice channel performance', metrics: metricsForEntity('voice_channel_daily', dataset) },
+      { id: 'voice_direction_daily', label: 'Inbound vs outbound voice activity', metrics: metricsForEntity('voice_direction_daily', dataset) },
+      { id: 'workflow_status_daily', label: 'Workflow status distribution', metrics: metricsForEntity('workflow_status_daily', dataset) },
+      { id: 'handoff_reason_daily', label: 'Automation handoff reasons', metrics: metricsForEntity('handoff_reason_daily', dataset) },
+      { id: 'contact_type_daily', label: 'New vs returning contacts', metrics: metricsForEntity('contact_type_daily', dataset) },
+      { id: 'aging_band_daily', label: 'Backlog aging buckets', metrics: metricsForEntity('aging_band_daily', dataset) },
+      { id: 'sla_risk_daily', label: 'SLA risk buckets', metrics: metricsForEntity('sla_risk_daily', dataset) },
+      { id: 'satisfaction_theme_daily', label: 'Satisfaction themes and detractors', metrics: metricsForEntity('satisfaction_theme_daily', dataset) },
+      { id: 'reopen_reason_daily', label: 'Reopen reasons', metrics: metricsForEntity('reopen_reason_daily', dataset) },
+      { id: 'lead_source_daily', label: 'Lead source quality and value', metrics: metricsForEntity('lead_source_daily', dataset) },
+      { id: 'call_outcome_daily', label: 'Voice call outcomes', metrics: metricsForEntity('call_outcome_daily', dataset) },
+      { id: 'ai_confidence_daily', label: 'AI confidence mix', metrics: metricsForEntity('ai_confidence_daily', dataset) },
     ],
-    dimensions: ['team', 'channel', 'agent', 'date', 'week', 'month', 'intent', 'stage', 'hour', 'status', 'reason', 'contact_type', 'direction', 'age_band', 'risk_band', 'theme', 'source', 'outcome', 'confidence_band'],
+    dimensions: [
+      'team', 'channel', 'agent', 'date', 'week', 'month', 'quarter',
+      'intent', 'intent_version', 'stage', 'hour', 'status', 'reason', 'contact_type', 'direction',
+      'age_band', 'risk_band', 'theme', 'source', 'outcome', 'confidence_band',
+      'region', 'country', 'city', 'language', 'business_unit',
+      'account_segment', 'account_tier', 'plan', 'lifecycle_stage', 'cohort',
+      'queue', 'priority', 'sla_policy',
+      'product_line', 'feature_area', 'issue_type',
+      'campaign', 'article', 'article_category',
+      'ai_model', 'prompt_version', 'guardrail_type',
+      'journey', 'journey_version', 'trigger_type', 'exit_reason',
+      'deal_owner', 'currency', 'close_reason', 'competitor',
+      'voice_line', 'connection_result', 'recording_flag',
+      'survey_template', 'survey_question', 'delivery_channel', 'respondent_type', 'sentiment_label',
+      'schedule', 'shift', 'availability_status',
+    ],
     metrics: Object.entries(METRIC_DEFINITIONS).map(([id, meta]) => ({ id, ...meta })),
     aliases: METRIC_ALIASES,
     availableTeams: dataset.teams.map(team => ({ name: team.name, focus: team.focus })),
@@ -1051,6 +1783,7 @@ function getSemanticSchema(customerProfile = {}, context = {}) {
     notes: [
       'Analytics data with customer-specific overlays.',
       'Covers visible dashboard topics plus nearby supporting data that is not always shown in the dashboard.',
+      'Includes geography, account segmentation, queue/SLA, product area, campaign, knowledge base, AI model, journey, deal-attribute, survey-detail, call-quality, and staffing slices.',
     ],
   };
 }
