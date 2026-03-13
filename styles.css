@@ -4541,6 +4541,39 @@ body[data-panel="wide"] .assistant-fab {
   height: 64px;
 }
 
+.robot-speech-bubble {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: -6px;
+  max-width: 110px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--gray-800);
+  font: 600 11px/1.2 var(--font);
+  box-shadow: 0 8px 18px rgba(0,0,0,.14);
+  opacity: 0;
+  transform: scale(0.7);
+  transform-origin: left bottom;
+  transition: opacity .22s ease, transform .22s ease;
+  white-space: nowrap;
+}
+.robot-speech-bubble::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  bottom: 10px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+.robot-speech-bubble.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .robot-runner-inner {
   position: relative;
   width: 100%;
@@ -4645,6 +4678,292 @@ body[data-panel="wide"] .assistant-fab {
   animation: robotArmSwingRight 0.3s ease-in-out infinite;
 }
 
+.robot-runner.walking .robot-leg-left {
+  animation: robotLegLeft 0.55s ease-in-out infinite;
+}
+.robot-runner.walking .robot-leg-right {
+  animation: robotLegRight 0.55s ease-in-out infinite;
+}
+.robot-runner.walking .robot-arm-left {
+  animation: robotArmSwingLeft 0.55s ease-in-out infinite;
+}
+.robot-runner.walking .robot-arm-right {
+  animation: robotArmSwingRight 0.55s ease-in-out infinite;
+}
+
+.robot-runner.climbing .robot-runner-inner {
+  animation: robotClimbBase 0.9s ease-in-out infinite;
+  transform-origin: center 72%;
+}
+.robot-runner.climbing .robot-head {
+  animation: robotClimbHead 0.9s ease-in-out infinite;
+}
+.robot-runner.climbing .robot-body {
+  animation: robotClimbBody 0.9s ease-in-out infinite;
+}
+.robot-runner.climbing .robot-arm-left {
+  animation: robotClimbArmLeft 0.9s ease-in-out infinite;
+}
+.robot-runner.climbing .robot-arm-right {
+  animation: robotClimbArmRight 0.9s ease-in-out infinite;
+}
+.robot-runner.climbing .robot-leg-left {
+  animation: robotClimbLegLeft 0.9s ease-in-out infinite;
+}
+.robot-runner.climbing .robot-leg-right {
+  animation: robotClimbLegRight 0.9s ease-in-out infinite;
+}
+
+.robot-runner.fallen .robot-runner-inner {
+  transform: rotate(106deg) translate(1px, 12px);
+  transform-origin: center 82%;
+}
+.robot-runner.fallen .robot-antenna {
+  transform: translateX(-50%) translate(41px, 16px) rotate(102deg);
+}
+.robot-runner.fallen .robot-head {
+  transform: translateX(-50%) rotate(-16deg) translate(-1px, 4px);
+}
+.robot-runner.fallen .robot-body {
+  transform: translateX(-50%) rotate(22deg) scale(1.01, 0.94);
+}
+.robot-runner.fallen .robot-arm-left {
+  transform: rotate(138deg) translate(3px, 6px);
+}
+.robot-runner.fallen .robot-arm-right {
+  transform: rotate(-58deg) translate(-2px, 6px);
+}
+.robot-runner.fallen .robot-leg-left {
+  transform: rotate(48deg) translate(-1px, -1px);
+}
+.robot-runner.fallen .robot-leg-right {
+  transform: rotate(-42deg) translate(2px, -1px);
+}
+
+.robot-runner.standingupslow .robot-runner-inner {
+  animation: robotStandUpSlowBase 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+  transform-origin: center 82%;
+}
+.robot-runner.standingupslow .robot-antenna {
+  animation: robotStandUpSlowAntenna 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+.robot-runner.standingupslow .robot-head {
+  animation: robotStandUpSlowHead 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+.robot-runner.standingupslow .robot-body {
+  animation: robotStandUpSlowBody 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+.robot-runner.standingupslow .robot-arm-left {
+  animation: robotStandUpSlowArmLeft 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+.robot-runner.standingupslow .robot-arm-right {
+  animation: robotStandUpSlowArmRight 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+.robot-runner.standingupslow .robot-leg-left {
+  animation: robotStandUpSlowLegLeft 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+.robot-runner.standingupslow .robot-leg-right {
+  animation: robotStandUpSlowLegRight 2.4s cubic-bezier(0.2, 0.82, 0.18, 1) forwards;
+}
+
+/* Traveling cartwheel */
+.robot-runner.lyingdown .robot-runner-inner {
+  transform: rotate(90deg) translate(0, 12px);
+  transform-origin: center 82%;
+}
+.robot-runner.lyingdown .robot-antenna {
+  transform: translateX(-50%) translate(41px, 16px) rotate(90deg);
+}
+.robot-runner.lyingdown .robot-head {
+  transform: translateX(-50%) rotate(-8deg) translate(0, 2px);
+}
+.robot-runner.lyingdown .robot-body {
+  transform: translateX(-50%) rotate(12deg) scale(1.02, 0.95);
+}
+.robot-runner.lyingdown .robot-arm-left {
+  transform: rotate(108deg) translate(2px, 3px);
+}
+.robot-runner.lyingdown .robot-arm-right {
+  transform: rotate(-92deg) translate(-2px, 3px);
+}
+.robot-runner.lyingdown .robot-leg-left {
+  transform: rotate(20deg) translate(-1px, -2px);
+}
+.robot-runner.lyingdown .robot-leg-right {
+  transform: rotate(-20deg) translate(1px, -2px);
+}
+
+.robot-runner.crawling .robot-runner-inner {
+  animation: robotCrawlBase 1.4s ease-in-out infinite;
+  transform-origin: center center;
+}
+.robot-runner.crawling .robot-antenna {
+  animation: robotCrawlAntenna 1.4s ease-in-out infinite;
+}
+.robot-runner.crawling .robot-head {
+  animation: robotCrawlHead 1.4s ease-in-out infinite;
+}
+.robot-runner.crawling .robot-body {
+  animation: robotCrawlBody 1.4s ease-in-out infinite;
+}
+.robot-runner.crawling .robot-arm-left {
+  animation: robotCrawlArmLeft 0.8s ease-in-out infinite alternate;
+}
+.robot-runner.crawling .robot-arm-right {
+  animation: robotCrawlArmRight 0.8s ease-in-out infinite alternate;
+}
+.robot-runner.crawling .robot-leg-left {
+  animation: robotCrawlLegLeft 0.8s ease-in-out infinite alternate;
+}
+.robot-runner.crawling .robot-leg-right {
+  animation: robotCrawlLegRight 0.8s ease-in-out infinite alternate;
+}
+
+.robot-runner.gettingup .robot-runner-inner {
+  animation: robotGetUpBase 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+  transform-origin: center 82%;
+}
+.robot-runner.gettingup .robot-antenna {
+  animation: robotGetUpAntenna 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.gettingup .robot-head {
+  animation: robotGetUpHead 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.gettingup .robot-body {
+  animation: robotGetUpBody 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.gettingup .robot-arm-left {
+  animation: robotGetUpArmLeft 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.gettingup .robot-arm-right {
+  animation: robotGetUpArmRight 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.gettingup .robot-leg-left {
+  animation: robotGetUpLegLeft 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.gettingup .robot-leg-right {
+  animation: robotGetUpLegRight 1.2s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+
+.robot-runner.cartwheeling .robot-runner-inner {
+  animation: robotCartwheelBase 1.7s linear infinite;
+  transform-origin: center center;
+}
+.robot-runner.cartwheeling .robot-head {
+  animation: robotCartwheelHead 1.7s linear infinite;
+}
+.robot-runner.cartwheeling .robot-body {
+  animation: robotCartwheelBody 1.7s linear infinite;
+}
+.robot-runner.cartwheeling .robot-arm-left {
+  animation: robotCartwheelArmLeft 1.7s linear infinite;
+}
+.robot-runner.cartwheeling .robot-arm-right {
+  animation: robotCartwheelArmRight 1.7s linear infinite;
+}
+.robot-runner.cartwheeling .robot-leg-left {
+  animation: robotCartwheelLegLeft 1.7s linear infinite;
+}
+.robot-runner.cartwheeling .robot-leg-right {
+  animation: robotCartwheelLegRight 1.7s linear infinite;
+}
+
+/* Floor move */
+.robot-runner.floormove .robot-runner-inner {
+  animation: robotFloorMoveBase 1.2s ease-in-out infinite;
+  transform-origin: center 78%;
+}
+.robot-runner.floormove .robot-head {
+  animation: robotFloorMoveHead 1.2s ease-in-out infinite;
+}
+.robot-runner.floormove .robot-body {
+  animation: robotFloorMoveBody 1.2s ease-in-out infinite;
+}
+.robot-runner.floormove .robot-arm-left {
+  animation: robotFloorMoveArmLeft 1.2s ease-in-out infinite;
+}
+.robot-runner.floormove .robot-arm-right {
+  animation: robotFloorMoveArmRight 1.2s ease-in-out infinite;
+}
+.robot-runner.floormove .robot-leg-left {
+  animation: robotFloorMoveLegLeft 1.2s ease-in-out infinite;
+}
+.robot-runner.floormove .robot-leg-right {
+  animation: robotFloorMoveLegRight 1.2s ease-in-out infinite;
+}
+
+/* Freestyle finish */
+.robot-runner.freestyling .robot-runner-inner {
+  animation: robotFreestyleBase 1.6s ease-in-out infinite;
+  transform-origin: center 72%;
+}
+.robot-runner.freestyling .robot-head {
+  animation: robotFreestyleHead 1.6s ease-in-out infinite;
+}
+.robot-runner.freestyling .robot-body {
+  animation: robotFreestyleBody 1.6s ease-in-out infinite;
+}
+.robot-runner.freestyling .robot-arm-left {
+  animation: robotFreestyleArmLeft 1.6s ease-in-out infinite;
+}
+.robot-runner.freestyling .robot-arm-right {
+  animation: robotFreestyleArmRight 1.6s ease-in-out infinite;
+}
+.robot-runner.freestyling .robot-leg-left {
+  animation: robotFreestyleLegLeft 1.6s ease-in-out infinite;
+}
+.robot-runner.freestyling .robot-leg-right {
+  animation: robotFreestyleLegRight 1.6s ease-in-out infinite;
+}
+
+/* Head spin */
+.robot-runner.headspinning .robot-runner-inner {
+  animation: robotHeadspinBase 2.85s linear infinite;
+  transform-origin: 50% 27%;
+}
+.robot-runner.headspinning .robot-head {
+  animation: robotHeadspinHead 2.85s linear infinite;
+}
+.robot-runner.headspinning .robot-body {
+  animation: robotHeadspinBody 2.85s linear infinite;
+}
+.robot-runner.headspinning .robot-arm-left {
+  animation: robotHeadspinArmLeft 2.85s ease-in-out infinite;
+}
+.robot-runner.headspinning .robot-arm-right {
+  animation: robotHeadspinArmRight 2.85s ease-in-out infinite;
+}
+.robot-runner.headspinning .robot-leg-left {
+  animation: robotHeadspinLegLeft 2.85s ease-in-out infinite;
+}
+.robot-runner.headspinning .robot-leg-right {
+  animation: robotHeadspinLegRight 2.85s ease-in-out infinite;
+}
+
+/* Stand up */
+.robot-runner.standingup .robot-runner-inner {
+  animation: robotStandUpBase 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+  transform-origin: 50% 27%;
+}
+.robot-runner.standingup .robot-head {
+  animation: robotStandUpHead 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.standingup .robot-body {
+  animation: robotStandUpBody 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.standingup .robot-arm-left {
+  animation: robotStandUpArmLeft 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.standingup .robot-arm-right {
+  animation: robotStandUpArmRight 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.standingup .robot-leg-left {
+  animation: robotStandUpLegLeft 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+.robot-runner.standingup .robot-leg-right {
+  animation: robotStandUpLegRight 0.8s cubic-bezier(0.24, 0.84, 0.18, 1) forwards;
+}
+
 @keyframes robotLegLeft {
   0%, 100% { transform: rotate(25deg); }
   50%      { transform: rotate(-25deg); }
@@ -4660,6 +4979,302 @@ body[data-panel="wide"] .assistant-fab {
 @keyframes robotArmSwingRight {
   0%, 100% { transform: rotate(15deg); }
   50%      { transform: rotate(-15deg); }
+}
+
+@keyframes robotClimbBase {
+  0%, 100% { transform: rotate(-8deg) translateY(0); }
+  50% { transform: rotate(8deg) translateY(-2px); }
+}
+@keyframes robotClimbHead {
+  0%, 100% { transform: translateX(-50%) rotate(-8deg); }
+  50% { transform: translateX(-50%) rotate(8deg) translateY(-1px); }
+}
+@keyframes robotClimbBody {
+  0%, 100% { transform: translateX(-50%) rotate(-6deg) scale(1.02, 1.01); }
+  50% { transform: translateX(-50%) rotate(6deg) scale(1.03, 0.99); }
+}
+@keyframes robotClimbArmLeft {
+  0%, 100% { transform: rotate(-128deg) translateY(1px); }
+  50% { transform: rotate(-38deg) translateY(-1px); }
+}
+@keyframes robotClimbArmRight {
+  0%, 100% { transform: rotate(38deg) translateY(-1px); }
+  50% { transform: rotate(128deg) translateY(1px); }
+}
+@keyframes robotClimbLegLeft {
+  0%, 100% { transform: rotate(-28deg); }
+  50% { transform: rotate(20deg) translateY(-2px); }
+}
+@keyframes robotClimbLegRight {
+  0%, 100% { transform: rotate(28deg); }
+  50% { transform: rotate(-20deg) translateY(2px); }
+}
+
+@keyframes robotCrawlBase {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(0); }
+}
+@keyframes robotCrawlAntenna {
+  0%, 100% { transform: translateX(-50%) translate(43px, 22px) rotate(90deg); }
+  50% { transform: translateX(-50%) translate(43px, 21px) rotate(90deg); }
+}
+@keyframes robotCrawlHead {
+  0%, 100% { transform: translateX(41px) translateY(23px) rotate(90deg); }
+  50% { transform: translateX(41px) translateY(22px) rotate(90deg); }
+}
+@keyframes robotCrawlBody {
+  0%, 100% { transform: translateX(-50%) translateY(23px) rotate(90deg) scale(1.02, 1.26); }
+  50% { transform: translateX(-50%) translateY(22px) rotate(90deg) scale(1.02, 1.26); }
+}
+@keyframes robotCrawlArmLeft {
+  from { transform: rotate(0deg) translate(-1px, 3px); }
+  to   { transform: rotate(0deg) translate(-1px, 7px); }
+}
+@keyframes robotCrawlArmRight {
+  from { transform: rotate(0deg) translate(-1px, 7px); }
+  to   { transform: rotate(0deg) translate(-1px, 3px); }
+}
+@keyframes robotCrawlLegLeft {
+  from { transform: rotate(0deg) translate(-1px, 2px); }
+  to   { transform: rotate(0deg) translate(-1px, 6px); }
+}
+@keyframes robotCrawlLegRight {
+  from { transform: rotate(0deg) translate(-1px, 6px); }
+  to   { transform: rotate(0deg) translate(-1px, 2px); }
+}
+
+@keyframes robotGetUpBase {
+  0% { transform: rotate(90deg) translate(0, 12px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+@keyframes robotGetUpAntenna {
+  0% { transform: translateX(-50%) translate(43px, 22px) rotate(90deg); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes robotGetUpHead {
+  0% { transform: translateX(-50%) rotate(-8deg) translate(0, 2px); }
+  100% { transform: translateX(-50%) rotate(0deg) translateY(0); }
+}
+@keyframes robotGetUpBody {
+  0% { transform: translateX(-50%) rotate(12deg) scale(1.02, 0.95); }
+  100% { transform: translateX(-50%) rotate(0deg) scale(1, 1); }
+}
+@keyframes robotGetUpArmLeft {
+  0% { transform: rotate(110deg) translate(2px, 3px); }
+  100% { transform: rotate(-12deg); }
+}
+@keyframes robotGetUpArmRight {
+  0% { transform: rotate(-90deg) translate(-2px, 3px); }
+  100% { transform: rotate(12deg); }
+}
+@keyframes robotGetUpLegLeft {
+  0% { transform: rotate(20deg) translate(-1px, -2px); }
+  100% { transform: rotate(-4deg); }
+}
+@keyframes robotGetUpLegRight {
+  0% { transform: rotate(-20deg) translate(1px, -2px); }
+  100% { transform: rotate(4deg); }
+}
+
+@keyframes robotCartwheelBase {
+  0% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(90deg) translateY(-2px); }
+  50% { transform: rotate(180deg) translateY(0); }
+  75% { transform: rotate(270deg) translateY(-2px); }
+  100% { transform: rotate(360deg) translateY(0); }
+}
+@keyframes robotCartwheelHead {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+}
+@keyframes robotCartwheelBody {
+  0%, 100% { transform: translateX(-50%) rotate(0deg) scale(1.02, 1); }
+  50% { transform: translateX(-50%) rotate(0deg) scale(1.04, 0.98); }
+}
+@keyframes robotCartwheelArmLeft {
+  0%, 100% { transform: rotate(-150deg) translate(1px, 0); }
+  50% { transform: rotate(-150deg) translate(1px, 0); }
+}
+@keyframes robotCartwheelArmRight {
+  0%, 100% { transform: rotate(150deg) translate(-1px, 0); }
+  50% { transform: rotate(150deg) translate(-1px, 0); }
+}
+@keyframes robotCartwheelLegLeft {
+  0%, 100% { transform: rotate(-28deg) translate(-1px, -2px); }
+  25% { transform: rotate(-28deg) translate(-1px, -2px); }
+  50% { transform: rotate(-28deg) translate(-1px, -2px); }
+  75% { transform: rotate(-28deg) translate(-1px, -2px); }
+}
+@keyframes robotCartwheelLegRight {
+  0%, 100% { transform: rotate(28deg) translate(1px, -2px); }
+  25% { transform: rotate(28deg) translate(1px, -2px); }
+  50% { transform: rotate(28deg) translate(1px, -2px); }
+  75% { transform: rotate(28deg) translate(1px, -2px); }
+}
+
+@keyframes robotFloorMoveBase {
+  0%, 100% { transform: rotate(-70deg) translate(-4px, 8px); }
+  50% { transform: rotate(-78deg) translate(-6px, 10px); }
+}
+@keyframes robotFloorMoveHead {
+  0%, 100% { transform: translateX(-50%) rotate(26deg) translate(-2px, 2px); }
+  50% { transform: translateX(-50%) rotate(34deg) translate(-3px, 3px); }
+}
+@keyframes robotFloorMoveBody {
+  0%, 100% { transform: translateX(-50%) rotate(24deg) skewX(-8deg) scale(1.04, 0.94); }
+  50% { transform: translateX(-50%) rotate(28deg) skewX(-10deg) scale(1.05, 0.92); }
+}
+@keyframes robotFloorMoveArmLeft {
+  0%, 100% { transform: rotate(120deg) translateY(4px); }
+  50% { transform: rotate(126deg) translateY(5px); }
+}
+@keyframes robotFloorMoveArmRight {
+  0%, 100% { transform: rotate(-10deg) translate(-1px, 2px); }
+  50% { transform: rotate(-18deg) translate(-1px, 3px); }
+}
+@keyframes robotFloorMoveLegLeft {
+  0%, 100% { transform: rotate(-112deg) translate(-2px, -6px); }
+  50% { transform: rotate(-126deg) translate(-3px, -8px); }
+}
+@keyframes robotFloorMoveLegRight {
+  0%, 100% { transform: rotate(146deg) translate(2px, -12px); }
+  50% { transform: rotate(156deg) translate(3px, -15px); }
+}
+
+@keyframes robotFreestyleBase {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  20% { transform: rotate(-10deg) translate(-1px, -2px); }
+  40% { transform: rotate(14deg) translate(2px, 0); }
+  60% { transform: rotate(-14deg) translate(-1px, -1px); }
+  80% { transform: rotate(10deg) translate(1px, -2px); }
+}
+@keyframes robotFreestyleHead {
+  0%, 100% { transform: translateX(-50%) rotate(-4deg); }
+  20% { transform: translateX(-50%) rotate(12deg) translateY(1px); }
+  60% { transform: translateX(-50%) rotate(-12deg) translateY(-1px); }
+  80% { transform: translateX(-50%) rotate(8deg); }
+}
+@keyframes robotFreestyleBody {
+  0%, 100% { transform: translateX(-50%) rotate(-2deg) scaleY(0.99); }
+  25% { transform: translateX(-50%) rotate(10deg) scale(1.03, 1.04); }
+  55% { transform: translateX(-50%) rotate(-12deg) scale(1.02, 0.97); }
+  80% { transform: translateX(-50%) rotate(8deg) scale(1.02, 1.02); }
+}
+@keyframes robotFreestyleArmLeft {
+  0%, 100% { transform: rotate(-38deg); }
+  25% { transform: rotate(34deg); }
+  55% { transform: rotate(-78deg); }
+  80% { transform: rotate(18deg); }
+}
+@keyframes robotFreestyleArmRight {
+  0%, 100% { transform: rotate(52deg); }
+  25% { transform: rotate(-28deg); }
+  55% { transform: rotate(86deg); }
+  80% { transform: rotate(-12deg); }
+}
+@keyframes robotFreestyleLegLeft {
+  0%, 100% { transform: rotate(-18deg); }
+  25% { transform: rotate(26deg) translateY(-2px); }
+  55% { transform: rotate(-46deg) translate(-1px, 0); }
+  80% { transform: rotate(18deg) translateY(-1px); }
+}
+@keyframes robotFreestyleLegRight {
+  0%, 100% { transform: rotate(18deg); }
+  25% { transform: rotate(-22deg) translateY(1px); }
+  55% { transform: rotate(54deg) translate(1px, -3px); }
+  80% { transform: rotate(-18deg) translateY(1px); }
+}
+
+@keyframes robotHeadspinBase {
+  0% { transform: translateY(18px) rotate(180deg) scaleX(1); }
+  25% { transform: translateY(18px) rotate(180deg) scaleX(0.32); }
+  50% { transform: translateY(18px) rotate(180deg) scaleX(-1); }
+  75% { transform: translateY(18px) rotate(180deg) scaleX(-0.32); }
+  100% { transform: translateY(18px) rotate(180deg) scaleX(1); }
+}
+@keyframes robotHeadspinHead {
+  0%, 100% { transform: translateX(-50%) rotate(0deg) translateY(0); }
+}
+@keyframes robotHeadspinBody {
+  0%, 100% { transform: translateX(-50%) rotate(0deg) scale(1.02, 0.96); }
+  50% { transform: translateX(-50%) rotate(0deg) scale(1.03, 0.95); }
+}
+@keyframes robotHeadspinArmLeft {
+  0%, 100% { transform: rotate(146deg) translate(1px, 5px); }
+  50% { transform: rotate(146deg) translate(1px, 5px); }
+}
+@keyframes robotHeadspinArmRight {
+  0%, 100% { transform: rotate(-146deg) translate(-1px, 5px); }
+  50% { transform: rotate(-146deg) translate(-1px, 5px); }
+}
+@keyframes robotHeadspinLegLeft {
+  0%, 100% { transform: rotate(18deg) translate(-1px, -7px); }
+  50% { transform: rotate(18deg) translate(-1px, -7px); }
+}
+@keyframes robotHeadspinLegRight {
+  0%, 100% { transform: rotate(-18deg) translate(1px, -7px); }
+  50% { transform: rotate(-18deg) translate(1px, -7px); }
+}
+
+@keyframes robotStandUpBase {
+  0% { transform: translateY(18px) rotate(180deg); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+@keyframes robotStandUpHead {
+  0% { transform: translateX(-50%) rotate(0deg) translateY(0); }
+  100% { transform: translateX(-50%) rotate(0deg) translateY(0); }
+}
+@keyframes robotStandUpBody {
+  0% { transform: translateX(-50%) rotate(0deg) scale(1.02, 0.96); }
+  100% { transform: translateX(-50%) rotate(0deg) skewX(0deg) scale(1, 1); }
+}
+@keyframes robotStandUpArmLeft {
+  0% { transform: rotate(146deg) translate(1px, 5px); }
+  100% { transform: rotate(-14deg); }
+}
+@keyframes robotStandUpArmRight {
+  0% { transform: rotate(-146deg) translate(-1px, 5px); }
+  100% { transform: rotate(12deg); }
+}
+@keyframes robotStandUpLegLeft {
+  0% { transform: rotate(18deg) translate(-1px, -7px); }
+  100% { transform: rotate(-4deg); }
+}
+@keyframes robotStandUpLegRight {
+  0% { transform: rotate(-18deg) translate(1px, -7px); }
+  100% { transform: rotate(4deg); }
+}
+
+@keyframes robotStandUpSlowBase {
+  0% { transform: rotate(106deg) translate(1px, 12px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+@keyframes robotStandUpSlowAntenna {
+  0% { transform: translateX(-50%) translate(41px, 16px) rotate(102deg); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes robotStandUpSlowHead {
+  0% { transform: translateX(-50%) rotate(-16deg) translate(-1px, 4px); }
+  100% { transform: translateX(-50%) rotate(0deg) translateY(0); }
+}
+@keyframes robotStandUpSlowBody {
+  0% { transform: translateX(-50%) rotate(22deg) scale(1.01, 0.94); }
+  100% { transform: translateX(-50%) rotate(0deg) scale(1, 1); }
+}
+@keyframes robotStandUpSlowArmLeft {
+  0% { transform: rotate(138deg) translate(3px, 6px); }
+  100% { transform: rotate(-14deg); }
+}
+@keyframes robotStandUpSlowArmRight {
+  0% { transform: rotate(-58deg) translate(-2px, 6px); }
+  100% { transform: rotate(12deg); }
+}
+@keyframes robotStandUpSlowLegLeft {
+  0% { transform: rotate(48deg) translate(-1px, -1px); }
+  100% { transform: rotate(-4deg); }
+}
+@keyframes robotStandUpSlowLegRight {
+  0% { transform: rotate(-42deg) translate(2px, -1px); }
+  100% { transform: rotate(4deg); }
 }
 
 /* Waving arm */

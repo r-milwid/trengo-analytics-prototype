@@ -4598,6 +4598,7 @@ function renderFlagList() {
       ${toggleHTML}
     </div>`;
   }).join('');
+
   list.querySelectorAll('.flag-toggle input').forEach(cb => {
     cb.addEventListener('change', () => {
       setFeatureFlag(cb.dataset.flag, cb.checked);

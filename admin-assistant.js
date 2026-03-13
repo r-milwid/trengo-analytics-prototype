@@ -113,7 +113,8 @@ const AdminAssistant = (() => {
               properties: {
                 id: { type: 'string' },
                 label: { type: 'string' },
-                category: { type: 'string' }
+                category: { type: 'string' },
+                categories: { type: 'array', items: { type: 'string' }, description: 'Catalog sections this tab covers. Used for widget routing when a tab spans multiple catalog sections.' }
               },
               required: ['id', 'label']
             }
@@ -215,7 +216,8 @@ const AdminAssistant = (() => {
               properties: {
                 id: { type: 'string' },
                 label: { type: 'string' },
-                category: { type: 'string' }
+                category: { type: 'string' },
+                categories: { type: 'array', items: { type: 'string' }, description: 'Catalog sections this tab covers. Used for widget routing when a tab spans multiple catalog sections.' }
               },
               required: ['id', 'label']
             }
@@ -238,7 +240,8 @@ const AdminAssistant = (() => {
               properties: {
                 id: { type: 'string' },
                 label: { type: 'string' },
-                category: { type: 'string' }
+                category: { type: 'string' },
+                categories: { type: 'array', items: { type: 'string' }, description: 'Catalog sections this tab covers (e.g. ["understand", "improve"]). Used for widget routing when a tab spans multiple catalog sections.' }
               },
               required: ['id', 'label']
             }
@@ -362,7 +365,9 @@ const AdminAssistant = (() => {
     const currentConfig = {
       lens: state.lens,
       role: state.role,
-      tabs: state.tabs.map(t => ({ id: t.id, label: t.label })),
+      tabs: mode === 'onboarding'
+        ? '(will be proposed during onboarding)'
+        : state.tabs.map(t => ({ id: t.id, label: t.label })),
       teamUsecases: state.teamUsecases || {},
       hiddenWidgets: [...(state.hiddenWidgets || [])],
       addedWidgets: [...(state.addedWidgets || [])],
@@ -534,7 +539,7 @@ ${role === 'admin' ? `ALL TEAMS IN PROTOTYPE
 ${allTeams.map(t => `- ${t.name}`).join('\n')}` : ''}
 
 <widgets>
-${widgetSummary}
+${mode === 'onboarding' ? 'Note: the section headings below (overview, understand, operate, improve, automate) are catalog groupings for reference, not a recommended tab structure. Widgets can be freely regrouped into any number of tabs.\n' : ''}${widgetSummary}
 </widgets>
 
 <current_config>
@@ -566,9 +571,20 @@ ${role === 'agent'
 - In the opening phase, focus on enough understanding to make a draft, not on collecting every possible preference.
 - After the source/context step, do a real gap check before proposing.
 - Ask follow-up questions when they materially improve the likely tab proposal, team setup, terminology, or starter widget set.
-- Your goal is to collect enough context to propose an initial dashboard draft, including tab names/order/number and a sensible starting widget set.
+- Your goal is to collect enough context to propose an initial dashboard draft.
+- First decide which starter widgets to include based on the user's needs and context. Each widget should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic widgets just because they exist.
 - Do not treat the starter widget set as high-confidence unless the current context is enough to justify the included widgets against the other available options.
-- Each starter widget choice should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic widgets just because they exist.
+- Then group those widgets into tabs. The number and naming of tabs should follow naturally from how the selected widgets cluster by decision domain or workflow. Present the tab proposal (with show_tab_proposal_choice) only after you have a clear picture of which widgets go where.
+- When a tab spans multiple catalog sections, use the categories array (e.g. categories: ["understand", "improve"]) so widgets route correctly.
+- Tab count guidance:
+  - 1-5 tabs are all normal outcomes. 6+ requires strong justification.
+  - Do not anchor to the default 5-tab structure. Propose the fewest tabs that create meaningful navigation boundaries.
+  - 1 tab is valid when total starter widgets are roughly 5-8 and form a single coherent view. Do not split just because you can.
+  - 2-4 tabs should be the most common proposal range for most setups.
+  - Each proposed tab should have enough substance (~3+ widgets) to justify being a separate view. If a tab would only have 1-2 widgets, merge it into a neighboring tab.
+  - For agents: 1-3 tabs is typical. Agents rarely need 5 separate views.
+  - For supervisors: 2-4 tabs is typical. Only use 5 when there are genuinely distinct decision domains.
+  - For admins: 3-5 tabs is typical, but 2 is valid for focused setups.
 - Let the chosen role materially change the scope and ambition of the draft:
   - Admin: think company-wide, shared, and cross-team by default.
   - Supervisor: stay within the supervised teams and team-level decisions unless the user broadens the scope.
@@ -873,6 +889,7 @@ ${role === 'agent'
       id: tab.id,
       label: tab.label,
       category: tab.category || null,
+      categories: Array.isArray(tab.categories) ? tab.categories : null,
       isDefault: DEFAULT_TABS.some(dt => dt.id === tab.id),
     }));
   }
@@ -940,6 +957,7 @@ ${role === 'agent'
       id: tab.id,
       label: tab.label,
       category: tab.category || null,
+      categories: Array.isArray(tab.categories) ? tab.categories : null,
       isDefault: tab.isDefault,
     }));
 
@@ -1091,11 +1109,14 @@ ${role === 'agent'
   function handleSetWidgetVisibility({ show, hide }) {
     const affectedTabs = new Set();
 
-    // Helper: find the right tab for a widget (by catalog category → tab category match)
+    // Helper: find the right tab for a widget (by catalog category → tab category/categories match)
     function findTabForWidget(widgetId) {
       const section = getSectionForWidget(widgetId);
       if (section) {
-        const tab = state.tabs.find(t => t.category === section);
+        const tab = state.tabs.find(t =>
+          t.category === section ||
+          (Array.isArray(t.categories) && t.categories.includes(section))
+        );
         if (tab) return tab.id;
       }
       // Fallback: active tab
@@ -4864,71 +4885,237 @@ ${role === 'agent'
       <div class="robot-arm robot-arm-right"></div>
       <div class="robot-leg robot-leg-left"></div>
       <div class="robot-leg robot-leg-right"></div>
-    </div>`;
+    </div>
+    <div class="robot-speech-bubble" aria-hidden="true"></div>`;
     return robot;
+  }
+
+  function setRobotSpeech(robot, text = '') {
+    if (!robot) return;
+    const bubble = robot.querySelector('.robot-speech-bubble');
+    if (!bubble) return;
+    bubble.textContent = text;
+    bubble.classList.toggle('visible', !!text);
+    bubble.setAttribute('aria-hidden', text ? 'false' : 'true');
+  }
+
+  function setRobotMotion(robot, motionClass) {
+    if (!robot) return;
+    const animatedParts = robot.querySelectorAll('.robot-runner-inner, .robot-head, .robot-body, .robot-arm, .robot-leg');
+
+    // Force animation restart when we switch choreography states.
+    animatedParts.forEach(part => {
+      part.style.animation = 'none';
+    });
+    void robot.offsetWidth;
+
+    robot.className = 'robot-runner';
+    robot.removeAttribute('data-motion');
+
+    if (motionClass) {
+      robot.dataset.motion = motionClass;
+      robot.classList.add(motionClass);
+    }
+
+    animatedParts.forEach(part => {
+      part.style.animation = '';
+    });
+    void robot.offsetWidth;
+  }
+
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async function animateOnboardingCollapseToFABRobot() {
     const overlay = document.getElementById('ai-setup-overlay');
     const fab = document.getElementById('assistant-fab');
+    const split = document.getElementById('ai-setup-split');
+    const meta = document.getElementById('ai-setup-meta');
+    const metaCard = meta?.querySelector('.ai-setup-meta-card');
+    const surface = split && split.style.display !== 'none' ? split : metaCard;
     if (!overlay || !fab) return;
 
     const legacyCollapseEasing = 'cubic-bezier(0.2, 0.82, 0.18, 1)';
     const legacyOverlayEasing = 'cubic-bezier(0.22, 0.78, 0.18, 1)';
-    const overlayFadeDuration = 520;
+    const collapseDuration = 1280;
     const introDuration = 1200;
     const shrinkDuration = 1200;
 
-    // Phase 1: Fade out onboarding overlay
-    overlay.style.transition = `opacity ${overlayFadeDuration}ms ${legacyOverlayEasing}`;
-    overlay.style.opacity = '0';
-    overlay.style.pointerEvents = 'none';
-    await new Promise(r => setTimeout(r, overlayFadeDuration));
+    let surfaceAnimation = null;
+    let overlayAnimation = null;
 
     // Prepare FAB position (hidden) so we can measure its target
     showFAB({ hidden: true });
     const fabRect = fab.getBoundingClientRect();
     const fabCenterX = fabRect.left + fabRect.width / 2;
     const fabCenterY = fabRect.top + fabRect.height / 2;
+    const robotWidth = 48;
+    const robotHeight = 64;
+    const introStartX = window.innerWidth * 0.38;
+    const startX = introStartX;
+    const bottomY = window.innerHeight - 24 - robotHeight; // 24px margin + robot height
+    const robotStartCenterY = bottomY + robotHeight / 2;
+
+    // Phase 1: Visibly minimize the onboarding surface down to the robot's start position.
+    if (surface && typeof surface.animate === 'function') {
+      const sourceRect = surface.getBoundingClientRect();
+      if (sourceRect.width && sourceRect.height) {
+        const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+        const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+        const scale = Math.min(robotWidth / sourceRect.width, robotHeight / sourceRect.height);
+        const finalScale = Math.max(scale, 0.08);
+        const midpointScale = Math.min(0.48, Math.max(finalScale * 2.2, 0.22));
+        const translateX = introStartX - sourceCenterX;
+        const translateY = robotStartCenterY - sourceCenterY;
+
+        surface.style.transformOrigin = 'center center';
+        overlay.style.pointerEvents = 'none';
+
+        surfaceAnimation = surface.animate([
+          {
+            offset: 0,
+            transform: 'translate3d(0, 0, 0) scale(1)',
+            opacity: 1,
+            borderRadius: getComputedStyle(surface).borderRadius || '0px',
+            filter: 'blur(0px)',
+          },
+          {
+            offset: 0.56,
+            transform: `translate3d(${translateX * 0.74}px, ${translateY * 0.74}px, 0) scale(${midpointScale})`,
+            opacity: 0.74,
+            borderRadius: '24px',
+            filter: 'blur(0.4px)',
+          },
+          {
+            offset: 1,
+            transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${finalScale})`,
+            opacity: 0.08,
+            borderRadius: '999px',
+            filter: 'blur(2px)',
+          },
+        ], {
+          duration: collapseDuration,
+          easing: legacyCollapseEasing,
+          fill: 'forwards',
+        });
+
+        overlayAnimation = overlay.animate([
+          { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
+          { offset: 0.62, backgroundColor: 'rgba(247, 247, 248, 0.22)' },
+          { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0.08)' },
+        ], {
+          duration: collapseDuration,
+          easing: legacyOverlayEasing,
+          fill: 'forwards',
+        });
+
+        await Promise.allSettled([
+          surfaceAnimation.finished,
+          overlayAnimation.finished,
+        ]);
+      } else {
+        overlay.style.pointerEvents = 'none';
+      }
+    } else {
+      overlay.style.pointerEvents = 'none';
+    }
 
     // Phase 2: Create robot at bottom-center
     const robot = createRobotElement();
-    const startX = window.innerWidth / 2;
-    const bottomY = window.innerHeight - 24 - 64; // 24px margin + robot height
-    robot.style.left = startX + 'px';
+    robot.style.left = introStartX + 'px';
     robot.style.top = bottomY + 'px';
     robot.style.opacity = '0';
     robot.style.transform = 'translateX(-50%) translateY(20px)';
     document.body.appendChild(robot);
 
     // Slide robot in from below
-    await new Promise(r => setTimeout(r, 50)); // let DOM paint
+    await wait(50); // let DOM paint
     robot.style.transition = `opacity ${introDuration}ms ${legacyCollapseEasing}, transform ${introDuration}ms ${legacyCollapseEasing}`;
     robot.style.opacity = '1';
     robot.style.transform = 'translateX(-50%) translateY(0)';
-    await new Promise(r => setTimeout(r, introDuration));
+    await wait(introDuration);
 
-    // Phase 3: Robot runs to FAB position
-    robot.classList.add('running');
+    // Phase 3: Choreograph the robot across the screen in staged dance beats.
     const targetX = fabCenterX;
     const targetY = fabCenterY - 32; // center robot on FAB
-    const dx = targetX - startX;
+    const danceStartX = startX;
+    const dx = targetX - danceStartX;
     const dy = targetY - bottomY;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const runDuration = Math.max(1900, Math.min(3200, distance * 3.6));
+    const travelDuration = Math.max(3800, Math.min(6400, distance * 7.2));
+    const walkIntroDuration = Math.round(travelDuration * 0.25);
+    const slideToFloorDuration = Math.round(travelDuration * 0.25);
+    const floorMoveDuration = Math.round(travelDuration * 0.25);
+    const freestyleDuration = travelDuration - walkIntroDuration - slideToFloorDuration - floorMoveDuration;
+    const climbDuration = 1800;
+    const fallDuration = 950;
+    const standDuration = 2400;
+    const speechDuration = 1400;
+    const finaleDanceDuration = 1800;
 
-    robot.style.transition = `left ${runDuration}ms ${legacyCollapseEasing}, top ${runDuration}ms ${legacyCollapseEasing}`;
-    robot.style.left = targetX + 'px';
-    robot.style.top = targetY + 'px';
-    await new Promise(r => setTimeout(r, runDuration));
+    const moveRobotTo = (progress, duration) => {
+      const nextX = danceStartX + dx * progress;
+      const nextY = bottomY + dy * progress;
+      robot.style.transition = `left ${duration}ms linear, top ${duration}ms linear`;
+      robot.style.left = nextX + 'px';
+      robot.style.top = nextY + 'px';
+      return wait(duration);
+    };
 
-    // Phase 4: Stop and wave
-    robot.classList.remove('running');
-    robot.classList.add('waving');
-    await new Promise(r => setTimeout(r, 1600)); // 3 waves at 0.5s each
+    setRobotMotion(robot, 'walking');
+    await Promise.all([
+      moveRobotTo(0.25, walkIntroDuration),
+      wait(walkIntroDuration),
+    ]);
+
+    setRobotMotion(robot, 'cartwheeling');
+    await Promise.all([
+      moveRobotTo(0.5, slideToFloorDuration),
+      wait(slideToFloorDuration),
+    ]);
+
+    setRobotMotion(robot, 'floormove');
+    await Promise.all([
+      moveRobotTo(0.75, floorMoveDuration),
+      wait(floorMoveDuration),
+    ]);
+
+    setRobotMotion(robot, 'freestyling');
+    await Promise.all([
+      moveRobotTo(1, freestyleDuration),
+      wait(freestyleDuration),
+    ]);
+
+    // Phase 4: Climb up the collapsed guide panel, slip, recover, then celebrate.
+    const climbPeakY = Math.max(24, bottomY - (window.innerHeight * 0.2));
+    setRobotSpeech(robot, '');
+    setRobotMotion(robot, 'climbing');
+    robot.style.transition = `top ${climbDuration}ms ease-in-out`;
+    robot.style.top = climbPeakY + 'px';
+    await wait(climbDuration);
+
+    setRobotMotion(robot, 'fallen');
+    robot.style.transition = `top ${fallDuration}ms cubic-bezier(0.22, 0.78, 0.18, 1.08)`;
+    robot.style.top = bottomY + 'px';
+    await wait(fallDuration);
+
+    setRobotMotion(robot, 'standingupslow');
+    await wait(standDuration);
+
+    setRobotSpeech(robot, "I'm okay!");
+    await wait(speechDuration);
+    setRobotSpeech(robot, '');
+
+    setRobotMotion(robot, 'freestyling');
+    await wait(finaleDanceDuration);
+
+    setRobotMotion(robot, 'waving');
+    await wait(1600); // 3 waves at 0.5s each
 
     // Phase 5: Shrink into FAB
-    robot.classList.remove('waving');
+    setRobotMotion(robot, null);
+    setRobotSpeech(robot, '');
     robot.style.transition = `transform ${shrinkDuration}ms ease-in, opacity ${shrinkDuration}ms ease-in`;
     robot.style.transform = 'translateX(-50%) scale(0.15)';
     robot.style.opacity = '0';
@@ -4941,13 +5128,18 @@ ${role === 'agent'
     fab.style.transition = `opacity ${shrinkDuration}ms ease`;
     fab.style.opacity = '1';
 
-    await new Promise(r => setTimeout(r, shrinkDuration));
+    await wait(shrinkDuration);
 
     // Cleanup
     robot.remove();
+    overlay.style.display = 'none';
+    surfaceAnimation?.cancel();
+    overlayAnimation?.cancel();
+    if (surface) surface.style.transformOrigin = '';
     overlay.style.transition = '';
     overlay.style.opacity = '';
     overlay.style.pointerEvents = '';
+    overlay.style.backgroundColor = '';
     fab.style.transition = '';
   }
 
@@ -5267,12 +5459,31 @@ ${role === 'agent'
     return resetAssistantState({ restartOnboarding: true });
   }
 
+  async function testRobotTransition() {
+    const overlay = document.getElementById('ai-setup-overlay');
+    const meta = document.getElementById('ai-setup-meta');
+    const split = document.getElementById('ai-setup-split');
+    const panel = document.getElementById('assistant-panel');
+    if (!overlay) return false;
+
+    if (panel) panel.style.display = 'none';
+    resetOnboardingUIToStart();
+    if (meta) meta.style.display = '';
+    if (split) split.style.display = 'none';
+    showOnboarding();
+    showFAB({ hidden: true });
+    await wait(50);
+    await animateOnboardingCollapseToFABRobot();
+    return true;
+  }
+
   // ── Public API ─────────────────────────────────────────────
   return {
     init,
     tryStartOnboarding,
     resetAll,
     resetOnboarding,
+    testRobotTransition,
     retryLastMessage,
     showFAB,
     showOnboarding,
