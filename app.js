@@ -4546,14 +4546,12 @@ if (resetOnboardingSessionBtn) {
     resetOnboardingSessionBtn.disabled = true;
     resetOnboardingSessionBtn.textContent = 'Resetting…';
 
-    // Preserve the ai-onboarding flag — only reset tabs/content
-    const savedOnboardingMode = getFeatureFlagValue('ai-onboarding');
+    // Preserve all feature flags — only reset tabs/content
+    const savedFlags = localStorage.getItem(FEATURE_FLAGS_KEY);
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
     resetPrototypeStateToDefaults();
-    if (savedOnboardingMode && savedOnboardingMode !== false) {
-      setFeatureFlag('ai-onboarding', savedOnboardingMode);
-    }
+    if (savedFlags) localStorage.setItem(FEATURE_FLAGS_KEY, savedFlags);
     DashboardConfig.clearLocal();
     history.replaceState(null, '', '#analytics/overview');
 
@@ -4580,12 +4578,10 @@ if (resetOnboardingBtn) {
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
     localStorage.removeItem('trengo_onboarding_personal');
-    // Preserve the ai-onboarding flag so onboarding can be re-tested
-    const savedOnboardingMode = getFeatureFlagValue('ai-onboarding');
+    // Preserve all feature flags — reset only affects content/layout, not toggles
+    const savedFlags = localStorage.getItem(FEATURE_FLAGS_KEY);
     resetPrototypeStateToDefaults();
-    if (savedOnboardingMode && savedOnboardingMode !== false) {
-      setFeatureFlag('ai-onboarding', savedOnboardingMode);
-    }
+    if (savedFlags) localStorage.setItem(FEATURE_FLAGS_KEY, savedFlags);
     DashboardConfig.clearLocal();
     history.replaceState(null, '', '#analytics/overview');
 
