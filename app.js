@@ -144,6 +144,7 @@ function showHelionAvatar() {
   // Also show the admin settings button in the strip above the guide
   const stripAdminBtn = document.getElementById('strip-admin-btn');
   if (stripAdminBtn) stripAdminBtn.style.display = '';
+  syncSidebarRobotPreviewAvailability();
 }
 
 function unlockHelionAccess() {
@@ -152,8 +153,27 @@ function unlockHelionAccess() {
   showHelionAvatar();
 }
 
+function canUseSidebarRobotPreview() {
+  return Boolean(localStorage.getItem(HELION_UNLOCKED_KEY));
+}
+
+function syncSidebarRobotPreviewAvailability() {
+  const previewBtn = document.getElementById('sidebar-robot-preview-btn');
+  const previewTooltip = document.getElementById('sidebar-robot-preview-tooltip');
+  if (!previewBtn) return;
+  const enabled = canUseSidebarRobotPreview();
+  previewBtn.dataset.enabled = enabled ? 'true' : 'false';
+  previewBtn.title = enabled ? 'Play robot preview' : 'Support';
+  previewBtn.setAttribute('aria-label', enabled ? 'Robot preview' : 'Support');
+  previewBtn.setAttribute('aria-pressed', previewBtn.dataset.previewState === 'running' ? 'true' : 'false');
+  if (previewTooltip) previewTooltip.textContent = enabled ? 'Robot preview' : 'Support';
+}
+
+window.syncSidebarRobotPreviewAvailability = syncSidebarRobotPreviewAvailability;
+
 // Restore unlock state on page load
 if (localStorage.getItem(HELION_UNLOCKED_KEY)) showHelionAvatar();
+syncSidebarRobotPreviewAvailability();
 
 // Bootstrap nav mode from feature flag (before sections render)
 if (isFeatureEnabled('anchors-nav')) state.navMode = 'anchors';
@@ -176,7 +196,14 @@ function applyGuideStyle() {
   document.body.dataset.guideStyle = isFeatureEnabled('guide-style') ? 'notebook' : 'default';
 }
 
+function syncAssistantFabIcon() {
+  const fab = document.getElementById('assistant-fab');
+  if (!fab) return;
+  fab.classList.toggle('robot-head-mode', isFeatureEnabled('onboarding-transition'));
+}
+
 applyGuideStyle();
+syncAssistantFabIcon();
 
 // ── CHART PALETTE (aligned to provided screenshots) ────────────
 const CHART_COLORS = {
@@ -4403,12 +4430,14 @@ document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
     if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
     window.sendEvent('Preview toggle — changed');
     DashboardConfig.notifyChanged();
+    syncSidebarRobotPreviewAvailability();
   });
 });
 
 // Set initial role attribute
 document.body.dataset.role = state.role;
 syncRoleToggleButtons();
+syncSidebarRobotPreviewAvailability();
 
 
 // ── VIEW / EDIT MODE ────────────────────────────────────────────
@@ -4608,6 +4637,8 @@ window.addEventListener('load', () => {
 const superAdminNav = document.getElementById('super-admin-nav');
 const flagPopout = document.getElementById('feature-flag-popout');
 const flagClose  = document.getElementById('flag-popout-close');
+const sidebarRobotPreviewBtn = document.getElementById('sidebar-robot-preview-btn');
+let sidebarRobotPreviewRunning = false;
 
 // ── Popout close helpers ────────────────────────────────────────
 function closeFlagPopout() {
@@ -4674,6 +4705,8 @@ function renderFlagList() {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
       } else if (cb.dataset.flag === 'guide-style') {
         applyGuideStyle();
+      } else if (cb.dataset.flag === 'onboarding-transition') {
+        syncAssistantFabIcon();
       }
     });
   });
@@ -4724,6 +4757,24 @@ function renderFlagList() {
 
 // Super admin nav in left sidebar is now a bell icon — no click action
 // Flag popout is triggered from the strip admin button instead
+
+if (sidebarRobotPreviewBtn) {
+  sidebarRobotPreviewBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (sidebarRobotPreviewRunning || !canUseSidebarRobotPreview()) return;
+    if (typeof AdminAssistant === 'undefined' || typeof AdminAssistant.testRobotTransition !== 'function') return;
+    sidebarRobotPreviewRunning = true;
+    sidebarRobotPreviewBtn.dataset.previewState = 'running';
+    syncSidebarRobotPreviewAvailability();
+    try {
+      await AdminAssistant.testRobotTransition();
+    } finally {
+      sidebarRobotPreviewRunning = false;
+      delete sidebarRobotPreviewBtn.dataset.previewState;
+      syncSidebarRobotPreviewAvailability();
+    }
+  });
+}
 
 if (flagClose) {
   flagClose.addEventListener('click', () => {
@@ -5387,6 +5438,8 @@ function closeTeamSettingsModal() {
 }
 
 let _customerSettingsDraft = [];
+let _customerSettingsMode = 'admin';   // 'admin' (full edit) | 'settings' (add-only)
+let _protectedCustomerIds = new Set(); // IDs that can't be edited/deleted in settings mode
 
 function buildCustomerSettingsDraft(profiles = []) {
   return profiles.map((profile, index) => {
@@ -5421,64 +5474,87 @@ function renderCustomerSettingsModal() {
   const body = document.getElementById('customer-settings-body');
   if (!body) return;
 
-  const rows = _customerSettingsDraft.map((profile, index) => `
-    <div class="customer-settings-card" data-index="${index}">
+  const isSettings = _customerSettingsMode === 'settings';
+
+  // Update modal title/subtitle based on mode
+  const modalEl = document.getElementById('customer-settings-modal');
+  if (modalEl) {
+    const h3 = modalEl.querySelector('.modal-header h3');
+    const sub = modalEl.querySelector('.modal-subtitle');
+    if (h3) h3.textContent = isSettings ? 'Add customers' : 'Edit customers';
+    if (sub) sub.textContent = isSettings
+      ? 'Add new customer profiles to the default set. Existing customers cannot be edited here.'
+      : 'Update the starter customer profiles used as initial onboarding context.';
+  }
+
+  const rows = _customerSettingsDraft.map((profile, index) => {
+    const isProtected = isSettings && _protectedCustomerIds.has(profile.id);
+    const disabledAttr = isProtected ? ' disabled' : '';
+    const protectedClass = isProtected ? ' protected' : '';
+    return `
+    <div class="customer-settings-card${protectedClass}" data-index="${index}">
       <div class="customer-settings-card-header">
         <div>
           <div class="customer-settings-card-title" data-customer-title="${index}">${escapeHtml(profile.company || `Customer ${index + 1}`)}</div>
-          <div class="customer-settings-card-subtitle">This is the starter context the onboarding agent can begin from.</div>
+          <div class="customer-settings-card-subtitle">${isProtected ? 'Default customer — read only' : 'This is the starter context the onboarding agent can begin from.'}</div>
         </div>
-        <button class="customer-settings-delete-btn" data-delete-index="${index}" type="button">Delete</button>
+        ${isProtected ? '' : `<button class="customer-settings-delete-btn" data-delete-index="${index}" type="button">Delete</button>`}
       </div>
       <div class="customer-settings-grid">
         <div class="customer-settings-field">
           <label class="team-settings-field-label" for="customer-company-${index}">Company name</label>
-          <input class="customer-settings-input" id="customer-company-${index}" data-index="${index}" data-customer-field="company" type="text" value="${escapeHtml(profile.company || '')}" placeholder="Company name" />
+          <input class="customer-settings-input" id="customer-company-${index}" data-index="${index}" data-customer-field="company" type="text" value="${escapeHtml(profile.company || '')}" placeholder="Company name"${disabledAttr} />
         </div>
         <div class="customer-settings-field">
           <label class="team-settings-field-label" for="customer-industry-${index}">Industry</label>
-          <input class="customer-settings-input" id="customer-industry-${index}" data-index="${index}" data-customer-field="industry" type="text" value="${escapeHtml(profile.industry || '')}" placeholder="Industry" />
+          <input class="customer-settings-input" id="customer-industry-${index}" data-index="${index}" data-customer-field="industry" type="text" value="${escapeHtml(profile.industry || '')}" placeholder="Industry"${disabledAttr} />
         </div>
         <div class="customer-settings-field">
           <label class="team-settings-field-label" for="customer-website-${index}">Website</label>
-          <input class="customer-settings-input" id="customer-website-${index}" data-index="${index}" data-customer-field="website" type="url" value="${escapeHtml(profile.website || '')}" placeholder="https://example.com" />
+          <input class="customer-settings-input" id="customer-website-${index}" data-index="${index}" data-customer-field="website" type="url" value="${escapeHtml(profile.website || '')}" placeholder="https://example.com"${disabledAttr} />
         </div>
         <div class="customer-settings-field">
           <label class="team-settings-field-label" for="customer-help-${index}">Help center / docs URL</label>
-          <input class="customer-settings-input" id="customer-help-${index}" data-index="${index}" data-customer-field="helpCenterUrl" type="url" value="${escapeHtml(profile.helpCenterUrl || '')}" placeholder="https://help.example.com" />
+          <input class="customer-settings-input" id="customer-help-${index}" data-index="${index}" data-customer-field="helpCenterUrl" type="url" value="${escapeHtml(profile.helpCenterUrl || '')}" placeholder="https://help.example.com"${disabledAttr} />
         </div>
         <div class="customer-settings-field-wide">
           <label class="team-settings-field-label" for="customer-summary-${index}">Product or service summary</label>
-          <textarea class="customer-settings-textarea" id="customer-summary-${index}" data-index="${index}" data-customer-field="productSummary" placeholder="What does this company do?">${escapeHtml(profile.productSummary || '')}</textarea>
+          <textarea class="customer-settings-textarea" id="customer-summary-${index}" data-index="${index}" data-customer-field="productSummary" placeholder="What does this company do?"${disabledAttr}>${escapeHtml(profile.productSummary || '')}</textarea>
         </div>
         <div class="customer-settings-field">
           <label class="team-settings-field-label" for="customer-teams-${index}">Known teams</label>
-          <textarea class="customer-settings-textarea" id="customer-teams-${index}" data-index="${index}" data-customer-field="knownTeamsText" placeholder="One team per line">${escapeHtml(profile.knownTeamsText || '')}</textarea>
+          <textarea class="customer-settings-textarea" id="customer-teams-${index}" data-index="${index}" data-customer-field="knownTeamsText" placeholder="One team per line"${disabledAttr}>${escapeHtml(profile.knownTeamsText || '')}</textarea>
         </div>
         <div class="customer-settings-field">
           <label class="team-settings-field-label" for="customer-sources-${index}">Extra source URLs</label>
-          <textarea class="customer-settings-textarea" id="customer-sources-${index}" data-index="${index}" data-customer-field="extraSourceUrlsText" placeholder="One URL per line">${escapeHtml(profile.extraSourceUrlsText || '')}</textarea>
+          <textarea class="customer-settings-textarea" id="customer-sources-${index}" data-index="${index}" data-customer-field="extraSourceUrlsText" placeholder="One URL per line"${disabledAttr}>${escapeHtml(profile.extraSourceUrlsText || '')}</textarea>
         </div>
         <div class="customer-settings-field-wide">
           <label class="team-settings-field-label" for="customer-notes-${index}">General information</label>
-          <textarea class="customer-settings-textarea" id="customer-notes-${index}" data-index="${index}" data-customer-field="generalNotes" placeholder="Anything else the onboarding agent should know about this customer...">${escapeHtml(profile.generalNotes || '')}</textarea>
+          <textarea class="customer-settings-textarea" id="customer-notes-${index}" data-index="${index}" data-customer-field="generalNotes" placeholder="Anything else the onboarding agent should know about this customer..."${disabledAttr}>${escapeHtml(profile.generalNotes || '')}</textarea>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   body.innerHTML = `
     <div class="customer-settings-toolbar">
-      <div class="customer-settings-toolbar-note">Changes are stored locally in this browser and become the starter company context the onboarding assistant can use.</div>
+      <div class="customer-settings-toolbar-note">${isSettings
+        ? 'New customers you add will be available as onboarding context for everyone.'
+        : 'Changes are stored locally in this browser and become the starter company context the onboarding assistant can use.'}</div>
     </div>
     <div class="customer-settings-list">${rows}</div>
     <div class="customer-settings-footer-tools">
       <button class="customer-settings-add-btn" id="customer-settings-add-btn" type="button">Add customer</button>
+      <button class="customer-settings-add-btn customer-settings-upload-btn" id="customer-settings-upload-btn" type="button">Upload file</button>
+      <input type="file" id="customer-settings-file-input" accept=".pdf,.docx,.txt,.csv" style="display:none">
     </div>
+    <div class="customer-settings-upload-status" id="customer-settings-upload-status" style="display:none"></div>
     <div class="customer-settings-error" id="customer-settings-error"></div>
   `;
 
   body.querySelectorAll('[data-customer-field]').forEach((input) => {
+    if (input.disabled) return; // skip protected inputs
     input.addEventListener('input', () => {
       const index = Number(input.dataset.index);
       const field = input.dataset.customerField;
@@ -5510,6 +5586,47 @@ function renderCustomerSettingsModal() {
     requestAnimationFrame(() => {
       body.querySelector('.customer-settings-card:last-child [data-customer-field="company"]')?.focus();
     });
+  });
+
+  // Upload button → triggers hidden file input
+  body.querySelector('#customer-settings-upload-btn')?.addEventListener('click', () => {
+    body.querySelector('#customer-settings-file-input')?.click();
+  });
+
+  // File selected → extract + LLM analyze → create pre-filled card
+  body.querySelector('#customer-settings-file-input')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const statusEl = body.querySelector('#customer-settings-upload-status');
+    const uploadBtn = body.querySelector('#customer-settings-upload-btn');
+    if (statusEl) { statusEl.style.display = ''; statusEl.textContent = `Analyzing ${file.name}…`; }
+    if (uploadBtn) uploadBtn.disabled = true;
+
+    try {
+      const profile = await AdminAssistant.analyzeFileForCustomer(file);
+      const newProfile = {
+        ...createBlankCustomerProfile(),
+        company: profile.company || '',
+        industry: profile.industry || '',
+        website: profile.website || '',
+        helpCenterUrl: profile.helpCenterUrl || '',
+        productSummary: profile.productSummary || '',
+        generalNotes: profile.generalNotes || '',
+        knownTeamsText: (profile.knownTeams || []).join('\n'),
+        extraSourceUrlsText: '',
+      };
+      _customerSettingsDraft.push(newProfile);
+      renderCustomerSettingsModal();
+      requestAnimationFrame(() => {
+        const lastCard = body.querySelector('.customer-settings-card:last-child');
+        if (lastCard) lastCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = `Failed to analyze file: ${err.message}`; }
+    } finally {
+      if (uploadBtn) uploadBtn.disabled = false;
+    }
   });
 }
 
@@ -5548,8 +5665,11 @@ function validateCustomerSettingsDraft() {
   return { profiles };
 }
 
-async function openCustomerSettingsModal() {
-  _customerSettingsDraft = buildCustomerSettingsDraft(await loadCustomerProfiles());
+async function openCustomerSettingsModal(mode = 'admin') {
+  _customerSettingsMode = mode;
+  const profiles = await loadCustomerProfiles();
+  _protectedCustomerIds = mode === 'settings' ? new Set(profiles.map(p => p.id)) : new Set();
+  _customerSettingsDraft = buildCustomerSettingsDraft(profiles);
   renderCustomerSettingsModal();
   const overlay = document.getElementById('customer-settings-modal-overlay');
   if (overlay) overlay.style.display = 'flex';
@@ -5590,7 +5710,14 @@ document.getElementById('manage-teams-btn')?.addEventListener('click', (e) => {
 
 document.getElementById('edit-customers-btn')?.addEventListener('click', async (e) => {
   e.stopPropagation();
-  await openCustomerSettingsModal();
+  await openCustomerSettingsModal('admin');
+});
+
+document.getElementById('add-customers-btn')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  userPopout?.classList.remove('open');
+  if (userPopout) userPopout.style.display = 'none';
+  await openCustomerSettingsModal('settings');
 });
 
 document.getElementById('edit-default-teams-btn')?.addEventListener('click', (e) => {

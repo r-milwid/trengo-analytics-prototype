@@ -63,6 +63,7 @@ const AdminAssistant = (() => {
   let _threadRevealGeneration = 0;
   let _threadScrollSequence = null;
   let _forceNextSequenceAutoScroll = false;
+  let _robotPreviewRunning = false;
   const _statusWordRotations = new WeakMap();
 
   // ── Correction tracking ──────────────────────────────────────
@@ -1129,6 +1130,9 @@ ${role === 'agent'
     document.body.dataset.role = role;
     if (typeof window.updateTeamFilterOptions === 'function') {
       window.updateTeamFilterOptions();
+    }
+    if (typeof window.syncSidebarRobotPreviewAvailability === 'function') {
+      window.syncSidebarRobotPreviewAvailability();
     }
     document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.role === (state.personaRole || role));
@@ -4659,6 +4663,9 @@ ${role === 'agent'
         if (typeof window.updateTeamFilterOptions === 'function') {
           window.updateTeamFilterOptions();
         }
+        if (typeof window.syncSidebarRobotPreviewAvailability === 'function') {
+          window.syncSidebarRobotPreviewAvailability();
+        }
 
         startOnboardingChat();
       };
@@ -5334,11 +5341,11 @@ ${role === 'agent'
     const dy = targetY - bottomY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     const travelDuration = Math.max(3800, Math.min(6400, distance * 7.2));
-    const walkIntroDuration = Math.round(travelDuration * 0.25);
+    const walkIntroDuration = Math.round(travelDuration);
     const slideToFloorDuration = Math.round(travelDuration * 0.25);
+    const headspinDuration = 1500;
     const floorMoveDuration = Math.round(travelDuration * 0.25);
-    const freestyleDuration = travelDuration - walkIntroDuration - slideToFloorDuration - floorMoveDuration;
-    const climbDuration = 1350;        // 1.5 cycles of 0.9s climbing animation (was 1800 = 2 cycles)
+    const freestyleDuration = Math.round(travelDuration * 0.25);
     const fallDuration = 950;
     const standDuration = 1700;         // cubic-bezier front-loads motion; visually upright by ~70% (was 2400)
     const speechDuration = 1000;        // just reading time (was 1400)
@@ -5359,6 +5366,9 @@ ${role === 'agent'
       wait(walkIntroDuration),
     ]);
 
+    setRobotMotion(robot, 'headspinning');
+    await wait(headspinDuration);
+
     setRobotMotion(robot, 'cartwheeling');
     await Promise.all([
       moveRobotTo(0.5, slideToFloorDuration),
@@ -5377,18 +5387,33 @@ ${role === 'agent'
       wait(freestyleDuration),
     ]);
 
+    const moveRobotTopTo = (nextTop, duration, easing = 'linear') => {
+      robot.style.transition = `top ${duration}ms ${easing}`;
+      robot.style.top = nextTop + 'px';
+      return wait(duration);
+    };
+
     // Phase 4: Climb up the collapsed guide panel, slip, recover, then celebrate.
-    const climbPeakY = Math.max(24, bottomY - (window.innerHeight * 0.2));
+    const fullClimbPeakY = Math.max(24, bottomY - (window.innerHeight * 0.2));
+    const climbPeakY = bottomY - ((bottomY - fullClimbPeakY) * 0.8);
+    const climbBursts = [
+      { progress: 0.20, duration: 300, easing: 'cubic-bezier(0.18, 0.94, 0.28, 1)' },
+      { progress: 0.15, duration: 140, easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
+      { progress: 0.42, duration: 460, easing: 'cubic-bezier(0.16, 0.96, 0.24, 1)' },
+      { progress: 0.36, duration: 150, easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
+      { progress: 0.61, duration: 330, easing: 'cubic-bezier(0.18, 0.92, 0.24, 1)' },
+      { progress: 0.55, duration: 135, easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
+      { progress: 0.80, duration: 535, easing: 'cubic-bezier(0.16, 0.98, 0.22, 1)' },
+    ];
     setRobotSpeech(robot, '');
     setRobotMotion(robot, 'climbing');
-    robot.style.transition = `top ${climbDuration}ms ease-in-out`;
-    robot.style.top = climbPeakY + 'px';
-    await wait(climbDuration);
+    for (const burst of climbBursts) {
+      const nextTop = bottomY + ((climbPeakY - bottomY) * burst.progress);
+      await moveRobotTopTo(nextTop, burst.duration, burst.easing);
+    }
 
     setRobotMotion(robot, 'fallen');
-    robot.style.transition = `top ${fallDuration}ms cubic-bezier(0.22, 0.78, 0.18, 1.08)`;
-    robot.style.top = bottomY + 'px';
-    await wait(fallDuration);
+    await moveRobotTopTo(bottomY, fallDuration, 'cubic-bezier(0.22, 0.78, 0.18, 1.08)');
 
     setRobotMotion(robot, 'standingupslow');
     await wait(standDuration);
@@ -5780,17 +5805,59 @@ ${role === 'agent'
     const meta = document.getElementById('ai-setup-meta');
     const split = document.getElementById('ai-setup-split');
     const panel = document.getElementById('assistant-panel');
-    if (!overlay) return false;
+    if (!overlay || _robotPreviewRunning) return false;
 
-    if (panel) panel.style.display = 'none';
-    resetOnboardingUIToStart();
-    if (meta) meta.style.display = '';
-    if (split) split.style.display = 'none';
-    showOnboarding();
-    showFAB({ hidden: true });
-    await wait(50);
-    await animateOnboardingCollapseToFABRobot();
-    return true;
+    _robotPreviewRunning = true;
+    try {
+      if (panel) panel.style.display = 'none';
+      resetOnboardingUIToStart();
+      if (meta) meta.style.display = '';
+      if (split) split.style.display = 'none';
+      showOnboarding();
+      showFAB({ hidden: true });
+      await wait(50);
+      await animateOnboardingCollapseToFABRobot();
+      return true;
+    } finally {
+      if (window.setGuideOnboardingState) {
+        window.setGuideOnboardingState(false);
+      }
+      hideOnboarding();
+      _robotPreviewRunning = false;
+    }
+  }
+
+  // ── File → LLM customer profile extraction ────────────────
+  async function analyzeFileForCustomer(file) {
+    const extracted = await extractFromFile(file);
+    if (!extracted?.text) throw new Error('Could not extract text from file');
+
+    const prompt = `Analyze the following document and extract company/customer information.
+Return ONLY a JSON object (no markdown, no explanation) with these fields:
+{
+  "company": "company name",
+  "industry": "industry/sector",
+  "website": "website URL if found",
+  "helpCenterUrl": "help center or docs URL if found",
+  "productSummary": "2-3 sentence summary of what the company does",
+  "knownTeams": ["team name 1", "team name 2"],
+  "generalNotes": "any other relevant context about this company"
+}
+Leave fields as empty strings or empty arrays if not found.`;
+
+    const resp = await fetch(PROXY_URL + '/onboarding/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: prompt,
+        messages: [{ role: 'user', content: extracted.text.substring(0, 25000) }],
+      }),
+    });
+    if (!resp.ok) throw new Error('LLM request failed');
+    const data = await resp.json();
+    const textBlock = data?.content?.find(b => b.type === 'text');
+    const jsonStr = (textBlock?.text || '').replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+    return JSON.parse(jsonStr);
   }
 
   // ── Public API ─────────────────────────────────────────────
@@ -5803,5 +5870,6 @@ ${role === 'agent'
     retryLastMessage,
     showFAB,
     showOnboarding,
+    analyzeFileForCustomer,
   };
 })();
