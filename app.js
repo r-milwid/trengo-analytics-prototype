@@ -105,8 +105,9 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
-  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
+  { id: 'ai-onboarding',   label: 'Onboarding',               desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
   { id: 'onboarding-transition', label: 'Onboarding transition', desc: '' },
+  { id: 'guide-style',      label: 'Guide style',             desc: '', defaultEnabled: true, toggleLabels: { off: 'Classic', on: 'Notebook' } },
 ];
 
 function getFeatureFlagValue(id) {
@@ -170,6 +171,12 @@ function applyNavMode(mode) {
     mountSection(state.activeSection);
   }
 }
+
+function applyGuideStyle() {
+  document.body.dataset.guideStyle = isFeatureEnabled('guide-style') ? 'notebook' : 'default';
+}
+
+applyGuideStyle();
 
 // ── CHART PALETTE (aligned to provided screenshots) ────────────
 const CHART_COLORS = {
@@ -4469,7 +4476,8 @@ const settingsOnboardingBlock = document.getElementById('settings-onboarding-blo
 
 function syncSettingsOnboardingVisibility() {
   if (!settingsOnboardingBlock) return;
-  settingsOnboardingBlock.style.display = isFeatureEnabled('ai-onboarding') ? '' : 'none';
+  // Only show the reset onboarding option when onboarding is set to "Everyone"
+  settingsOnboardingBlock.style.display = getFeatureFlagValue('ai-onboarding') === 'everyone' ? '' : 'none';
 }
 
 syncSettingsOnboardingVisibility();
@@ -4522,14 +4530,10 @@ if (resetSubnavBtn) {
     DashboardConfig.clearLocal();
     history.replaceState(null, '', '#analytics/overview');
 
+    // Save reset state to KV (best-effort — reload regardless)
     const userId = localStorage.getItem('trengo_session_user_name');
     if (userId) {
-      const saved = await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-subnav'));
-      if (!saved) {
-        resetSubnavBtn.disabled = false;
-        resetSubnavBtn.textContent = 'Reset failed';
-        return;
-      }
+      await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-subnav')).catch(() => {});
     }
 
     resetSubnavBtn.textContent = 'Reset to default ✓';
@@ -4542,16 +4546,30 @@ if (resetOnboardingSessionBtn) {
     resetOnboardingSessionBtn.disabled = true;
     resetOnboardingSessionBtn.textContent = 'Resetting…';
 
+    // Preserve the ai-onboarding flag — only reset tabs/content
+    const savedOnboardingMode = getFeatureFlagValue('ai-onboarding');
+    localStorage.removeItem('trengo_onboarding_done');
+    localStorage.removeItem('trengo_easy_setup_done');
+    resetPrototypeStateToDefaults();
+    if (savedOnboardingMode && savedOnboardingMode !== false) {
+      setFeatureFlag('ai-onboarding', savedOnboardingMode);
+    }
     DashboardConfig.clearLocal();
+    history.replaceState(null, '', '#analytics/overview');
+
+    // Save reset state to KV (best-effort — reload regardless)
+    const userId = localStorage.getItem('trengo_session_user_name');
+    if (userId) {
+      await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-onboarding')).catch(() => {});
+    }
+
+    // Restart the onboarding flow
     if (typeof AdminAssistant !== 'undefined') {
       await AdminAssistant.resetOnboarding();
     }
 
     resetOnboardingSessionBtn.textContent = 'Reset onboarding ✓';
-    setTimeout(() => {
-      resetOnboardingSessionBtn.disabled = false;
-      resetOnboardingSessionBtn.textContent = 'Reset onboarding';
-    }, 1200);
+    setTimeout(() => { location.reload(); }, 800);
   });
 }
 
@@ -4561,7 +4579,22 @@ if (resetOnboardingBtn) {
   resetOnboardingBtn.addEventListener('click', async () => {
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
+    localStorage.removeItem('trengo_onboarding_personal');
+    // Preserve the ai-onboarding flag so onboarding can be re-tested
+    const savedOnboardingMode = getFeatureFlagValue('ai-onboarding');
+    resetPrototypeStateToDefaults();
+    if (savedOnboardingMode && savedOnboardingMode !== false) {
+      setFeatureFlag('ai-onboarding', savedOnboardingMode);
+    }
     DashboardConfig.clearLocal();
+    history.replaceState(null, '', '#analytics/overview');
+
+    // Save reset state to KV (best-effort — reload regardless)
+    const userId = localStorage.getItem('trengo_session_user_name');
+    if (userId) {
+      await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-all')).catch(() => {});
+    }
+
     if (typeof AdminAssistant !== 'undefined') await AdminAssistant.resetAll();
     resetOnboardingBtn.textContent = 'Reset complete ✓';
     setTimeout(() => { location.reload(); }, 800);
@@ -4643,6 +4676,8 @@ function renderFlagList() {
       // Flags with immediate side-effects
       if (cb.dataset.flag === 'anchors-nav') {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
+      } else if (cb.dataset.flag === 'guide-style') {
+        applyGuideStyle();
       }
     });
   });
@@ -4704,6 +4739,19 @@ if (flagClose) {
 const stripSettingsBtn = document.getElementById('strip-settings-btn');
 const stripAdminBtn = document.getElementById('strip-admin-btn');
 
+// Helper: expand guide panel to 'wide' if not already
+function expandPanelToWide() {
+  if (document.body.dataset.panel !== 'wide') {
+    document.body.dataset.panel = 'wide';
+    const iconExp = document.getElementById('ai-icon-expand');
+    const iconComp = document.getElementById('ai-icon-compress');
+    const expBtn = document.getElementById('ai-panel-expand');
+    if (iconExp) iconExp.style.display = 'none';
+    if (iconComp) iconComp.style.display = '';
+    if (expBtn) { expBtn.setAttribute('aria-label', 'Reduce to chat'); expBtn.title = 'Reduce'; }
+  }
+}
+
 if (stripSettingsBtn && userPopout) {
   stripSettingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -4712,6 +4760,7 @@ if (stripSettingsBtn && userPopout) {
     if (userPopout.style.display === 'block') {
       closeUserPopout();
     } else {
+      expandPanelToWide();
       const stripRect = document.getElementById('ai-panel-settings-row').getBoundingClientRect();
       userPopout.style.display = 'block';
       userPopout.style.top = (stripRect.bottom + 8) + 'px';
@@ -4729,6 +4778,7 @@ if (stripAdminBtn && flagPopout) {
     if (flagPopout.style.display === 'block') {
       closeFlagPopout();
     } else {
+      expandPanelToWide();
       renderFlagList();
       const stripRect = document.getElementById('ai-panel-settings-row').getBoundingClientRect();
       flagPopout.style.display = 'block';
