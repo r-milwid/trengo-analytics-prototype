@@ -2616,6 +2616,7 @@ body[data-panel="bar"] .ai-panel-bar {
 
 /* ── Inner panel (visible in chat + wide states) ─────────── */
 .ai-panel-inner {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
