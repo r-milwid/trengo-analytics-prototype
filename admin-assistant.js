@@ -65,6 +65,53 @@ const AdminAssistant = (() => {
   let _forceNextSequenceAutoScroll = false;
   const _statusWordRotations = new WeakMap();
 
+  // ── Correction tracking ──────────────────────────────────────
+  function truncateStr(s, max) {
+    return s.length > max ? s.slice(0, max) + '…' : s;
+  }
+
+  function summarizeDelta(before, after) {
+    const b = typeof before === 'string' ? before
+      : Array.isArray(before) ? before.map(x => x?.label || x?.name || x).join(', ')
+      : JSON.stringify(before);
+    const a = typeof after === 'string' ? after
+      : Array.isArray(after) ? after.map(x => x?.label || x?.name || x).join(', ')
+      : JSON.stringify(after);
+    if (b === a) return `unchanged: "${b}"`;
+    return `AI suggested "${truncateStr(b, 120)}" → user chose "${truncateStr(a, 120)}"`;
+  }
+
+  async function storeCorrection({ correctionType, step, aiSuggested, userChose, description }) {
+    const text = description
+      || `${correctionType}: ${summarizeDelta(aiSuggested, userChose)} (step: ${step})`;
+    const feedbackObj = {
+      text,
+      section: 'AI onboarding assistant',
+      type: 'correction',
+      metadata: {
+        correctionType,
+        step,
+        aiSuggested: aiSuggested ?? null,
+        userChose: userChose ?? null,
+        customerId: _customerId || null,
+        role: _role || null,
+        timestamp: new Date().toISOString(),
+      },
+    };
+    try {
+      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedbackObj),
+      });
+      const data = await res.json();
+      return data.id || null;
+    } catch (e) {
+      console.warn('[AdminAssistant] Failed to store correction:', e);
+      return null;
+    }
+  }
+
   // ── Tool definitions for Anthropic API ─────────────────────
   const ALL_TOOLS = [
     {
@@ -2724,6 +2771,9 @@ ${role === 'agent'
         const val = input.value.trim();
         if (!val) return; // block empty submissions
         otherText = val;
+        storeCorrection({ correctionType: 'custom_input', step: 'show_options_other',
+          aiSuggested: options.map(o => o.label), userChose: val,
+          description: `User selected "Other" and typed: "${val}" instead of choosing from: ${options.map(o => o.label).join(', ')}` });
         wrapper.classList.add('ai-setup-options-resolved');
         disableOptions(wrapper);
         input.disabled = true;
@@ -2776,6 +2826,11 @@ ${role === 'agent'
       confirmBtn.addEventListener('click', () => {
         // If Other is selected but empty, block
         if (selected.has('__other__') && !otherText) return;
+        if (selected.has('__other__') && otherText) {
+          storeCorrection({ correctionType: 'custom_input', step: 'show_options_other_multi',
+            aiSuggested: options.map(o => o.label), userChose: otherText,
+            description: `User added custom "Other" input: "${otherText}" in multi-select` });
+        }
         wrapper.classList.add('ai-setup-options-resolved');
         disableOptions(wrapper);
         const allOptions = [...options];
@@ -2852,6 +2907,8 @@ ${role === 'agent'
     wrapper.appendChild(helper);
 
     let draft = buildInitialTeamDraft(teams);
+    // Snapshot original state for correction tracking
+    const _origTeams = draft.map(t => ({ id: t.id, name: t.name, usecase: t.usecase }));
     const rows = document.createElement('div');
     rows.className = 'ai-setup-team-matrix-rows';
 
@@ -2978,6 +3035,34 @@ ${role === 'agent'
       }
       errorEl.style.display = 'none';
 
+      // ── Track team corrections ──
+      const _origTeamIds = new Set(_origTeams.map(o => o.id));
+      for (const row of cleaned) {
+        const orig = _origTeams.find(o => o.id === row.id);
+        if (orig && orig.name !== row.name) {
+          storeCorrection({ correctionType: 'edit', step: 'team_name_edit',
+            aiSuggested: orig.name, userChose: row.name,
+            description: `Team name edited: "${orig.name}" → "${row.name}"` });
+        }
+        if (orig && orig.usecase !== row.usecase && row.usecase) {
+          storeCorrection({ correctionType: 'override', step: 'team_focus_change',
+            aiSuggested: orig.usecase || '(none)', userChose: row.usecase,
+            description: `Team "${row.name}" focus changed: "${orig.usecase || 'none'}" → "${row.usecase}"` });
+        }
+      }
+      const removedTeams = _origTeams.filter(o => !cleaned.some(r => r.id === o.id));
+      if (removedTeams.length) {
+        storeCorrection({ correctionType: 'reject', step: 'team_remove',
+          aiSuggested: removedTeams.map(t => t.name), userChose: null,
+          description: `Removed ${removedTeams.length} team(s): ${removedTeams.map(t => t.name).join(', ')}` });
+      }
+      const addedTeams = cleaned.filter(r => !_origTeamIds.has(r.id));
+      if (addedTeams.length) {
+        storeCorrection({ correctionType: 'custom_input', step: 'team_add',
+          aiSuggested: null, userChose: addedTeams.map(t => t.name),
+          description: `Added ${addedTeams.length} custom team(s): ${addedTeams.map(t => t.name).join(', ')}` });
+      }
+
       const assignments = {};
       const teamState = cleaned.map((row) => {
         const normalized = normalizeTeamAssignment(row.usecase || getTeamAssignmentSuggestion(row.name));
@@ -3014,6 +3099,9 @@ ${role === 'agent'
     skipBtn.className = 'ai-setup-inline-action-secondary';
     skipBtn.textContent = 'Skip for now';
     skipBtn.addEventListener('click', () => {
+      storeCorrection({ correctionType: 'skip', step: 'team_assignment_skip',
+        aiSuggested: draft.map(t => `${t.name}: ${t.usecase || 'unset'}`), userChose: null,
+        description: 'User skipped team assignment step entirely' });
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
       markNextSequenceShouldFollow();
@@ -3104,6 +3192,9 @@ ${role === 'agent'
         }
 
         if (option.id === 'keep_defaults') {
+          storeCorrection({ correctionType: 'reject', step: 'tab_proposal_reset',
+            aiSuggested: proposalTabs.map(t => t.label), userChose: 'defaults',
+            description: 'User rejected entire AI tab proposal and reset to default tabs' });
           AssistantStorage.setSuggestedConfigDraft(_session, null);
           AssistantStorage.setPendingTabDraft(_session, null);
           AssistantStorage.setPendingProposalSource(_session, null);
@@ -3117,6 +3208,9 @@ ${role === 'agent'
           return;
         }
 
+        storeCorrection({ correctionType: 'override', step: 'tab_proposal_refine',
+          aiSuggested: proposalTabs.map(t => t.label), userChose: null,
+          description: 'User chose to refine AI tab proposal instead of accepting it' });
         disableOptions(wrapper);
         renderTabEditorUI('Refine the proposed tabs directly.', proposalTabs, (result) => {
           markNextSequenceShouldFollow();
@@ -3160,6 +3254,10 @@ ${role === 'agent'
     let draggedId = null;
     const typoConfirmedIds = new Set();
     const previousProposalSource = _session?.structured?.pendingProposalSource || null;
+
+    // Snapshot original state for correction tracking
+    const _origLabels = new Map(draft.map(t => [t.id, t.label]));
+    const _origOrder = draft.map(t => t.id);
 
     AssistantStorage.setPendingTabDraft(_session, draft);
     AssistantStorage.setPendingProposalSource(_session, 'user');
@@ -3333,6 +3431,39 @@ ${role === 'agent'
         if (row) row.focus();
         return;
       }
+      // ── Track corrections before committing ──
+      const _origIdSet = new Set(_origOrder);
+      // Label edits
+      for (const tab of draft) {
+        const orig = _origLabels.get(tab.id);
+        if (orig && orig !== tab.label) {
+          storeCorrection({ correctionType: 'edit', step: 'tab_editor_label', aiSuggested: orig, userChose: tab.label,
+            description: `Tab label edited: "${orig}" → "${tab.label}"` });
+        }
+      }
+      // Reorder
+      const finalOrder = draft.map(t => t.id);
+      if (JSON.stringify(_origOrder) !== JSON.stringify(finalOrder)) {
+        storeCorrection({ correctionType: 'override', step: 'tab_editor_reorder',
+          aiSuggested: _origOrder.map(id => _origLabels.get(id) || id),
+          userChose: finalOrder.map(id => draft.find(t => t.id === id)?.label || id),
+          description: 'Tabs reordered from AI proposal order' });
+      }
+      // Removed tabs
+      const removedTabs = _origOrder.filter(id => !draft.some(t => t.id === id));
+      if (removedTabs.length) {
+        storeCorrection({ correctionType: 'reject', step: 'tab_editor_remove',
+          aiSuggested: removedTabs.map(id => _origLabels.get(id) || id), userChose: null,
+          description: `Removed ${removedTabs.length} tab(s): ${removedTabs.map(id => _origLabels.get(id)).join(', ')}` });
+      }
+      // Added tabs
+      const addedTabs = draft.filter(t => !_origIdSet.has(t.id));
+      if (addedTabs.length) {
+        storeCorrection({ correctionType: 'custom_input', step: 'tab_editor_add',
+          aiSuggested: null, userChose: addedTabs.map(t => t.label),
+          description: `Added ${addedTabs.length} custom tab(s): ${addedTabs.map(t => t.label).join(', ')}` });
+      }
+
       const committed = commitTabDraft(draft, { source: 'user', message: 'Tabs updated' });
       wrapper.classList.add('ai-setup-options-resolved');
       disableOptions(wrapper);
@@ -3346,6 +3477,9 @@ ${role === 'agent'
     skipBtn.className = 'ai-setup-inline-action-secondary';
     skipBtn.textContent = 'Discard draft';
     skipBtn.addEventListener('click', () => {
+      storeCorrection({ correctionType: 'reject', step: 'tab_editor_discard',
+        aiSuggested: draft.map(t => t.label), userChose: null,
+        description: 'User discarded tab editor draft mid-edit' });
       AssistantStorage.setPendingTabDraft(_session, null);
       AssistantStorage.setPendingProposalSource(_session, previousProposalSource);
       AssistantStorage.save(_session);
@@ -4794,6 +4928,9 @@ ${role === 'agent'
     const text = getInputValue();
     if (!text) return;
     if (_pendingResolve) {
+      storeCorrection({ correctionType: 'override', step: 'chat_interrupt_ui',
+        aiSuggested: '(interactive UI presented)', userChose: text,
+        description: `User typed "${truncateStr(text, 100)}" instead of using the presented UI` });
       _queuedUserMessage = text;
       clearInput();
       const resolve = _pendingResolve;
@@ -4807,6 +4944,18 @@ ${role === 'agent'
   }
 
   function handleSkip() {
+    // ── Track dissatisfied quit if meaningful interaction occurred ──
+    if (_session) {
+      const msgs = AssistantStorage.getMessages(_session) || [];
+      const hasAiResponse = msgs.some(m => m.role === 'assistant');
+      const msgCount = msgs.filter(m => typeof m.content === 'string').length;
+      if (hasAiResponse && msgCount >= 2) {
+        storeCorrection({ correctionType: 'quit', step: 'onboarding_skip',
+          aiSuggested: 'continued onboarding', userChose: 'skipped',
+          description: `User skipped onboarding after ${msgCount} messages (${msgs.filter(m => m.role === 'assistant').length} AI responses)` });
+      }
+    }
+
     // ── Cancel any running agentic loop ──
     _runGeneration++;                       // stale-generation guard stops in-flight iterations
     _loopRunning = false;                   // allow assistant-panel sendMessage() to work afterwards
@@ -5402,6 +5551,33 @@ ${role === 'agent'
     const mode = localStorage.getItem(AI_SETUP_MODE_KEY);
 
     initFAB();
+
+    // ── Track dissatisfied quit on page unload during onboarding ──
+    window.addEventListener('beforeunload', () => {
+      if (!_session) return;
+      const currentMode = localStorage.getItem(AI_SETUP_MODE_KEY);
+      if (currentMode !== 'onboarding') return;
+      const msgs = AssistantStorage.getMessages(_session) || [];
+      if (!msgs.some(m => m.role === 'assistant')) return;
+      const feedbackObj = {
+        text: 'User navigated away during onboarding after receiving AI responses',
+        section: 'AI onboarding assistant',
+        type: 'correction',
+        metadata: {
+          correctionType: 'quit',
+          step: 'onboarding_navigate_away',
+          aiSuggested: 'continued onboarding',
+          userChose: 'left page',
+          customerId: _customerId || null,
+          role: _role || null,
+          timestamp: new Date().toISOString(),
+        },
+      };
+      navigator.sendBeacon(
+        PROXY_URL.replace(/\/$/, '') + '/feedback/submissions',
+        new Blob([JSON.stringify(feedbackObj)], { type: 'application/json' })
+      );
+    });
 
     if (mode === 'assistant') {
       // Already completed onboarding — just show FAB

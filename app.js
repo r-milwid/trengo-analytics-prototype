@@ -105,18 +105,26 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
-  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: 'AI-guided onboarding that configures your analytics dashboard through conversation', defaultEnabled: false },
-  { id: 'onboarding-transition', label: 'Onboarding transition', desc: 'Animation when onboarding completes', toggleLabels: { off: 'No', on: 'Yes' } },
+  { id: 'ai-onboarding',   label: 'User Onboarding',          desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
+  { id: 'onboarding-transition', label: 'Onboarding transition', desc: '' },
 ];
 
-function isFeatureEnabled(id) {
+function getFeatureFlagValue(id) {
   try {
     const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
-    if (id in flags) return flags[id] === true;
-    // Fall back to flag definition default
+    if (id in flags) return flags[id];
     const def = FEATURE_FLAGS.find(f => f.id === id);
-    return def && def.defaultEnabled === true;
+    return def && def.defaultEnabled === true ? true : false;
   } catch { return false; }
+}
+
+function isFeatureEnabled(id) {
+  const val = getFeatureFlagValue(id);
+  // Support tri-state string values ('off'/'me'/'everyone')
+  if (val === 'off') return false;
+  if (val === 'me' || val === 'everyone') return true;
+  // Legacy boolean support
+  return val === true;
 }
 
 function setFeatureFlag(id, value) {
@@ -132,6 +140,9 @@ function showHelionAvatar() {
   if (btn) btn.style.display = 'flex';
   const superAdmin = document.getElementById('super-admin-nav');
   if (superAdmin) superAdmin.style.display = '';
+  // Also show the admin settings button in the strip above the guide
+  const stripAdminBtn = document.getElementById('strip-admin-btn');
+  if (stripAdminBtn) stripAdminBtn.style.display = '';
 }
 
 function unlockHelionAccess() {
@@ -4493,9 +4504,10 @@ if (userPopoutClose) {
 }
 document.addEventListener('click', (e) => {
   if (!userPopout) return;
-  if (userPopout.style.display === 'block' && !userPopout.contains(e.target) && !settingsNav.contains(e.target)) {
-    userPopout.classList.remove('open');
-    setTimeout(() => { userPopout.style.display = 'none'; }, 200);
+  const _stripSettingsBtn = document.getElementById('strip-settings-btn');
+  if (userPopout.style.display === 'block' && !userPopout.contains(e.target) &&
+      !settingsNav.contains(e.target) && !_stripSettingsBtn?.contains(e.target)) {
+    closeUserPopout();
   }
 });
 // Reset sub-navigation button
@@ -4529,9 +4541,6 @@ if (resetOnboardingSessionBtn) {
   resetOnboardingSessionBtn.addEventListener('click', async () => {
     resetOnboardingSessionBtn.disabled = true;
     resetOnboardingSessionBtn.textContent = 'Resetting…';
-
-    userPopout.classList.remove('open');
-    setTimeout(() => { userPopout.style.display = 'none'; }, 200);
 
     DashboardConfig.clearLocal();
     if (typeof AdminAssistant !== 'undefined') {
@@ -4571,34 +4580,56 @@ const superAdminNav = document.getElementById('super-admin-nav');
 const flagPopout = document.getElementById('feature-flag-popout');
 const flagClose  = document.getElementById('flag-popout-close');
 
+// ── Popout close helpers ────────────────────────────────────────
+function closeFlagPopout() {
+  if (!flagPopout || flagPopout.style.display !== 'block') return;
+  flagPopout.classList.remove('open');
+  flagPopout.style.display = 'none';
+}
+function closeUserPopout() {
+  if (!userPopout || userPopout.style.display !== 'block') return;
+  userPopout.classList.remove('open');
+  userPopout.style.display = 'none';
+}
+
 function renderFlagList() {
   const list = document.getElementById('flag-list');
   if (!list) return;
   list.innerHTML = FEATURE_FLAGS.map(f => {
     const checked = isFeatureEnabled(f.id);
+    const ts = f.triState;
     const tl = f.toggleLabels;
-    const toggleHTML = tl
-      ? `<div class="flag-toggle-group">
-           <span class="flag-toggle-label${!checked ? ' active' : ''}">${tl.off}</span>
-           <label class="flag-toggle" title="${f.label}">
+    const toggleHTML = ts
+      ? (() => {
+          const raw = getFeatureFlagValue(f.id);
+          // Map legacy boolean → string
+          const current = raw === true ? 'me' : raw === false ? 'off' : (raw || 'off');
+          return `<div class="flag-visibility-toggle" data-flag="${f.id}">
+            ${Object.entries(ts).map(([val, label]) =>
+              `<button class="flag-vis-btn${current === val ? ' active' : ''}" data-val="${val}">${label}</button>`
+            ).join('')}
+          </div>`;
+        })()
+      : tl
+        ? `<div class="flag-toggle-group">
+             <span class="flag-toggle-label${!checked ? ' active' : ''}">${tl.off}</span>
+             <label class="flag-toggle" title="${f.label}">
+               <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
+               <span class="flag-track"></span>
+             </label>
+             <span class="flag-toggle-label${checked ? ' active' : ''}">${tl.on}</span>
+           </div>`
+        : `<label class="flag-toggle" title="${f.label}">
              <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
              <span class="flag-track"></span>
-           </label>
-           <span class="flag-toggle-label${checked ? ' active' : ''}">${tl.on}</span>
-         </div>`
-      : `<label class="flag-toggle" title="${f.label}">
-           <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
-           <span class="flag-track"></span>
-         </label>`;
+           </label>`;
     return `<div class="flag-item">
-      <div>
-        <div class="flag-label">${f.label}</div>
-        <div class="flag-desc">${f.desc}</div>
-      </div>
+      <div class="flag-label">${f.label}</div>
       ${toggleHTML}
     </div>`;
   }).join('');
 
+  // Binary toggle handlers
   list.querySelectorAll('.flag-toggle input').forEach(cb => {
     cb.addEventListener('change', () => {
       setFeatureFlag(cb.dataset.flag, cb.checked);
@@ -4613,51 +4644,109 @@ function renderFlagList() {
       if (cb.dataset.flag === 'anchors-nav') {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
       }
-      if (cb.dataset.flag === 'ai-onboarding') {
-        if (cb.checked) {
-          // When enabling, check if onboarding should start
-          if (typeof AdminAssistant !== 'undefined') AdminAssistant.init();
-        } else {
-          // When disabling, hide any active onboarding UI
-          if (typeof AdminAssistant !== 'undefined') AdminAssistant.resetAll();
+    });
+  });
+
+  // Tri-state toggle handlers
+  list.querySelectorAll('.flag-visibility-toggle').forEach(group => {
+    group.querySelectorAll('.flag-vis-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const flagId = group.dataset.flag;
+        const newVal = btn.dataset.val;
+        const oldVal = getFeatureFlagValue(flagId);
+
+        // Helion protection for ai-onboarding:
+        // "Everyone" only activates if previously "Off" —
+        // if Helion user had "Me", store personal override marker
+        if (flagId === 'ai-onboarding') {
+          if (newVal === 'everyone' && (oldVal === 'me' || oldVal === true)) {
+            localStorage.setItem('trengo_onboarding_personal', 'true');
+          }
+          if (newVal === 'me') {
+            localStorage.setItem('trengo_onboarding_personal', 'true');
+          }
+          if (newVal === 'off') {
+            localStorage.removeItem('trengo_onboarding_personal');
+          }
         }
-        syncSettingsOnboardingVisibility();
-      }
+
+        setFeatureFlag(flagId, newVal);
+
+        // Update active button state
+        group.querySelectorAll('.flag-vis-btn').forEach(b =>
+          b.classList.toggle('active', b.dataset.val === newVal)
+        );
+
+        // Side effects for ai-onboarding
+        if (flagId === 'ai-onboarding') {
+          if (newVal === 'off') {
+            if (typeof AdminAssistant !== 'undefined') AdminAssistant.resetAll();
+          } else {
+            if (typeof AdminAssistant !== 'undefined') AdminAssistant.init();
+          }
+          syncSettingsOnboardingVisibility();
+        }
+      });
     });
   });
 }
 
-if (superAdminNav && flagPopout) {
-  superAdminNav.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (flagPopout.style.display === 'block') {
-      flagPopout.classList.remove('open');
-      setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
-    } else {
-      renderFlagList();
-      // Position popout next to the Super Admin cog, clamped to viewport
-      const rect = superAdminNav.getBoundingClientRect();
-      flagPopout.style.display = 'block';
-      const popoutH = flagPopout.offsetHeight;
-      const maxTop = window.innerHeight - popoutH - 12;
-      flagPopout.style.top = Math.min(rect.top, Math.max(12, maxTop)) + 'px';
-      requestAnimationFrame(() => flagPopout.classList.add('open'));
-    }
+// Super admin nav in left sidebar is now a bell icon — no click action
+// Flag popout is triggered from the strip admin button instead
+
+if (flagClose) {
+  flagClose.addEventListener('click', () => {
+    closeFlagPopout();
   });
-  if (flagClose) {
-    flagClose.addEventListener('click', () => {
-      flagPopout.classList.remove('open');
-      setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
-    });
-  }
-  document.addEventListener('click', (e) => {
-    if (flagPopout.style.display !== 'block') return;
-    if (!flagPopout.contains(e.target) && !superAdminNav.contains(e.target)) {
-      flagPopout.classList.remove('open');
-      setTimeout(() => { flagPopout.style.display = 'none'; }, 200);
+}
+
+// ── Strip buttons (settings strip above guide panel) ────────────
+const stripSettingsBtn = document.getElementById('strip-settings-btn');
+const stripAdminBtn = document.getElementById('strip-admin-btn');
+
+if (stripSettingsBtn && userPopout) {
+  stripSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeFlagPopout();
+    syncSettingsOnboardingVisibility();
+    if (userPopout.style.display === 'block') {
+      closeUserPopout();
+    } else {
+      const stripRect = document.getElementById('ai-panel-settings-row').getBoundingClientRect();
+      userPopout.style.display = 'block';
+      userPopout.style.top = (stripRect.bottom + 8) + 'px';
+      userPopout.style.left = 'auto';
+      userPopout.style.right = '15px';
+      requestAnimationFrame(() => userPopout.classList.add('open'));
     }
   });
 }
+
+if (stripAdminBtn && flagPopout) {
+  stripAdminBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeUserPopout();
+    if (flagPopout.style.display === 'block') {
+      closeFlagPopout();
+    } else {
+      renderFlagList();
+      const stripRect = document.getElementById('ai-panel-settings-row').getBoundingClientRect();
+      flagPopout.style.display = 'block';
+      flagPopout.style.top = (stripRect.bottom + 8) + 'px';
+      flagPopout.style.left = 'auto';
+      flagPopout.style.right = '15px';
+      requestAnimationFrame(() => flagPopout.classList.add('open'));
+    }
+  });
+}
+
+// Outside-click handlers for both popouts
+document.addEventListener('click', (e) => {
+  if (flagPopout && flagPopout.style.display === 'block' &&
+      !flagPopout.contains(e.target) && !stripAdminBtn?.contains(e.target)) {
+    closeFlagPopout();
+  }
+});
 
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
@@ -5455,15 +5544,11 @@ document.getElementById('manage-teams-btn')?.addEventListener('click', (e) => {
 
 document.getElementById('edit-customers-btn')?.addEventListener('click', async (e) => {
   e.stopPropagation();
-  flagPopout?.classList.remove('open');
-  if (flagPopout) flagPopout.style.display = 'none';
   await openCustomerSettingsModal();
 });
 
 document.getElementById('edit-default-teams-btn')?.addEventListener('click', (e) => {
   e.stopPropagation();
-  flagPopout?.classList.remove('open');
-  if (flagPopout) flagPopout.style.display = 'none';
   openTeamSettingsModal('default');
 });
 
@@ -6748,12 +6833,14 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
       const product = summaryData.product || { categories: [] };
       const bugs = summaryData.bugs || { categories: [] };
+      const corrections = summaryData.corrections || { categories: [] };
       const meta = summaryData.meta || {};
 
       const hasProduct = product.categories && product.categories.length > 0;
       const hasBugs = bugs.categories && bugs.categories.length > 0;
+      const hasCorrections = corrections.categories && corrections.categories.length > 0;
 
-      if (!hasProduct && !hasBugs) {
+      if (!hasProduct && !hasBugs && !hasCorrections) {
         loadingEl.style.display = 'none';
         emptyEl.style.display = '';
         return;
@@ -6763,10 +6850,12 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       const metaEl = document.getElementById('feedback-memory-meta');
       const productCount = hasProduct ? product.categories.reduce((n, c) => n + c.items.length, 0) : 0;
       const bugsCount = hasBugs ? bugs.categories.reduce((n, c) => n + c.items.length, 0) : 0;
+      const correctionsCount = hasCorrections ? corrections.categories.reduce((n, c) => n + c.items.length, 0) : 0;
       metaEl.innerHTML =
         '<span><strong>' + (meta.totalSubmissions || submissions.length) + '</strong> submissions</span>' +
         '<span><strong>' + productCount + '</strong> product items</span>' +
         '<span><strong>' + bugsCount + '</strong> bug items</span>' +
+        '<span><strong>' + correctionsCount + '</strong> corrections</span>' +
         (product.updatedAt ? '<span>Updated ' + new Date(product.updatedAt).toLocaleDateString() + '</span>' : '');
 
       // Render product section
@@ -6776,6 +6865,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       // Render bugs section
       renderFeedbackSection('feedback-bugs-body', bugs, submissions, 'bugs');
       document.getElementById('feedback-memory-bugs').style.display = hasBugs ? '' : 'none';
+
+      // Render corrections section
+      renderFeedbackSection('feedback-corrections-body', corrections, submissions, 'corrections');
+      document.getElementById('feedback-memory-corrections').style.display = hasCorrections ? '' : 'none';
 
       loadingEl.style.display = 'none';
       contentEl.style.display = '';
@@ -6838,8 +6931,10 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
         // Admin action buttons
         html += '<div class="feedback-item-actions" style="display:flex;gap:6px;margin-top:6px;">';
         html += '<button class="feedback-admin-btn danger feedback-delete-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '">Delete</button>';
-        const targetTrack = track === 'product' ? 'bugs' : 'product';
-        html += '<button class="feedback-admin-btn feedback-reclassify-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '" data-target="' + targetTrack + '">Move to ' + (targetTrack === 'bugs' ? 'Bugs' : 'Product') + '</button>';
+        if (track !== 'corrections') {
+          const targetTrack = track === 'product' ? 'bugs' : 'product';
+          html += '<button class="feedback-admin-btn feedback-reclassify-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '" data-target="' + targetTrack + '">Move to ' + (targetTrack === 'bugs' ? 'Bugs' : 'Product') + '</button>';
+        }
         html += '</div>';
 
         itemDiv.innerHTML = html;
@@ -6901,7 +6996,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     });
   }
 
-  if (openFeedbackMemoryBtn) openFeedbackMemoryBtn.addEventListener('click', openFeedbackMemory);
+  if (openFeedbackMemoryBtn) openFeedbackMemoryBtn.addEventListener('click', () => {
+    openFeedbackMemory();
+  });
 
   // Admin rebuild buttons
   const rebuildProductBtn = document.getElementById('feedback-rebuild-product-btn');
@@ -6926,6 +7023,8 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
   if (rebuildProductBtn) rebuildProductBtn.addEventListener('click', () => rebuildSummary('product'));
   if (rebuildBugsBtn) rebuildBugsBtn.addEventListener('click', () => rebuildSummary('bugs'));
+  const rebuildCorrectionsBtn = document.getElementById('feedback-rebuild-corrections-btn');
+  if (rebuildCorrectionsBtn) rebuildCorrectionsBtn.addEventListener('click', () => rebuildSummary('corrections'));
 
   if (migrateBtn) migrateBtn.addEventListener('click', async () => {
     try {
@@ -7084,9 +7183,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       placement: 'center'
     },
     {
-      text: 'Use the Prototype Guide for concept questions and feedback.',
-      getTargets: () => [document.querySelector('#ai-panel')],
-      placement: 'left-of-panel'
+      text: 'Use the Prototype Guide for concept questions and feedback. Adjust prototype settings from the icons below the header.',
+      getTargets: () => [document.querySelector('#ai-panel-settings-row'), document.querySelector('#ai-panel')],
+      placement: 'left-of-panel-dual'
     },
     {
       text: 'The default navigation is only a starting point. The model is designed to be customised to each company\u2019s language, structure, and priorities. In edit mode, users can add, remove, reorder, and resize.',
@@ -7096,11 +7195,6 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
           document.querySelector('.section-content .widget-card')
       ],
       placement: 'center-dual'
-    },
-    {
-      text: 'Use the settings icon for local controls like role, teams, and reset.',
-      getTargets: () => [document.querySelector('#settings-nav')],
-      placement: 'right-of-cog'
     }
   ];
 
@@ -7228,6 +7322,35 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       card.style.top = cardTop + 'px';
       // Arrow from card right edge to panel top area
       drawArrow(cardLeft + cw + 4, cardTop + ch / 2, pr.left + (pr.width / 2), pr.top + 58);
+
+    } else if (step.placement === 'left-of-panel-dual') {
+      // Merged guide + settings step: two arrows
+      const strip = targets[0]; // #ai-panel-settings-row
+      const panel = targets[1]; // #ai-panel
+      if (!panel) return;
+      const pr = panel.getBoundingClientRect();
+      const mainLeft = 64;
+      const centerX = (mainLeft + pr.left) / 2;
+      const cardLeft = centerX - cw / 2;
+      const cardTop = pr.top + 140;
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+
+      // Arrow 1: from card upper-right to the settings strip
+      if (strip) {
+        const sr = strip.getBoundingClientRect();
+        drawArrow(
+          cardLeft + cw + 4, cardTop + ch * 0.3,
+          sr.left + sr.width / 2, sr.top + sr.height / 2,
+          { bendDirection: 1, curvatureScale: 0.8 }
+        );
+      }
+      // Arrow 2: from card lower-right to left side of guide panel top
+      drawArrow(
+        cardLeft + cw + 4, cardTop + ch * 0.7,
+        pr.left + 20, pr.top + 58,
+        { bendDirection: -1, curvatureScale: 0.7 }
+      );
 
     } else if (step.placement === 'above-subnav') {
       const nav = targets[0];
@@ -7451,7 +7574,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     const waitForReady = () => {
       const analyticsPage = document.getElementById('analytics-page');
       if (analyticsPage && analyticsPage.style.display !== 'none') {
-        // Force mount overview section if not loaded (needed for step 4 widget X target)
+        // Force mount overview section if not loaded (needed for step 3 widget X target)
         const overviewContent = document.querySelector('.section-content[data-section="overview"]');
         if (overviewContent && !overviewContent.classList.contains('loaded')) {
           mountSection('overview');
