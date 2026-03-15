@@ -147,10 +147,27 @@ function showHelionAvatar() {
   syncSidebarRobotPreviewAvailability();
 }
 
+function hideHelionAvatar() {
+  const btn = document.getElementById('user-flag-btn');
+  if (btn) btn.style.display = 'none';
+  const superAdmin = document.getElementById('super-admin-nav');
+  if (superAdmin) superAdmin.style.display = 'none';
+  const stripAdminBtn = document.getElementById('strip-admin-btn');
+  if (stripAdminBtn) stripAdminBtn.style.display = 'none';
+  closeFlagPopout();
+  closeUserPopout();
+  syncSidebarRobotPreviewAvailability();
+}
+
 function unlockHelionAccess() {
   if (localStorage.getItem(HELION_UNLOCKED_KEY)) return;
   localStorage.setItem(HELION_UNLOCKED_KEY, 'true');
   showHelionAvatar();
+}
+
+function resetHelionAccess() {
+  localStorage.removeItem(HELION_UNLOCKED_KEY);
+  hideHelionAvatar();
 }
 
 function canUseSidebarRobotPreview() {
@@ -4623,6 +4640,13 @@ if (resetOnboardingBtn) {
     if (typeof AdminAssistant !== 'undefined') await AdminAssistant.resetAll();
     resetOnboardingBtn.textContent = 'Reset complete ✓';
     setTimeout(() => { location.reload(); }, 800);
+  });
+}
+
+const resetHelionAccessBtn = document.getElementById('reset-helion-access-btn');
+if (resetHelionAccessBtn) {
+  resetHelionAccessBtn.addEventListener('click', () => {
+    resetHelionAccess();
   });
 }
 
