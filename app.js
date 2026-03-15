@@ -74,6 +74,8 @@ const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
 const USER_TEAMS_KEY      = 'trengo_user_teams';
 const DEFAULT_TEAMS_KEY   = 'trengo_default_teams';
 const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
+const CLASSIC_GUIDE_STYLE_FLAG = 'classic-guide-style';
+const LEGACY_GUIDE_STYLE_FLAG = 'guide-style';
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
   'northstar-health': {
@@ -107,8 +109,17 @@ const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
   { id: 'ai-onboarding',   label: 'Onboarding',               desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
   { id: 'onboarding-transition', label: 'Onboarding transition', desc: '' },
-  { id: 'guide-style',      label: 'Guide style',             desc: '', defaultEnabled: true, toggleLabels: { off: 'Classic', on: 'Notebook' } },
+  { id: CLASSIC_GUIDE_STYLE_FLAG, label: 'Guide style',       desc: '', toggleLabels: { off: 'Green', on: 'Classic' } },
 ];
+
+function migrateLegacyGuideStyleFlag() {
+  try {
+    const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
+    if (!(LEGACY_GUIDE_STYLE_FLAG in flags)) return;
+    delete flags[LEGACY_GUIDE_STYLE_FLAG];
+    localStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify(flags));
+  } catch {}
+}
 
 function getFeatureFlagValue(id) {
   try {
@@ -136,27 +147,53 @@ function setFeatureFlag(id, value) {
   } catch {}
 }
 
+function hasHelionAccess() {
+  return Boolean(localStorage.getItem(HELION_UNLOCKED_KEY));
+}
+
+function canUseOnboardingTransition() {
+  return hasHelionAccess() && isFeatureEnabled('onboarding-transition');
+}
+
 function showHelionAvatar() {
   const btn = document.getElementById('user-flag-btn');
-  if (btn) btn.style.display = 'flex';
+  if (btn) {
+    btn.style.display = 'flex';
+    btn.dataset.enabled = 'true';
+    btn.setAttribute('aria-disabled', 'false');
+  }
   const superAdmin = document.getElementById('super-admin-nav');
-  if (superAdmin) superAdmin.style.display = '';
+  if (superAdmin) {
+    superAdmin.style.display = '';
+    superAdmin.dataset.enabled = 'true';
+    superAdmin.setAttribute('aria-disabled', 'false');
+  }
   // Also show the admin settings button in the strip above the guide
   const stripAdminBtn = document.getElementById('strip-admin-btn');
   if (stripAdminBtn) stripAdminBtn.style.display = '';
   syncSidebarRobotPreviewAvailability();
+  syncAssistantFabIcon();
 }
 
 function hideHelionAvatar() {
   const btn = document.getElementById('user-flag-btn');
-  if (btn) btn.style.display = 'none';
+  if (btn) {
+    btn.style.display = 'flex';
+    btn.dataset.enabled = 'false';
+    btn.setAttribute('aria-disabled', 'true');
+  }
   const superAdmin = document.getElementById('super-admin-nav');
-  if (superAdmin) superAdmin.style.display = 'none';
+  if (superAdmin) {
+    superAdmin.style.display = '';
+    superAdmin.dataset.enabled = 'false';
+    superAdmin.setAttribute('aria-disabled', 'true');
+  }
   const stripAdminBtn = document.getElementById('strip-admin-btn');
   if (stripAdminBtn) stripAdminBtn.style.display = 'none';
   closeFlagPopout();
   closeUserPopout();
   syncSidebarRobotPreviewAvailability();
+  syncAssistantFabIcon();
 }
 
 function unlockHelionAccess() {
@@ -171,7 +208,7 @@ function resetHelionAccess() {
 }
 
 function canUseSidebarRobotPreview() {
-  return Boolean(localStorage.getItem(HELION_UNLOCKED_KEY));
+  return hasHelionAccess();
 }
 
 function syncSidebarRobotPreviewAvailability() {
@@ -186,10 +223,13 @@ function syncSidebarRobotPreviewAvailability() {
   if (previewTooltip) previewTooltip.textContent = enabled ? 'Robot preview' : 'Support';
 }
 
+window.canUseOnboardingTransition = canUseOnboardingTransition;
+window.canUseSidebarRobotPreview = canUseSidebarRobotPreview;
 window.syncSidebarRobotPreviewAvailability = syncSidebarRobotPreviewAvailability;
 
 // Restore unlock state on page load
 if (localStorage.getItem(HELION_UNLOCKED_KEY)) showHelionAvatar();
+else hideHelionAvatar();
 syncSidebarRobotPreviewAvailability();
 
 // Bootstrap nav mode from feature flag (before sections render)
@@ -210,15 +250,16 @@ function applyNavMode(mode) {
 }
 
 function applyGuideStyle() {
-  document.body.dataset.guideStyle = isFeatureEnabled('guide-style') ? 'notebook' : 'default';
+  document.body.dataset.guideStyle = isFeatureEnabled(CLASSIC_GUIDE_STYLE_FLAG) ? 'default' : 'notebook';
 }
 
 function syncAssistantFabIcon() {
   const fab = document.getElementById('assistant-fab');
   if (!fab) return;
-  fab.classList.toggle('robot-head-mode', isFeatureEnabled('onboarding-transition'));
+  fab.classList.toggle('robot-head-mode', canUseOnboardingTransition());
 }
 
+migrateLegacyGuideStyleFlag();
 applyGuideStyle();
 syncAssistantFabIcon();
 
@@ -798,8 +839,7 @@ function syncRoleToggleButtons() {
 }
 
 function resetPrototypeStateToDefaults() {
-  // Keep walkthrough completion intact; Reset All in sub-nav context should not re-open onboarding.
-  localStorage.removeItem(FEATURE_FLAGS_KEY);
+  // Feature flags are testing configuration — never reset them.
   localStorage.removeItem(USER_TEAMS_KEY);
   state.tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
   state.tabWidgets = buildDefaultTabWidgets();
@@ -1207,6 +1247,13 @@ function isWidgetRenderable(w) {
   if (state.addedWidgets.has(w.id)) return true;
   const stateOverride = getStateOverride(w);
   if (stateOverride === 'hide') return false;
+  // State overrides can promote hidden widgets to visible
+  if (stateOverride === 'show' || stateOverride === 'emphasize' || stateOverride === 'deemphasize') {
+    // Even if base vis is 'hidden', an active override makes it renderable
+  } else if (w.vis === 'hidden') {
+    // Hidden by default and no override promoting it — not renderable
+    return false;
+  }
   // Filter-reactive hides (team, channel, voice)
   if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return false;
   if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) return false;
@@ -1231,9 +1278,20 @@ function resetViewState() {
   state.sectionLayout = {};
   state.sectionOrder = {};
   if (state.expandedWidgets) state.expandedWidgets = new Set();
-  // Re-initialize per-tab widget sets
+  // Preserve custom (non-default) tab widget assignments across reset
+  const customTabWidgets = {};
+  if (state.tabWidgets) {
+    for (const [tabId, widgetSet] of Object.entries(state.tabWidgets)) {
+      const tab = state.tabs.find(t => t.id === tabId);
+      if (tab && !tab.isDefault) {
+        customTabWidgets[tabId] = widgetSet;
+      }
+    }
+  }
+  // Re-initialize default tab widget sets, then restore custom ones
   state.tabWidgets = {};
   initTabWidgets();
+  Object.assign(state.tabWidgets, customTabWidgets);
 }
 
 function getVisibleWidgets(sectionId) {
@@ -3798,7 +3856,7 @@ function renderDrawerWidgets() {
   const body = document.getElementById('drawer-body');
   let html = `<div class="drawer-search"><input type="text" id="drawer-search-input" placeholder="Search widgets..." value="${_drawerSearchQuery.replace(/"/g, '&quot;')}" /></div>`;
   const query = _drawerSearchQuery.toLowerCase().trim();
-  const activeTab = state.activeSection;
+  const activeTab = _drawerSection || state.activeSection;
   const tabWidgetSet = state.tabWidgets[activeTab] || new Set();
 
   // Collect widgets with their section info
@@ -3897,7 +3955,7 @@ document.getElementById('drawer-category-chip')?.addEventListener('click', () =>
 });
 
 window.toggleWidgetFromDrawer = function(id, section, currentlyVisible) {
-  const activeTab = state.activeSection;
+  const activeTab = _drawerSection || state.activeSection;
   if (!state.tabWidgets[activeTab]) state.tabWidgets[activeTab] = new Set();
 
   if (currentlyVisible) {
@@ -4137,7 +4195,8 @@ function createNewTab() {
   scrollToSection(id, true);
   // Open rename popover after a tick so DOM is ready
   setTimeout(() => {
-    const editBtn = document.querySelector('.sub-nav-edit-btn');
+    const editBtn = document.querySelector(`.sub-nav-edit-btn[data-tab-id="${id}"]`)
+      || document.querySelector(`[data-section="${id}"] .section-edit-btn`);
     if (editBtn) openTabEditMenu({ target: editBtn });
   }, 50);
   window.sendEvent('New tab — created');
@@ -4592,12 +4651,9 @@ if (resetOnboardingSessionBtn) {
     resetOnboardingSessionBtn.disabled = true;
     resetOnboardingSessionBtn.textContent = 'Resetting…';
 
-    // Preserve all feature flags — only reset tabs/content
-    const savedFlags = localStorage.getItem(FEATURE_FLAGS_KEY);
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
     resetPrototypeStateToDefaults();
-    if (savedFlags) localStorage.setItem(FEATURE_FLAGS_KEY, savedFlags);
     DashboardConfig.clearLocal();
     history.replaceState(null, '', '#analytics/overview');
 
@@ -4624,10 +4680,7 @@ if (resetOnboardingBtn) {
     localStorage.removeItem('trengo_onboarding_done');
     localStorage.removeItem('trengo_easy_setup_done');
     localStorage.removeItem('trengo_onboarding_personal');
-    // Preserve all feature flags — reset only affects content/layout, not toggles
-    const savedFlags = localStorage.getItem(FEATURE_FLAGS_KEY);
     resetPrototypeStateToDefaults();
-    if (savedFlags) localStorage.setItem(FEATURE_FLAGS_KEY, savedFlags);
     DashboardConfig.clearLocal();
     history.replaceState(null, '', '#analytics/overview');
 
@@ -4666,11 +4719,13 @@ let sidebarRobotPreviewRunning = false;
 
 // ── Popout close helpers ────────────────────────────────────────
 function closeFlagPopout() {
+  const flagPopout = document.getElementById('feature-flag-popout');
   if (!flagPopout || flagPopout.style.display !== 'block') return;
   flagPopout.classList.remove('open');
   flagPopout.style.display = 'none';
 }
 function closeUserPopout() {
+  const userPopout = document.getElementById('user-popout');
   if (!userPopout || userPopout.style.display !== 'block') return;
   userPopout.classList.remove('open');
   userPopout.style.display = 'none';
@@ -4727,10 +4782,11 @@ function renderFlagList() {
       // Flags with immediate side-effects
       if (cb.dataset.flag === 'anchors-nav') {
         applyNavMode(cb.checked ? 'anchors' : 'tabs');
-      } else if (cb.dataset.flag === 'guide-style') {
+      } else if (cb.dataset.flag === CLASSIC_GUIDE_STYLE_FLAG) {
         applyGuideStyle();
       } else if (cb.dataset.flag === 'onboarding-transition') {
         syncAssistantFabIcon();
+        syncSidebarRobotPreviewAvailability();
       }
     });
   });
@@ -5713,6 +5769,10 @@ function saveCustomerSettingsModal() {
   }
   saveCustomerProfiles(profiles);
   closeCustomerSettingsModal();
+  // Refresh the setup screen grid if visible
+  if (window.AdminAssistant?.refreshMetaStart) {
+    window.AdminAssistant.refreshMetaStart();
+  }
   return true;
 }
 

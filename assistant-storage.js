@@ -263,6 +263,10 @@ const AssistantStorage = (() => {
     localStorage.removeItem(key);
   }
 
+  function clearMeta() {
+    localStorage.removeItem(META_KEY);
+  }
+
   // ── Build compact context for system prompt ──────────────
   function buildPromptContext(session) {
     if (!session) return '';
@@ -352,6 +356,7 @@ const AssistantStorage = (() => {
     getAssistantDisplayMessages,
     clearAll,
     clearSession,
+    clearMeta,
     buildPromptContext,
     getSourceTexts,
   };

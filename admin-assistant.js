@@ -32,6 +32,16 @@ const AdminAssistant = (() => {
   const TEAL = '#6fcdbf';
   const TEAL_RGBA = (a) => `rgba(111,205,191,${a})`;
 
+  // ── Pastel backgrounds for option cards (light tints of chart hues) ──
+  const OPTION_CARD_PASTELS = [
+    '#f2fbf9', // hint teal        (from #6fcdbf)
+    '#f0f7ff', // hint blue        (from #82c9ff)
+    '#f9f3ff', // hint purple      (from #cf8dff)
+    '#fef9f0', // hint yellow      (from #f2c46b)
+    '#f4f5fc', // hint periwinkle  (from #b7c2e6)
+    '#fef3f3', // hint coral/rose  (warm contrast)
+  ];
+
   function formatCompactNumber(n) {
     const v = Number(n);
     if (isNaN(v)) return '0';
@@ -57,6 +67,8 @@ const AdminAssistant = (() => {
   let _pendingResolve = null; // for blocking UI tools (show_options, show_source_input, etc)
   let _queuedUserMessage = null;
   let _startingOnboarding = false;
+  let _selectedCustomerId = null;  // visual selection on setup screen
+  let _selectedRole = null;        // visual selection on setup screen
   let _runGeneration = 0;
   let _previewRevealGeneration = 0;
   let _previewRevealTimers = [];
@@ -211,7 +223,6 @@ const AdminAssistant = (() => {
                 id: { type: 'string' },
                 label: { type: 'string' },
                 description: { type: 'string' },
-                icon: { type: 'string' },
                 completesOnboarding: { type: 'boolean', description: 'If true, clicking this option immediately completes onboarding without an extra LLM round-trip. Use on the "looks good" / "done" option in the final review.' }
               },
               required: ['id', 'label']
@@ -1859,11 +1870,9 @@ ${role === 'agent'
     AssistantStorage.setAssistantDisplayStartIndex(_session, null);
     AssistantStorage.save(_session);
     localStorage.setItem(AI_SETUP_MODE_KEY, 'assistant');
-    if (window.setGuideOnboardingState) {
-      window.setGuideOnboardingState(false);
-    }
 
-    const useRobotTransition = typeof isFeatureEnabled === 'function' && isFeatureEnabled('onboarding-transition');
+    const useRobotTransition = typeof window.canUseOnboardingTransition === 'function'
+      && window.canUseOnboardingTransition();
     if (useRobotTransition) {
       await animateOnboardingCollapseToFABRobot();
       hideOnboarding();
@@ -2702,14 +2711,15 @@ ${role === 'agent'
     const selected = new Set();
     let otherText = '';
 
-    options.forEach(opt => {
+    options.forEach((opt, idx) => {
       const el = document.createElement('button');
       el.className = style === 'chips' ? 'ai-setup-option-chip' : 'ai-setup-option-card';
       el.dataset.optionId = opt.id;
 
       if (style === 'cards') {
+        // Assign pastel background — cycle through palette
+        el.style.background = OPTION_CARD_PASTELS[idx % OPTION_CARD_PASTELS.length];
         el.innerHTML = `
-          ${opt.icon ? `<span class="ai-setup-option-icon">${opt.icon}</span>` : ''}
           <span class="ai-setup-option-label">${escapeHtml(opt.label)}</span>
           ${opt.description ? `<span class="ai-setup-option-desc">${escapeHtml(opt.description)}</span>` : ''}
         `;
@@ -2753,6 +2763,7 @@ ${role === 'agent'
       otherBtn.className = (style === 'chips' ? 'ai-setup-option-chip' : 'ai-setup-option-card') + ' ai-setup-option-other';
       otherBtn.textContent = 'Other';
       otherBtn.dataset.optionId = '__other__';
+      if (style === 'cards') otherBtn.style.background = '#f5f5f5';
 
       // Inline input row (hidden until Other is clicked)
       const inputRow = document.createElement('div');
@@ -4613,62 +4624,152 @@ ${role === 'agent'
     grid.innerHTML = '';
 
     customers.forEach(c => {
-      const card = document.createElement('button');
+      const card = document.createElement('div');
       card.className = 'ai-setup-customer-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.dataset.customerId = c.id;
       card.innerHTML = `
         <span class="ai-setup-customer-name">${escapeHtml(c.company)}</span>
         <span class="ai-setup-customer-industry">${escapeHtml(c.industry)}</span>
+        <button class="ai-setup-customer-edit" type="button" title="Edit customer" aria-label="Edit ${escapeHtml(c.company)}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
       `;
-      card.addEventListener('click', () => selectCustomer(c));
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.ai-setup-customer-edit')) return;
+        selectCustomerCard(c.id);
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectCustomerCard(c.id);
+        }
+      });
+      card.querySelector('.ai-setup-customer-edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof window.openCustomerSettingsModal === 'function') {
+          window.openCustomerSettingsModal('admin');
+        }
+      });
       grid.appendChild(card);
     });
 
-    // "New customer" option
-    const blankCard = document.createElement('button');
-    blankCard.className = 'ai-setup-customer-card ai-setup-customer-blank';
-    blankCard.innerHTML = `
-      <span class="ai-setup-customer-name">New customer</span>
-      <span class="ai-setup-customer-industry">Start from scratch</span>
-    `;
-    blankCard.addEventListener('click', () => selectCustomer(null));
-    grid.appendChild(blankCard);
-  }
-
-  async function selectCustomer(customer) {
-    if (customer) {
-      _customerId = customer.id;
-      _customerData = JSON.parse(JSON.stringify(customer));
-    } else {
-      _customerId = 'new-' + Date.now();
-      _customerData = null;
+    // Wire add customer button
+    const addBtn = document.getElementById('ai-setup-add-customer-btn');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        if (typeof window.openCustomerSettingsModal === 'function') {
+          window.openCustomerSettingsModal('admin');
+        }
+      };
     }
 
-    // Advance to role selection
-    document.getElementById('ai-setup-customer-step').style.display = 'none';
-    document.getElementById('ai-setup-role-step').style.display = '';
+    // Auto-select previous session
+    autoSelectPrevious(customers);
+  }
+
+  function selectCustomerCard(customerId) {
+    _selectedCustomerId = customerId;
+    document.querySelectorAll('.ai-setup-customer-card').forEach(card => {
+      card.classList.toggle('selected', card.dataset.customerId === customerId);
+    });
+    updateContinueButton();
+  }
+
+  function selectRoleCard(role) {
+    _selectedRole = role;
+    document.querySelectorAll('.ai-setup-role-card').forEach(card => {
+      card.classList.toggle('selected', card.dataset.role === role);
+    });
+    updateContinueButton();
+  }
+
+  function updateContinueButton() {
+    const btn = document.getElementById('ai-setup-continue-btn');
+    if (!btn) return;
+    btn.disabled = !(_selectedCustomerId && _selectedRole);
+  }
+
+  function autoSelectPrevious(customers) {
+    const active = AssistantStorage.getActiveSession();
+    if (!active.customerId && !active.role) return;
+
+    if (active.customerId && customers.some(c => c.id === active.customerId)) {
+      selectCustomerCard(active.customerId);
+    }
+    if (active.role && ['admin', 'supervisor', 'agent'].includes(active.role)) {
+      selectRoleCard(active.role);
+    }
+  }
+
+  function wireContinueButton() {
+    const btn = document.getElementById('ai-setup-continue-btn');
+    if (!btn || btn.dataset.wired === 'true') return;
+    btn.dataset.wired = 'true';
+    btn.addEventListener('click', async () => {
+      if (!_selectedCustomerId || !_selectedRole) return;
+
+      // Resolve customer data
+      let customers = [];
+      if (window.CustomerProfilesStore?.loadAll) {
+        try { customers = await window.CustomerProfilesStore.loadAll(); } catch (_) {}
+      }
+      const customer = customers.find(c => c.id === _selectedCustomerId);
+
+      if (customer) {
+        _customerId = customer.id;
+        _customerData = JSON.parse(JSON.stringify(customer));
+      } else {
+        _customerId = _selectedCustomerId;
+        _customerData = null;
+      }
+
+      _role = _selectedRole;
+      state.personaRole = _role;
+      if (_role === 'admin') {
+        state.role = 'supervisor';
+      } else {
+        state.role = _role;
+      }
+      document.body.dataset.role = state.role;
+      if (typeof window.updateTeamFilterOptions === 'function') {
+        window.updateTeamFilterOptions();
+      }
+      if (typeof window.syncSidebarRobotPreviewAvailability === 'function') {
+        window.syncSidebarRobotPreviewAvailability();
+      }
+
+      startOnboardingChat();
+    });
+  }
+
+  async function refreshMetaStart() {
+    const previousCustomerId = _selectedCustomerId;
+    const previousRole = _selectedRole;
+    await initMetaStart();
+    // Re-select previous choices if still valid
+    if (previousCustomerId) {
+      const cards = document.querySelectorAll('.ai-setup-customer-card');
+      const stillExists = Array.from(cards).some(c => c.dataset.customerId === previousCustomerId);
+      if (stillExists) {
+        selectCustomerCard(previousCustomerId);
+      } else {
+        _selectedCustomerId = null;
+      }
+    }
+    if (previousRole) {
+      selectRoleCard(previousRole);
+    }
+    updateContinueButton();
   }
 
   function initRoleSelection() {
     document.querySelectorAll('.ai-setup-role-card').forEach(card => {
-      card.onclick = () => {
-        _role = card.dataset.role;
-        state.personaRole = _role;
-        // Set the app state role
-        if (_role === 'admin') {
-          state.role = 'supervisor'; // admin views as supervisor by default
-        } else {
-          state.role = _role;
-        }
-        document.body.dataset.role = state.role;
-        if (typeof window.updateTeamFilterOptions === 'function') {
-          window.updateTeamFilterOptions();
-        }
-        if (typeof window.syncSidebarRobotPreviewAvailability === 'function') {
-          window.syncSidebarRobotPreviewAvailability();
-        }
-
-        startOnboardingChat();
-      };
+      card.onclick = () => selectRoleCard(card.dataset.role);
     });
   }
 
@@ -5155,20 +5256,46 @@ ${role === 'agent'
   function createRobotElement() {
     const robot = document.createElement('div');
     robot.className = 'robot-runner';
-    robot.innerHTML = `<div class="robot-runner-inner">
-      <div class="robot-antenna"></div>
-      <div class="robot-head">
-        <div class="robot-eye robot-eye-left"></div>
-        <div class="robot-eye robot-eye-right"></div>
+    robot.innerHTML = `<div class="robot-runner-scale">
+      <div class="robot-runner-inner">
+        <div class="robot-antenna"></div>
+        <div class="robot-head">
+          <div class="robot-hat" aria-hidden="true"></div>
+          <div class="robot-eye robot-eye-left"></div>
+          <div class="robot-eye robot-eye-right"></div>
+        </div>
+        <div class="robot-body"></div>
+        <div class="robot-arm robot-arm-left"></div>
+        <div class="robot-arm robot-arm-right"></div>
+        <div class="robot-leg robot-leg-left"></div>
+        <div class="robot-leg robot-leg-right"></div>
       </div>
-      <div class="robot-body"></div>
-      <div class="robot-arm robot-arm-left"></div>
-      <div class="robot-arm robot-arm-right"></div>
-      <div class="robot-leg robot-leg-left"></div>
-      <div class="robot-leg robot-leg-right"></div>
     </div>
     <div class="robot-speech-bubble" aria-hidden="true"></div>`;
     return robot;
+  }
+
+  function createRobotTransitionScene() {
+    const scene = document.createElement('div');
+    scene.className = 'robot-transition-scene';
+    return scene;
+  }
+
+  function positionRobotTransitionScene(scene, overlay = null) {
+    if (!scene) return;
+    const sidebar = document.querySelector('.sidebar');
+    const panel = document.getElementById('ai-panel');
+    const sidebarRect = sidebar?.getBoundingClientRect();
+    const panelRect = panel?.getBoundingClientRect();
+    const left = Math.round(sidebarRect?.right || 64);
+    const right = Math.round(panelRect?.left || window.innerWidth);
+    const width = Math.max(180, right - left);
+    const height = Math.max(170, Math.min(320, Math.round(width * (500 / 1668))));
+
+    scene.style.left = left + 'px';
+    scene.style.right = '';
+    scene.style.width = width + 'px';
+    scene.style.height = height + 'px';
   }
 
   function setRobotSpeech(robot, text = '') {
@@ -5218,10 +5345,17 @@ ${role === 'agent'
     if (!overlay || !fab) return;
 
     const legacyCollapseEasing = 'cubic-bezier(0.2, 0.82, 0.18, 1)';
-    const collapseDuration = 1280;
-    const introDuration = 1200;
-    const analyticsRevealDuration = 1500;
+    const collapseDuration = 2140;
+    const introFadeDelay = Math.round(collapseDuration * 0.5);
+    const introFadeDuration = collapseDuration - introFadeDelay;
+    const analyticsRevealDuration = collapseDuration;
     const shrinkDuration = 1200;
+    const analyticsRevealKeyframes = [
+      { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
+      { offset: 0.5, backgroundColor: 'rgba(247, 247, 248, 0.96)' },
+      { offset: 0.76, backgroundColor: 'rgba(247, 247, 248, 0.46)' },
+      { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
+    ];
 
     let surfaceAnimation = null;
     let overlayAnimation = null;
@@ -5231,12 +5365,42 @@ ${role === 'agent'
     const fabRect = fab.getBoundingClientRect();
     const fabCenterX = fabRect.left + fabRect.width / 2;
     const fabCenterY = fabRect.top + fabRect.height / 2;
-    const robotWidth = 48;
-    const robotHeight = 64;
+    const robotWidth = 60;
+    const robotHeight = 80;
+    const robotBaselineLift = Math.round(robotHeight * 0.5);
     const introStartX = window.innerWidth * 0.5;
     const startX = introStartX;
-    const bottomY = window.innerHeight - 24 - robotHeight; // 24px margin + robot height
-    const robotStartCenterY = bottomY + robotHeight / 2;
+    const targetY = fabCenterY - 32; // center robot on FAB
+    const initialBaselineY = window.innerHeight - 24 - robotHeight - robotBaselineLift;
+    const danceBaselineY = initialBaselineY + Math.round((targetY - initialBaselineY) * 0.5);
+    const robotStartCenterY = danceBaselineY + robotHeight / 2;
+
+    // Keep the minimized onboarding surface visually above the incoming robot scene.
+    const stageScene = createRobotTransitionScene();
+    positionRobotTransitionScene(stageScene, overlay);
+    stageScene.style.zIndex = '48';
+    stageScene.style.opacity = '0';
+    stageScene.style.transform = 'translateY(18px)';
+    document.body.appendChild(stageScene);
+
+    const robot = createRobotElement();
+    robot.style.left = introStartX + 'px';
+    robot.style.top = danceBaselineY + 'px';
+    robot.style.opacity = '0';
+    robot.style.transform = 'translateX(-50%) translateY(20px)';
+    robot.style.zIndex = '49';
+    document.body.appendChild(robot);
+
+    void stageScene.offsetWidth;
+    void robot.offsetWidth;
+
+    stageScene.style.transition = `opacity ${introFadeDuration}ms ${legacyCollapseEasing} ${introFadeDelay}ms, transform ${introFadeDuration}ms ${legacyCollapseEasing} ${introFadeDelay}ms`;
+    stageScene.style.opacity = '1';
+    stageScene.style.transform = 'translateY(0)';
+    robot.style.transition = `opacity ${introFadeDuration}ms ${legacyCollapseEasing} ${introFadeDelay}ms, transform ${introFadeDuration}ms ${legacyCollapseEasing} ${introFadeDelay}ms`;
+    robot.style.opacity = '1';
+    robot.style.transform = 'translateX(-50%) translateY(0)';
+    const introRevealPromise = wait(collapseDuration);
 
     // Phase 1: Visibly minimize the onboarding surface down to the robot's start position.
     if (surface && typeof surface.animate === 'function') {
@@ -5246,7 +5410,8 @@ ${role === 'agent'
         const sourceCenterY = sourceRect.top + sourceRect.height / 2;
         const scale = Math.min(robotWidth / sourceRect.width, robotHeight / sourceRect.height);
         const finalScale = Math.max(scale, 0.08);
-        const midpointScale = Math.min(0.48, Math.max(finalScale * 2.2, 0.22));
+        const firstStageScale = Math.min(0.7, Math.max(finalScale * 6.5, 0.58));
+        const midpointScale = Math.min(0.42, Math.max(finalScale * 4.2, 0.3));
         const translateX = introStartX - sourceCenterX;
         const translateY = robotStartCenterY - sourceCenterY;
 
@@ -5266,18 +5431,25 @@ ${role === 'agent'
             filter: 'blur(0px)',
           },
           {
-            offset: 0.56,
-            transform: `translate3d(${translateX * 0.74}px, ${translateY * 0.74}px, 0) scale(${midpointScale})`,
-            opacity: 0.74,
-            borderRadius: '24px',
-            filter: 'blur(0.4px)',
+            offset: 0.34,
+            transform: `translate3d(${translateX * 0.3}px, ${translateY * 0.3}px, 0) scale(${firstStageScale})`,
+            opacity: 0.98,
+            borderRadius: '20px',
+            filter: 'blur(0.12px)',
+          },
+          {
+            offset: 0.74,
+            transform: `translate3d(${translateX * 0.72}px, ${translateY * 0.72}px, 0) scale(${midpointScale})`,
+            opacity: 0.84,
+            borderRadius: '36px',
+            filter: 'blur(0.55px)',
           },
           {
             offset: 1,
             transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${finalScale})`,
-            opacity: 0.08,
+            opacity: 0.16,
             borderRadius: '999px',
-            filter: 'blur(2px)',
+            filter: 'blur(1.4px)',
           },
         ], {
           duration: collapseDuration,
@@ -5286,10 +5458,7 @@ ${role === 'agent'
         });
 
         // Fade overlay to transparent, revealing the analytics dashboard underneath
-        overlayAnimation = overlay.animate([
-          { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
-          { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
-        ], {
+        overlayAnimation = overlay.animate(analyticsRevealKeyframes, {
           duration: analyticsRevealDuration,
           easing: 'ease-out',
           fill: 'forwards',
@@ -5298,50 +5467,47 @@ ${role === 'agent'
         await Promise.allSettled([
           surfaceAnimation.finished,
           overlayAnimation.finished,
+          introRevealPromise,
         ]);
       } else {
         overlay.style.pointerEvents = 'none';
         overlay.style.background = 'none';
         overlay.style.backgroundColor = 'rgba(247, 247, 248, 1)';
-        overlayAnimation = overlay.animate([
-          { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
-          { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
-        ], { duration: analyticsRevealDuration, easing: 'ease-out', fill: 'forwards' });
+        overlayAnimation = overlay.animate(analyticsRevealKeyframes, {
+          duration: analyticsRevealDuration,
+          easing: 'ease-out',
+          fill: 'forwards',
+        });
+        await Promise.allSettled([
+          overlayAnimation.finished,
+          introRevealPromise,
+        ]);
       }
     } else {
       overlay.style.pointerEvents = 'none';
       overlay.style.background = 'none';
       overlay.style.backgroundColor = 'rgba(247, 247, 248, 1)';
-      overlayAnimation = overlay.animate([
-        { offset: 0, backgroundColor: 'rgba(247, 247, 248, 1)' },
-        { offset: 1, backgroundColor: 'rgba(247, 247, 248, 0)' },
-      ], { duration: analyticsRevealDuration, easing: 'ease-out', fill: 'forwards' });
+      overlayAnimation = overlay.animate(analyticsRevealKeyframes, {
+        duration: analyticsRevealDuration,
+        easing: 'ease-out',
+        fill: 'forwards',
+      });
+      await Promise.allSettled([
+        overlayAnimation.finished,
+        introRevealPromise,
+      ]);
     }
 
-    // Phase 2: Create robot at bottom-center
-    const robot = createRobotElement();
-    robot.style.left = introStartX + 'px';
-    robot.style.top = bottomY + 'px';
-    robot.style.opacity = '0';
-    robot.style.transform = 'translateX(-50%) translateY(20px)';
-    document.body.appendChild(robot);
+    stageScene.style.zIndex = '';
+    robot.style.zIndex = '';
 
-    // Slide robot in from below
-    await wait(50); // let DOM paint
-    robot.style.transition = `opacity ${introDuration}ms ${legacyCollapseEasing}, transform ${introDuration}ms ${legacyCollapseEasing}`;
-    robot.style.opacity = '1';
-    robot.style.transform = 'translateX(-50%) translateY(0)';
-    await wait(introDuration);
-
-    // Phase 3: Choreograph the robot across the screen in staged dance beats.
+    // Phase 2: Choreograph the robot across the screen once the collapse finishes.
     const targetX = fabCenterX;
-    const targetY = fabCenterY - 32; // center robot on FAB
     const danceStartX = startX;
     const dx = targetX - danceStartX;
-    const dy = targetY - bottomY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distance = Math.abs(dx);
     const travelDuration = Math.max(3800, Math.min(6400, distance * 7.2));
-    const walkIntroDuration = Math.round(travelDuration);
+    const walkIntroDuration = Math.round(travelDuration * 0.595);
     const slideToFloorDuration = Math.round(travelDuration * 0.25);
     const headspinDuration = 1500;
     const floorMoveDuration = Math.round(travelDuration * 0.25);
@@ -5353,10 +5519,9 @@ ${role === 'agent'
 
     const moveRobotTo = (progress, duration) => {
       const nextX = danceStartX + dx * progress;
-      const nextY = bottomY + dy * progress;
       robot.style.transition = `left ${duration}ms linear, top ${duration}ms linear`;
       robot.style.left = nextX + 'px';
-      robot.style.top = nextY + 'px';
+      robot.style.top = danceBaselineY + 'px';
       return wait(duration);
     };
 
@@ -5394,31 +5559,33 @@ ${role === 'agent'
     };
 
     // Phase 4: Climb up the collapsed guide panel, slip, recover, then celebrate.
-    const fullClimbPeakY = Math.max(24, bottomY - (window.innerHeight * 0.2));
-    const climbPeakY = bottomY - ((bottomY - fullClimbPeakY) * 0.8);
+    const climbTimeScale = 1.25;
+    const fullClimbPeakY = Math.max(24, targetY - (window.innerHeight * 0.2));
+    const baseClimbPeakY = targetY - ((targetY - fullClimbPeakY) * 0.8);
+    const climbPeakY = Math.max(24, Math.round(danceBaselineY - ((danceBaselineY - baseClimbPeakY) * 1.25)));
     const climbBursts = [
-      { progress: 0.20, duration: 300, easing: 'cubic-bezier(0.18, 0.94, 0.28, 1)' },
-      { progress: 0.15, duration: 140, easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
-      { progress: 0.42, duration: 460, easing: 'cubic-bezier(0.16, 0.96, 0.24, 1)' },
-      { progress: 0.36, duration: 150, easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
-      { progress: 0.61, duration: 330, easing: 'cubic-bezier(0.18, 0.92, 0.24, 1)' },
-      { progress: 0.55, duration: 135, easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
-      { progress: 0.80, duration: 535, easing: 'cubic-bezier(0.16, 0.98, 0.22, 1)' },
+      { progress: 0.20, duration: Math.round(300 * climbTimeScale), easing: 'cubic-bezier(0.18, 0.94, 0.28, 1)' },
+      { progress: 0.15, duration: Math.round(140 * climbTimeScale), easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
+      { progress: 0.42, duration: Math.round(460 * climbTimeScale), easing: 'cubic-bezier(0.16, 0.96, 0.24, 1)' },
+      { progress: 0.36, duration: Math.round(150 * climbTimeScale), easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
+      { progress: 0.61, duration: Math.round(330 * climbTimeScale), easing: 'cubic-bezier(0.18, 0.92, 0.24, 1)' },
+      { progress: 0.55, duration: Math.round(135 * climbTimeScale), easing: 'cubic-bezier(0.22, 0.18, 0.36, 1)' },
+      { progress: 0.80, duration: Math.round(535 * climbTimeScale), easing: 'cubic-bezier(0.16, 0.98, 0.22, 1)' },
     ];
     setRobotSpeech(robot, '');
     setRobotMotion(robot, 'climbing');
     for (const burst of climbBursts) {
-      const nextTop = bottomY + ((climbPeakY - bottomY) * burst.progress);
+      const nextTop = danceBaselineY + ((climbPeakY - danceBaselineY) * burst.progress);
       await moveRobotTopTo(nextTop, burst.duration, burst.easing);
     }
 
     setRobotMotion(robot, 'fallen');
-    await moveRobotTopTo(bottomY, fallDuration, 'cubic-bezier(0.22, 0.78, 0.18, 1.08)');
+    await moveRobotTopTo(targetY, fallDuration, 'cubic-bezier(0.22, 0.78, 0.18, 1.08)');
 
     setRobotMotion(robot, 'standingupslow');
     await wait(standDuration);
 
-    setRobotSpeech(robot, "I'm okay!");
+    setRobotSpeech(robot, 'Ow! Hee-hee…\nstill smooth.');
     await wait(speechDuration);
     setRobotSpeech(robot, '');
 
@@ -5431,7 +5598,11 @@ ${role === 'agent'
     // Phase 5: Shrink into FAB
     setRobotMotion(robot, null);
     setRobotSpeech(robot, '');
-    robot.style.transition = `transform ${shrinkDuration}ms ease-in, opacity ${shrinkDuration}ms ease-in`;
+    stageScene.style.transition = `opacity ${shrinkDuration}ms ease-in, transform ${shrinkDuration}ms ease-in`;
+    stageScene.style.opacity = '0';
+    stageScene.style.transform = 'translateY(18px)';
+    robot.style.transition = `top ${shrinkDuration}ms ease-in, transform ${shrinkDuration}ms ease-in, opacity ${shrinkDuration}ms ease-in`;
+    robot.style.top = targetY + 'px';
     robot.style.transform = 'translateX(-50%) scale(0.15)';
     robot.style.opacity = '0';
 
@@ -5445,6 +5616,7 @@ ${role === 'agent'
     await wait(shrinkDuration);
 
     // Cleanup
+    stageScene.remove();
     robot.remove();
     overlay.style.display = 'none';
     surfaceAnimation?.cancel();
@@ -5643,6 +5815,7 @@ ${role === 'agent'
     // No mode set — first visit, initialize meta-start
     initMetaStart();
     initRoleSelection();
+    wireContinueButton();
 
     // Show overlay if walkthrough is already done
     if (localStorage.getItem('trengo_onboarding_done')) {
@@ -5696,6 +5869,7 @@ ${role === 'agent'
     resetOnboardingUIToStart();
     initMetaStart();
     initRoleSelection();
+    wireContinueButton();
     showOnboarding();
   }
 
@@ -5703,8 +5877,6 @@ ${role === 'agent'
     const overlay = document.getElementById('ai-setup-overlay');
     const meta = document.getElementById('ai-setup-meta');
     const split = document.getElementById('ai-setup-split');
-    const customerStep = document.getElementById('ai-setup-customer-step');
-    const roleStep = document.getElementById('ai-setup-role-step');
     const setupMessages = document.getElementById('ai-setup-messages');
     const assistantMessages = document.getElementById('assistant-panel-messages');
     const setupInput = document.getElementById('ai-setup-input');
@@ -5721,8 +5893,14 @@ ${role === 'agent'
       split.style.display = 'none';
       split.classList.remove('preview-ready');
     }
-    if (customerStep) customerStep.style.display = '';
-    if (roleStep) roleStep.style.display = 'none';
+
+    // Clear selections on the unified setup screen
+    _selectedCustomerId = null;
+    _selectedRole = null;
+    document.querySelectorAll('.ai-setup-customer-card').forEach(card => card.classList.remove('selected'));
+    document.querySelectorAll('.ai-setup-role-card').forEach(card => card.classList.remove('selected'));
+    updateContinueButton();
+
     if (setupMessages) setupMessages.innerHTML = '';
     if (assistantMessages) assistantMessages.innerHTML = '';
     if (previewContent) previewContent.innerHTML = '';
@@ -5755,13 +5933,21 @@ ${role === 'agent'
       }
     }
 
-    AssistantStorage.clearAll();
+    // Clear only the active session, not all sessions across all customers/roles
+    if (_customerId && _role) {
+      AssistantStorage.clearSession(_customerId, _role);
+    } else {
+      AssistantStorage.clearAll();
+    }
+    AssistantStorage.clearMeta();
     localStorage.removeItem(AI_SETUP_MODE_KEY);
     localStorage.removeItem('trengo_easy_setup_done');
     _session = null;
     _customerData = null;
     _customerId = null;
     _role = null;
+    _selectedCustomerId = null;
+    _selectedRole = null;
     _startingOnboarding = false;
 
     resetOnboardingUIToStart();
@@ -5780,6 +5966,7 @@ ${role === 'agent'
 
     await initMetaStart();
     initRoleSelection();
+    wireContinueButton();
 
     if (shouldRestart) {
       showOnboarding();
@@ -5805,7 +5992,12 @@ ${role === 'agent'
     const meta = document.getElementById('ai-setup-meta');
     const split = document.getElementById('ai-setup-split');
     const panel = document.getElementById('assistant-panel');
-    if (!overlay || _robotPreviewRunning) return false;
+    if (
+      !overlay
+      || _robotPreviewRunning
+      || typeof window.canUseSidebarRobotPreview !== 'function'
+      || !window.canUseSidebarRobotPreview()
+    ) return false;
 
     _robotPreviewRunning = true;
     try {
@@ -5871,5 +6063,6 @@ Leave fields as empty strings or empty arrays if not found.`;
     showFAB,
     showOnboarding,
     analyzeFileForCustomer,
+    refreshMetaStart,
   };
 })();

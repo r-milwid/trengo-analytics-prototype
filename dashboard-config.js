@@ -70,6 +70,7 @@ const DashboardConfig = (() => {
         id: t.id,
         label: t.label,
         category: t.category || null,
+        categories: Array.isArray(t.categories) ? [...t.categories] : null,
         isDefault: !!t.isDefault,
       })),
       tabWidgets,
@@ -131,6 +132,7 @@ const DashboardConfig = (() => {
         id: t.id,
         label: t.label,
         category: t.category || null,
+        categories: Array.isArray(t.categories) ? [...t.categories] : null,
         isDefault: !!t.isDefault,
       }));
     }
@@ -202,6 +204,8 @@ const DashboardConfig = (() => {
         const latest = await res.json();
         if (latest && latest.config) {
           _currentRevision = latest.config.revision || 0;
+          // Persist server's version to localStorage so refresh doesn't revive stale edits
+          saveLocal(latest.config);
           // Apply the server's version (caller should re-render)
           if (typeof window._dashboardConfigConflictHandler === 'function') {
             window._dashboardConfigConflictHandler(latest.config);

@@ -334,7 +334,11 @@ export default {
         await env.FEEDBACK_STORE.put(`sub:${id}`, JSON.stringify(submission));
 
         // Run organizer for applicable track(s)
-        const tracks = submission.type === 'both' ? ['product', 'bugs'] : [submission.type === 'bug' ? 'bugs' : 'product'];
+        const tracks = submission.type === 'both'
+          ? ['product', 'bugs']
+          : submission.type === 'bug' ? ['bugs']
+          : submission.type === 'correction' ? ['corrections']
+          : ['product'];
         let organizeOk = true;
         for (const track of tracks) {
           try {
@@ -418,6 +422,9 @@ export default {
         }
         if (type === 'all' || type === 'bugs') {
           result.bugs = await env.FEEDBACK_STORE.get('summary:bugs', 'json') || { categories: [], updatedAt: null };
+        }
+        if (type === 'all' || type === 'corrections') {
+          result.corrections = await env.FEEDBACK_STORE.get('summary:corrections', 'json') || { categories: [], updatedAt: null };
         }
 
         if (view === 'prompt') {

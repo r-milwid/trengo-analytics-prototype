@@ -1,0 +1,120 @@
+<svg width="1668" height="500" viewBox="0 0 1668 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="834" y1="0" x2="834" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B1D28"/>
+      <stop offset="0.36" stop-color="#101116"/>
+      <stop offset="1" stop-color="#323235"/>
+    </linearGradient>
+    <radialGradient id="ceilingGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(834 142) rotate(90) scale(176 612)">
+      <stop stop-color="#8185C6" stop-opacity="0.36"/>
+      <stop offset="1" stop-color="#8185C6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#BCC0FF" stop-opacity="0.66"/>
+      <stop offset="1" stop-color="#BCC0FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F3F3F4"/>
+    </linearGradient>
+    <linearGradient id="step" x1="834" y1="386" x2="834" y2="454" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18191D"/>
+      <stop offset="1" stop-color="#050506"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="834" y1="412" x2="834" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#626264"/>
+      <stop offset="1" stop-color="#2B2B2D"/>
+    </linearGradient>
+    <radialGradient id="floorGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(834 450) rotate(90) scale(46 442)">
+      <stop stop-color="#F3F3F5" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#F3F3F5" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="ceilingGrid" width="56" height="32" patternUnits="userSpaceOnUse">
+      <rect width="56" height="32" fill="#1C1D24"/>
+      <path d="M0 0H56M0 32H56M0 0V32M56 0V32" stroke="#2C2E38" stroke-width="1"/>
+      <path d="M0 0L28 16L56 0M0 32L28 16L56 32" stroke="#252731" stroke-width="1"/>
+    </pattern>
+    <filter id="softBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+
+  <rect width="1668" height="500" fill="url(#bg)"/>
+  <rect width="1668" height="182" fill="url(#ceilingGrid)"/>
+  <rect width="1668" height="214" fill="url(#ceilingGlow)"/>
+
+  <g opacity="0.92">
+    <ellipse cx="834" cy="86" rx="171" ry="42" stroke="#666A79" stroke-width="4"/>
+    <ellipse cx="834" cy="86" rx="125" ry="29" stroke="#575A68" stroke-width="3"/>
+    <path d="M663 86H1005" stroke="#616575" stroke-width="4"/>
+    <path d="M728 44V128M834 40V132M940 44V128" stroke="#616575" stroke-width="3"/>
+  </g>
+
+  <g fill="#F5F5FA">
+    <circle cx="104" cy="22" r="3"/>
+    <circle cx="194" cy="32" r="3"/>
+    <circle cx="282" cy="22" r="3"/>
+    <circle cx="372" cy="34" r="3"/>
+    <circle cx="460" cy="20" r="3"/>
+    <circle cx="555" cy="30" r="3"/>
+    <circle cx="651" cy="18" r="3"/>
+    <circle cx="736" cy="28" r="3"/>
+    <circle cx="834" cy="20" r="3"/>
+    <circle cx="928" cy="28" r="3"/>
+    <circle cx="1017" cy="18" r="3"/>
+    <circle cx="1114" cy="30" r="3"/>
+    <circle cx="1212" cy="20" r="3"/>
+    <circle cx="1300" cy="34" r="3"/>
+    <circle cx="1388" cy="22" r="3"/>
+    <circle cx="1476" cy="32" r="3"/>
+    <circle cx="1564" cy="22" r="3"/>
+  </g>
+
+  <g opacity="0.86">
+    <circle cx="189" cy="84" r="5" fill="#F4F4FA"/>
+    <circle cx="326" cy="72" r="5" fill="#F4F4FA"/>
+    <circle cx="485" cy="84" r="5" fill="#F4F4FA"/>
+    <circle cx="635" cy="66" r="5" fill="#F4F4FA"/>
+    <circle cx="786" cy="76" r="5" fill="#F4F4FA"/>
+    <circle cx="881" cy="70" r="5" fill="#F4F4FA"/>
+    <circle cx="1030" cy="84" r="5" fill="#F4F4FA"/>
+    <circle cx="1184" cy="68" r="5" fill="#F4F4FA"/>
+    <circle cx="1336" cy="82" r="5" fill="#F4F4FA"/>
+    <circle cx="1481" cy="70" r="5" fill="#F4F4FA"/>
+  </g>
+
+  <g filter="url(#softBlur)">
+    <path d="M161 86L100 260H229L161 86Z" fill="url(#beam)"/>
+    <path d="M327 70L240 266H394L327 70Z" fill="url(#beam)"/>
+    <path d="M504 78L440 259H572L504 78Z" fill="url(#beam)"/>
+    <path d="M661 62L587 260H738L661 62Z" fill="url(#beam)"/>
+    <path d="M787 74L720 258H856L787 74Z" fill="url(#beam)"/>
+    <path d="M880 70L810 258H949L880 70Z" fill="url(#beam)"/>
+    <path d="M1030 82L938 266H1094L1030 82Z" fill="url(#beam)"/>
+    <path d="M1182 66L1102 258H1256L1182 66Z" fill="url(#beam)"/>
+    <path d="M1338 79L1269 260H1403L1338 79Z" fill="url(#beam)"/>
+    <path d="M1492 64L1410 261H1563L1492 64Z" fill="url(#beam)"/>
+  </g>
+
+  <path d="M0 180H120V420H0V180Z" fill="#09090C"/>
+  <path d="M1554 180H1668V420H1554V180Z" fill="#09090C"/>
+
+  <rect x="152" y="196" width="124" height="183" fill="url(#screen)"/>
+  <rect x="326" y="214" width="1227" height="165" fill="url(#screen)"/>
+  <rect x="1638" y="196" width="30" height="183" fill="url(#screen)"/>
+
+  <rect x="144" y="188" width="140" height="199" stroke="#151518" stroke-width="7"/>
+  <rect x="318" y="206" width="1243" height="181" stroke="#151518" stroke-width="7"/>
+  <rect x="1630" y="188" width="38" height="199" stroke="#151518" stroke-width="7"/>
+
+  <rect y="388" width="1668" height="18" fill="#26272C"/>
+  <path d="M46 407H523L582 418H1108L1167 407H1622C1641 407 1657 411 1668 417V432H0V416C12 410 27 407 46 407Z" fill="url(#step)"/>
+  <path d="M131 399H609L659 407H1008L1060 399H1515L1603 407H65L131 399Z" fill="#101114"/>
+  <path d="M209 388H693L738 393H928L976 388H1456L1517 396H151L209 388Z" fill="#09090B"/>
+
+  <ellipse cx="834" cy="406" rx="185" ry="17" fill="#2F3034"/>
+  <ellipse cx="834" cy="406" rx="143" ry="12" fill="#A0A0A5" opacity="0.34"/>
+
+  <rect y="414" width="1668" height="86" fill="url(#floor)"/>
+  <rect y="414" width="1668" height="86" fill="url(#floorGlow)"/>
+</svg>

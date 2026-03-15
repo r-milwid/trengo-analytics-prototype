@@ -516,9 +516,14 @@ function normalizeFilters(filters = {}, context = {}) {
   });
 
   if (context.role !== 'admin' && Array.isArray(context.scopedTeams) && context.scopedTeams.length > 0) {
-    normalized.team = normalized.team
-      ? normalized.team.filter(team => context.scopedTeams.includes(team))
-      : [...context.scopedTeams];
+    const requested = normalized.team;
+    if (requested) {
+      const intersection = requested.filter(team => context.scopedTeams.includes(team));
+      // Empty intersection = out-of-scope request → use sentinel to match nothing
+      normalized.team = intersection.length > 0 ? intersection : ['__no_match__'];
+    } else {
+      normalized.team = [...context.scopedTeams];
+    }
   }
 
   return normalized;

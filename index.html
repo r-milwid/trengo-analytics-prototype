@@ -87,14 +87,16 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span class="nav-tooltip" id="sidebar-robot-preview-tooltip">Support</span>
         </button>
-        <div class="sidebar-bottom-icon" id="super-admin-nav" title="Notifications" style="display:none;">
+        <div class="sidebar-bottom-icon" id="super-admin-nav" data-enabled="false" title="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span class="nav-tooltip">Notifications</span>
         </div>
       </div>
       <button class="sidebar-user-avatar" id="user-flag-btn"
-              aria-label="Feature flags" title="Feature flags"
-              style="display:none;">R</button>
+              aria-label="Profile" title="Profile"
+              data-enabled="false" type="button">R
+        <span class="nav-tooltip">Profile</span>
+      </button>
     </div>
   </nav>
 
@@ -173,19 +175,32 @@
 
       <!-- State 1: Meta-start (customer + role selection) -->
       <div class="ai-setup-meta" id="ai-setup-meta">
-        <div class="ai-setup-meta-card">
-          <!-- Step A: Customer selection -->
-          <div class="ai-setup-meta-step" id="ai-setup-customer-step">
-            <h2>Select a customer profile</h2>
-            <p class="ai-setup-meta-subtitle">For prototype testing — choose a starter customer profile to simulate pre-existing context.</p>
-            <div class="ai-setup-customer-grid" id="ai-setup-customer-grid">
-              <!-- Populated by JS from mock-customers/index.json -->
-            </div>
+        <div class="ai-setup-meta-card ai-setup-meta-card--testing">
+          <!-- Disclaimer banner -->
+          <div class="ai-setup-testing-disclaimer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Prototype setup — this screen is for internal testing only. In the real product, users skip this step.</span>
           </div>
-          <!-- Step B: Role selection -->
-          <div class="ai-setup-meta-step" id="ai-setup-role-step" style="display:none;">
-            <h2>Who would you like to impersonate?</h2>
-            <p class="ai-setup-meta-subtitle">This is a prototype feature — in the real product, the role would be detected automatically.</p>
+
+          <!-- Header -->
+          <h2>Pick your test identity</h2>
+          <p class="ai-setup-meta-subtitle">Choose a company and role to test the analytics experience from that perspective.</p>
+
+          <!-- Company section -->
+          <div class="ai-setup-section">
+            <h3 class="ai-setup-section-label">Company</h3>
+            <div class="ai-setup-customer-grid" id="ai-setup-customer-grid">
+              <!-- Populated by JS -->
+            </div>
+            <button class="ai-setup-add-customer-btn" id="ai-setup-add-customer-btn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add customer
+            </button>
+          </div>
+
+          <!-- Role section -->
+          <div class="ai-setup-section">
+            <h3 class="ai-setup-section-label">Role</h3>
             <div class="ai-setup-role-grid">
               <button class="ai-setup-role-card" data-role="admin">
                 <div class="ai-setup-role-icon">
@@ -215,6 +230,12 @@
                 <div class="ai-setup-role-desc">Configuring for yourself</div>
               </button>
             </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="ai-setup-meta-footer">
+            <p class="ai-setup-quickswitch-note">You can change company or role anytime from settings.</p>
+            <button class="btn btn-primary ai-setup-continue-btn" id="ai-setup-continue-btn" disabled>Continue</button>
           </div>
         </div>
       </div>
@@ -352,9 +373,6 @@
           </svg>
         </button>
       </div>
-
-      <!-- Small red dot (test) -->
-      <div style="position:absolute;bottom:12px;right:12px;width:8px;height:8px;background:#e53e3e;border-radius:50%;pointer-events:none;"></div>
 
     </div><!-- /.ai-panel-inner -->
   </aside><!-- /.ai-panel -->
