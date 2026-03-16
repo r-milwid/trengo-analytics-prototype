@@ -3,10 +3,6 @@ main = "worker.js"
 compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
-binding = "FEEDBACK_STORE"
-id = "82f267d0c51648f4a67f59d141317412"
-
-[[kv_namespaces]]
 binding = "DASHBOARD_CONFIG"
 id = "423fe18d5b34407db60c162229bc336c"
 

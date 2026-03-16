@@ -74,8 +74,6 @@ const HELION_UNLOCKED_KEY = 'trengo_helion_unlocked';
 const USER_TEAMS_KEY      = 'trengo_user_teams';
 const DEFAULT_TEAMS_KEY   = 'trengo_default_teams';
 const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
-const CLASSIC_GUIDE_STYLE_FLAG = 'classic-guide-style';
-const LEGACY_GUIDE_STYLE_FLAG = 'guide-style';
 const ANCHORS_NAV_USER_KEY = 'trengo_anchors_nav_user';
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
@@ -108,27 +106,8 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
-  { id: 'ai-onboarding',   label: 'Onboarding',               desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
   { id: 'onboarding-transition', label: 'Onboarding transition', desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
-  { id: CLASSIC_GUIDE_STYLE_FLAG, label: 'Guide colour',       desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
 ];
-
-function migrateLegacyGuideStyleFlag() {
-  try {
-    const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
-    let changed = false;
-    if (LEGACY_GUIDE_STYLE_FLAG in flags) {
-      delete flags[LEGACY_GUIDE_STYLE_FLAG];
-      changed = true;
-    }
-    // Migrate boolean values to tri-state 'off' (colour is now opt-in)
-    if (CLASSIC_GUIDE_STYLE_FLAG in flags && typeof flags[CLASSIC_GUIDE_STYLE_FLAG] === 'boolean') {
-      flags[CLASSIC_GUIDE_STYLE_FLAG] = 'off';
-      changed = true;
-    }
-    if (changed) localStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify(flags));
-  } catch {}
-}
 
 function getFeatureFlagValue(id) {
   try {
@@ -177,10 +156,6 @@ function showHelionAvatar() {
     superAdmin.dataset.enabled = 'true';
     superAdmin.setAttribute('aria-disabled', 'false');
   }
-  // Also show the admin settings button in the strip above the guide
-  const stripAdminBtn = document.getElementById('strip-admin-btn');
-  if (stripAdminBtn) stripAdminBtn.style.display = '';
-  syncSidebarRobotPreviewAvailability();
   syncAssistantFabIcon();
 }
 
@@ -197,11 +172,6 @@ function hideHelionAvatar() {
     superAdmin.dataset.enabled = 'false';
     superAdmin.setAttribute('aria-disabled', 'true');
   }
-  const stripAdminBtn = document.getElementById('strip-admin-btn');
-  if (stripAdminBtn) stripAdminBtn.style.display = 'none';
-  closeFlagPopout();
-  closeUserPopout();
-  syncSidebarRobotPreviewAvailability();
   syncAssistantFabIcon();
 }
 
@@ -216,30 +186,11 @@ function resetHelionAccess() {
   hideHelionAvatar();
 }
 
-function canUseSidebarRobotPreview() {
-  return hasHelionAccess();
-}
-
-function syncSidebarRobotPreviewAvailability() {
-  const previewBtn = document.getElementById('sidebar-robot-preview-btn');
-  const previewTooltip = document.getElementById('sidebar-robot-preview-tooltip');
-  if (!previewBtn) return;
-  const enabled = canUseSidebarRobotPreview();
-  previewBtn.dataset.enabled = enabled ? 'true' : 'false';
-  previewBtn.title = enabled ? 'Play robot preview' : 'Support';
-  previewBtn.setAttribute('aria-label', enabled ? 'Robot preview' : 'Support');
-  previewBtn.setAttribute('aria-pressed', previewBtn.dataset.previewState === 'running' ? 'true' : 'false');
-  if (previewTooltip) previewTooltip.textContent = enabled ? 'Robot preview' : 'Support';
-}
-
 window.canUseOnboardingTransition = canUseOnboardingTransition;
-window.canUseSidebarRobotPreview = canUseSidebarRobotPreview;
-window.syncSidebarRobotPreviewAvailability = syncSidebarRobotPreviewAvailability;
 
 // Restore unlock state on page load
 if (localStorage.getItem(HELION_UNLOCKED_KEY)) showHelionAvatar();
 else hideHelionAvatar();
-syncSidebarRobotPreviewAvailability();
 
 // Bootstrap nav mode from feature flag (before sections render)
 if (isFeatureEnabled('anchors-nav') || localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true') state.navMode = 'anchors';
@@ -258,18 +209,12 @@ function applyNavMode(mode) {
   }
 }
 
-function applyGuideStyle() {
-  document.body.dataset.guideStyle = isFeatureEnabled(CLASSIC_GUIDE_STYLE_FLAG) ? 'notebook' : 'default';
-}
-
 function syncAssistantFabIcon() {
   const fab = document.getElementById('assistant-fab');
   if (!fab) return;
   fab.classList.toggle('robot-head-mode', canUseOnboardingTransition());
 }
 
-migrateLegacyGuideStyleFlag();
-applyGuideStyle();
 syncAssistantFabIcon();
 
 // ── CHART PALETTE (aligned to provided screenshots) ────────────
@@ -841,10 +786,8 @@ function buildDefaultTeamUsecases() {
 syncTeamsState(getActiveTeams(), { skipUIRefresh: true });
 
 function syncRoleToggleButtons() {
-  const activeRole = state.personaRole || state.role || 'supervisor';
-  document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.role === activeRole);
-  });
+  // Role toggle UI now lives in SideCar overlays — this is kept as a
+  // callable no-op so existing call-sites don't need guards.
 }
 
 function resetPrototypeStateToDefaults() {
@@ -4502,27 +4445,10 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
   });
 });
 
-document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.personaRole = btn.dataset.role;
-    state.role = state.personaRole === 'admin' ? 'supervisor' : state.personaRole;
-    document.body.dataset.role = state.role;
-    updateTeamFilterOptions();
-    syncRoleToggleButtons();
-    resetViewState();
-    // Snapshot then remount — Set is mutated during remount so we must copy first
-    [...state.loadedSections].forEach(s => remountSection(s));
-    if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
-    window.sendEvent('Preview toggle — changed');
-    DashboardConfig.notifyChanged();
-    syncSidebarRobotPreviewAvailability();
-  });
-});
 
 // Set initial role attribute
 document.body.dataset.role = state.role;
 syncRoleToggleButtons();
-syncSidebarRobotPreviewAvailability();
 
 
 // ── VIEW / EDIT MODE ────────────────────────────────────────────
@@ -4582,379 +4508,48 @@ if (manageWidgetsBtn) {
   });
 }
 
-// User popout toggle (triggered by settings cog in main nav)
-const settingsNav = document.getElementById('settings-nav');
-const userPopout = document.getElementById('user-popout');
-const userPopoutClose = document.getElementById('user-popout-close');
-const settingsOnboardingBlock = document.getElementById('settings-onboarding-block');
-
-function syncSettingsOnboardingVisibility() {
-  if (!settingsOnboardingBlock) return;
-  // Only show the reset onboarding option when onboarding is set to "Everyone"
-  settingsOnboardingBlock.style.display = getFeatureFlagValue('ai-onboarding') === 'everyone' ? '' : 'none';
-}
-
-syncSettingsOnboardingVisibility();
-
-if (settingsNav && userPopout) {
-  settingsNav.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (settingsNav.dataset.disabled === 'true') {
-      return;
-    }
-    syncSettingsOnboardingVisibility();
-    const _anchorsCb = document.getElementById('anchors-nav-user-cb');
-    if (_anchorsCb) _anchorsCb.checked = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
-    if (userPopout.style.display === 'block') {
-      userPopout.classList.remove('open');
-      setTimeout(() => { userPopout.style.display = 'none'; }, 200);
-    } else {
-      // Position popout next to the settings cog, clamped to viewport
-      const rect = settingsNav.getBoundingClientRect();
-      userPopout.style.display = 'block';
-      const popoutH = userPopout.offsetHeight;
-      const maxTop = window.innerHeight - popoutH - 12;
-      userPopout.style.top = Math.min(rect.top, Math.max(12, maxTop)) + 'px';
-      requestAnimationFrame(() => userPopout.classList.add('open'));
-    }
-
-  });
-}
-if (userPopoutClose) {
-  userPopoutClose.addEventListener('click', () => {
-    userPopout.classList.remove('open');
-    setTimeout(() => { userPopout.style.display = 'none'; }, 200);
-  });
-}
-document.addEventListener('click', (e) => {
-  if (!userPopout) return;
-  const _stripSettingsBtn = document.getElementById('strip-settings-btn');
-  if (userPopout.style.display === 'block' && !userPopout.contains(e.target) &&
-      !settingsNav.contains(e.target) && !_stripSettingsBtn?.contains(e.target)) {
-    closeUserPopout();
+// ── RESET ACTIONS (triggered by SideCar via _prototypeGuideAPI.triggerAction) ──
+async function performResetSubnav() {
+  resetPrototypeStateToDefaults();
+  DashboardConfig.clearLocal();
+  history.replaceState(null, '', '#analytics/overview');
+  const userId = localStorage.getItem('trengo_session_user_name');
+  if (userId) {
+    await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-subnav')).catch(() => {});
   }
-});
-
-// Anchors navigation user toggle (in Settings popout)
-const anchorsNavUserCb = document.getElementById('anchors-nav-user-cb');
-if (anchorsNavUserCb) {
-  anchorsNavUserCb.checked = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
-  anchorsNavUserCb.addEventListener('change', () => {
-    if (anchorsNavUserCb.checked) {
-      localStorage.setItem(ANCHORS_NAV_USER_KEY, 'true');
-    } else {
-      localStorage.removeItem(ANCHORS_NAV_USER_KEY);
-    }
-    const shouldBeAnchors = isFeatureEnabled('anchors-nav') || anchorsNavUserCb.checked;
-    applyNavMode(shouldBeAnchors ? 'anchors' : 'tabs');
-  });
+  setTimeout(() => { location.reload(); }, 300);
 }
 
-// Reset sub-navigation button
-const resetSubnavBtn = document.getElementById('reset-subnav-btn');
-const resetOnboardingSessionBtn = document.getElementById('reset-onboarding-session-btn');
-if (resetSubnavBtn) {
-  resetSubnavBtn.addEventListener('click', async () => {
-    resetSubnavBtn.disabled = true;
-    resetSubnavBtn.textContent = 'Resetting…';
-
-    resetPrototypeStateToDefaults();
-    DashboardConfig.clearLocal();
-    history.replaceState(null, '', '#analytics/overview');
-
-    // Save reset state to KV (best-effort — reload regardless)
-    const userId = localStorage.getItem('trengo_session_user_name');
-    if (userId) {
-      await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-subnav')).catch(() => {});
-    }
-
-    resetSubnavBtn.textContent = 'Reset to default ✓';
-    setTimeout(() => { location.reload(); }, 300);
-  });
-}
-
-if (resetOnboardingSessionBtn) {
-  resetOnboardingSessionBtn.addEventListener('click', async () => {
-    resetOnboardingSessionBtn.disabled = true;
-    resetOnboardingSessionBtn.textContent = 'Resetting…';
-
-    localStorage.removeItem('trengo_onboarding_done');
-    localStorage.removeItem('trengo_easy_setup_done');
-    resetPrototypeStateToDefaults();
-    DashboardConfig.clearLocal();
-    history.replaceState(null, '', '#analytics/overview');
-
-    // Save reset state to KV (best-effort — reload regardless)
-    const userId = localStorage.getItem('trengo_session_user_name');
-    if (userId) {
-      await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-onboarding')).catch(() => {});
-    }
-
-    // Restart the onboarding flow
-    if (typeof AdminAssistant !== 'undefined') {
-      await AdminAssistant.resetOnboarding();
-    }
-
-    resetOnboardingSessionBtn.textContent = 'Reset onboarding ✓';
-    setTimeout(() => { location.reload(); }, 800);
-  });
-}
-
-// Reset walkthrough + onboarding button
-const resetOnboardingBtn = document.getElementById('reset-onboarding-btn');
-if (resetOnboardingBtn) {
-  resetOnboardingBtn.addEventListener('click', async () => {
-    localStorage.removeItem('trengo_onboarding_done');
-    localStorage.removeItem('trengo_easy_setup_done');
-    localStorage.removeItem('trengo_onboarding_personal');
-    resetPrototypeStateToDefaults();
-    DashboardConfig.clearLocal();
-    history.replaceState(null, '', '#analytics/overview');
-
-    // Save reset state to KV (best-effort — reload regardless)
-    const userId = localStorage.getItem('trengo_session_user_name');
-    if (userId) {
-      await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-all')).catch(() => {});
-    }
-
-    if (typeof AdminAssistant !== 'undefined') await AdminAssistant.resetAll();
-    resetOnboardingBtn.textContent = 'Reset complete ✓';
-    setTimeout(() => { location.reload(); }, 800);
-  });
-}
-
-const resetHelionAccessBtn = document.getElementById('reset-helion-access-btn');
-if (resetHelionAccessBtn) {
-  resetHelionAccessBtn.addEventListener('click', () => {
-    resetHelionAccess();
-  });
-}
-
-// Ensure popout starts hidden (no auto-open)
-window.addEventListener('load', () => {
-  if (!userPopout) return;
-  userPopout.classList.remove('open');
-  userPopout.style.display = 'none';
-});
-
-// ── FEATURE FLAG POPOUT (triggered by Super Admin cog) ──────────
-const superAdminNav = document.getElementById('super-admin-nav');
-const flagPopout = document.getElementById('feature-flag-popout');
-const flagClose  = document.getElementById('flag-popout-close');
-const sidebarRobotPreviewBtn = document.getElementById('sidebar-robot-preview-btn');
-let sidebarRobotPreviewRunning = false;
-
-// ── Popout close helpers ────────────────────────────────────────
-function closeFlagPopout() {
-  const flagPopout = document.getElementById('feature-flag-popout');
-  if (!flagPopout || flagPopout.style.display !== 'block') return;
-  flagPopout.classList.remove('open');
-  flagPopout.style.display = 'none';
-}
-function closeUserPopout() {
-  const userPopout = document.getElementById('user-popout');
-  if (!userPopout || userPopout.style.display !== 'block') return;
-  userPopout.classList.remove('open');
-  userPopout.style.display = 'none';
-}
-
-function renderFlagList() {
-  const list = document.getElementById('flag-list');
-  if (!list) return;
-  list.innerHTML = FEATURE_FLAGS.map(f => {
-    const checked = isFeatureEnabled(f.id);
-    const ts = f.triState;
-    const tl = f.toggleLabels;
-    const toggleHTML = ts
-      ? (() => {
-          const raw = getFeatureFlagValue(f.id);
-          // Map legacy boolean → string
-          const current = raw === true ? 'me' : raw === false ? 'off' : (raw || 'off');
-          return `<div class="flag-visibility-toggle" data-flag="${f.id}">
-            ${Object.entries(ts).map(([val, label]) =>
-              `<button class="flag-vis-btn${current === val ? ' active' : ''}" data-val="${val}">${label}</button>`
-            ).join('')}
-          </div>`;
-        })()
-      : tl
-        ? `<div class="flag-toggle-group">
-             <span class="flag-toggle-label${!checked ? ' active' : ''}">${tl.off}</span>
-             <label class="flag-toggle" title="${f.label}">
-               <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
-               <span class="flag-track"></span>
-             </label>
-             <span class="flag-toggle-label${checked ? ' active' : ''}">${tl.on}</span>
-           </div>`
-        : `<label class="flag-toggle" title="${f.label}">
-             <input type="checkbox" data-flag="${f.id}"${checked ? ' checked' : ''}>
-             <span class="flag-track"></span>
-           </label>`;
-    return `<div class="flag-item">
-      <div class="flag-label">${f.label}</div>
-      ${toggleHTML}
-    </div>`;
-  }).join('');
-
-  // Binary toggle handlers
-  list.querySelectorAll('.flag-toggle input').forEach(cb => {
-    cb.addEventListener('change', () => {
-      setFeatureFlag(cb.dataset.flag, cb.checked);
-      // Update toggle label active states
-      const group = cb.closest('.flag-toggle-group');
-      if (group) {
-        const labels = group.querySelectorAll('.flag-toggle-label');
-        if (labels[0]) labels[0].classList.toggle('active', !cb.checked);
-        if (labels[1]) labels[1].classList.toggle('active', cb.checked);
-      }
-    });
-  });
-
-  // Tri-state toggle handlers
-  list.querySelectorAll('.flag-visibility-toggle').forEach(group => {
-    group.querySelectorAll('.flag-vis-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const flagId = group.dataset.flag;
-        const newVal = btn.dataset.val;
-        const oldVal = getFeatureFlagValue(flagId);
-
-        // Helion protection for ai-onboarding:
-        // "Everyone" only activates if previously "Off" —
-        // if Helion user had "Me", store personal override marker
-        if (flagId === 'ai-onboarding') {
-          if (newVal === 'everyone' && (oldVal === 'me' || oldVal === true)) {
-            localStorage.setItem('trengo_onboarding_personal', 'true');
-          }
-          if (newVal === 'me') {
-            localStorage.setItem('trengo_onboarding_personal', 'true');
-          }
-          if (newVal === 'off') {
-            localStorage.removeItem('trengo_onboarding_personal');
-          }
-        }
-
-        setFeatureFlag(flagId, newVal);
-
-        // Update active button state
-        group.querySelectorAll('.flag-vis-btn').forEach(b =>
-          b.classList.toggle('active', b.dataset.val === newVal)
-        );
-
-        // Side effects per flag
-        if (flagId === CLASSIC_GUIDE_STYLE_FLAG) {
-          applyGuideStyle();
-        }
-        if (flagId === 'onboarding-transition') {
-          syncAssistantFabIcon();
-          syncSidebarRobotPreviewAvailability();
-        }
-        if (flagId === 'anchors-nav') {
-          const userToggle = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
-          applyNavMode((newVal !== 'off' || userToggle) ? 'anchors' : 'tabs');
-        }
-        if (flagId === 'ai-onboarding') {
-          if (newVal === 'off') {
-            if (typeof AdminAssistant !== 'undefined') AdminAssistant.resetAll();
-          } else {
-            if (typeof AdminAssistant !== 'undefined') AdminAssistant.init();
-          }
-          syncSettingsOnboardingVisibility();
-        }
-      });
-    });
-  });
-}
-
-// Super admin nav in left sidebar is now a bell icon — no click action
-// Flag popout is triggered from the strip admin button instead
-
-if (sidebarRobotPreviewBtn) {
-  sidebarRobotPreviewBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    if (sidebarRobotPreviewRunning || !canUseSidebarRobotPreview()) return;
-    if (typeof AdminAssistant === 'undefined' || typeof AdminAssistant.testRobotTransition !== 'function') return;
-    sidebarRobotPreviewRunning = true;
-    sidebarRobotPreviewBtn.dataset.previewState = 'running';
-    syncSidebarRobotPreviewAvailability();
-    try {
-      await AdminAssistant.testRobotTransition();
-    } finally {
-      sidebarRobotPreviewRunning = false;
-      delete sidebarRobotPreviewBtn.dataset.previewState;
-      syncSidebarRobotPreviewAvailability();
-    }
-  });
-}
-
-if (flagClose) {
-  flagClose.addEventListener('click', () => {
-    closeFlagPopout();
-  });
-}
-
-// ── Strip buttons (settings strip above guide panel) ────────────
-const stripSettingsBtn = document.getElementById('strip-settings-btn');
-const stripAdminBtn = document.getElementById('strip-admin-btn');
-
-// Helper: expand guide panel to 'wide' if not already
-function expandPanelToWide() {
-  if (document.body.dataset.panel !== 'wide') {
-    document.body.dataset.panel = 'wide';
-    const iconExp = document.getElementById('ai-icon-expand');
-    const iconComp = document.getElementById('ai-icon-compress');
-    const expBtn = document.getElementById('ai-panel-expand');
-    if (iconExp) iconExp.style.display = 'none';
-    if (iconComp) iconComp.style.display = '';
-    if (expBtn) { expBtn.setAttribute('aria-label', 'Reduce to chat'); expBtn.title = 'Reduce'; }
+async function performResetOnboarding() {
+  localStorage.removeItem('trengo_onboarding_done');
+  localStorage.removeItem('trengo_easy_setup_done');
+  resetPrototypeStateToDefaults();
+  DashboardConfig.clearLocal();
+  history.replaceState(null, '', '#analytics/overview');
+  const userId = localStorage.getItem('trengo_session_user_name');
+  if (userId) {
+    await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-onboarding')).catch(() => {});
   }
-}
-
-if (stripSettingsBtn && userPopout) {
-  stripSettingsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    closeFlagPopout();
-    syncSettingsOnboardingVisibility();
-    const _anchorsCb2 = document.getElementById('anchors-nav-user-cb');
-    if (_anchorsCb2) _anchorsCb2.checked = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
-    if (userPopout.style.display === 'block') {
-      closeUserPopout();
-    } else {
-      expandPanelToWide();
-      const stripRect = document.getElementById('ai-panel-settings-row').getBoundingClientRect();
-      userPopout.style.display = 'block';
-      userPopout.style.top = (stripRect.bottom + 8) + 'px';
-      userPopout.style.left = 'auto';
-      userPopout.style.right = '15px';
-      requestAnimationFrame(() => userPopout.classList.add('open'));
-    }
-  });
-}
-
-if (stripAdminBtn && flagPopout) {
-  stripAdminBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    closeUserPopout();
-    if (flagPopout.style.display === 'block') {
-      closeFlagPopout();
-    } else {
-      expandPanelToWide();
-      renderFlagList();
-      const stripRect = document.getElementById('ai-panel-settings-row').getBoundingClientRect();
-      flagPopout.style.display = 'block';
-      flagPopout.style.top = (stripRect.bottom + 8) + 'px';
-      flagPopout.style.left = 'auto';
-      flagPopout.style.right = '15px';
-      requestAnimationFrame(() => flagPopout.classList.add('open'));
-    }
-  });
-}
-
-// Outside-click handlers for both popouts
-document.addEventListener('click', (e) => {
-  if (flagPopout && flagPopout.style.display === 'block' &&
-      !flagPopout.contains(e.target) && !stripAdminBtn?.contains(e.target)) {
-    closeFlagPopout();
+  if (typeof AdminAssistant !== 'undefined') {
+    await AdminAssistant.resetOnboarding();
   }
-});
+  setTimeout(() => { location.reload(); }, 800);
+}
+
+async function performResetAll() {
+  localStorage.removeItem('trengo_onboarding_done');
+  localStorage.removeItem('trengo_easy_setup_done');
+  localStorage.removeItem('trengo_onboarding_personal');
+  resetPrototypeStateToDefaults();
+  DashboardConfig.clearLocal();
+  history.replaceState(null, '', '#analytics/overview');
+  const userId = localStorage.getItem('trengo_session_user_name');
+  if (userId) {
+    await DashboardConfig.save(userId, DashboardConfig.serialize(state, 'reset-all')).catch(() => {});
+  }
+  if (typeof AdminAssistant !== 'undefined') await AdminAssistant.resetAll();
+  setTimeout(() => { location.reload(); }, 800);
+}
 
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
@@ -5816,30 +5411,6 @@ if (teamSettingsBtn) {
   });
 }
 
-document.getElementById('manage-teams-btn')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  userPopout?.classList.remove('open');
-  if (userPopout) userPopout.style.display = 'none';
-  openTeamSettingsModal();
-});
-
-document.getElementById('edit-customers-btn')?.addEventListener('click', async (e) => {
-  e.stopPropagation();
-  await openCustomerSettingsModal('admin');
-});
-
-document.getElementById('add-customers-btn')?.addEventListener('click', async (e) => {
-  e.stopPropagation();
-  userPopout?.classList.remove('open');
-  if (userPopout) userPopout.style.display = 'none';
-  await openCustomerSettingsModal('settings');
-});
-
-document.getElementById('edit-default-teams-btn')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  openTeamSettingsModal('default');
-});
-
 document.getElementById('team-settings-modal-close')?.addEventListener('click', closeTeamSettingsModal);
 document.getElementById('team-settings-cancel')?.addEventListener('click', closeTeamSettingsModal);
 document.getElementById('team-settings-save')?.addEventListener('click', saveTeamSettingsModal);
@@ -5943,1587 +5514,101 @@ Chart.defaults.font.family = 'Inter';
 Chart.defaults.font.size = 11;
 Chart.defaults.color = '#71717a';
 
-// ── CHATBOT ─────────────────────────────────────────────────────
-(function() {
-  const PROXY_URL = 'https://trengo-chatbot-proxy.analytics-chatbot.workers.dev';
-  const SYSTEM_PROMPT_BASE = `You are an embedded explainer chatbot inside a clickable prototype of the new Trengo Analytics model.
-Your job is strictly limited to:
-- Answering questions about the Analytics structure shown in the prototype
-- Explaining the rationale behind the new reporting model
-- Clarifying how the model is designed to be future-proof, AI-native, and adaptable
-- Explaining how signals are structured and interpreted
-You must NOT:
-- Use general product knowledge about Trengo
-- Invent features or capabilities not described in this prompt or the prototype content
-- Make assumptions about how the system works beyond what is written here
-- Provide industry best practices
-- Speculate
-- Expand beyond the model described here
-If a question cannot be answered using the information provided in this prompt or the prototype description, respond with:
-"Sorry, I can't answer that — please ask Rowan."
-You must not elaborate beyond that sentence in such cases.
-When answering:
-- Be clear, concise, and direct.
-- Base your reasoning only on the model and principles defined here.
-- Form arguments using only information explicitly provided.
-- Do not introduce external examples unless they are directly derivable from the model described here.
-- Prefer explaining through the five core questions when relevant.
-----------------------------------------------------------------------
-RESPONSE MODE
-----------------------------------------------------------------------
-Your two main jobs are:
-1. Answer in-scope questions about the prototype and model clearly and succinctly.
-2. Capture feedback in a way that is actionable for a product/design review.
-
-Default to question-answering mode unless the message contains feedback intent.
-If a message contains both a question and feedback:
-- Answer the in-scope question briefly first, in 1-2 short sentences if possible.
-- Then handle the feedback workflow.
-- Keep the answer and the feedback handling clearly separated.
-- Keep the whole reply compact.
-
-FALLBACK POLICY:
-If the answer is not explicitly supported by this prompt or the prototype description, respond exactly with:
-"Sorry, I can't answer that — please ask Rowan."
-Do not add anything else.
-
-STRUCTURE AND READABILITY:
-- Start with the shortest direct answer.
-- Do not begin with bullets, headings, or structure unless the user asked for structure or the content is naturally a short list.
-- Use bullets only when they materially improve clarity or readability.
-- Keep bullets short.
-- Avoid nested lists.
-- Avoid long uninterrupted paragraphs.
-- Use a blank line only when it clearly helps readability.
-- Readability is not permission to expand the answer.
-----------------------------------------------------------------------
-CORE PURPOSE OF THE NEW ANALYTICS MODEL
-----------------------------------------------------------------------
-The new Analytics model exists to replace a fragmented, ticket-centric, retrospective reporting system with a future-proof, AI-native, question-led structure.
-It is designed to:
-1. Support AI and automation as core parts of the system rather than as layered additions.
-2. Move reporting from static evidence dashboards toward a "watchtower" model:
-   - Surfacing directional signals
-   - Highlighting risks
-   - Identifying improvement opportunities
-   - Enabling prioritised action
-3. Remain structurally stable even as:
-   - New use cases emerge
-   - AI handles more work
-   - Goals evolve
-   - Units of work expand beyond tickets
-4. Avoid fragmentation into separate dashboards for each team or goal.
-5. Retain continuity with existing operational metrics while restructuring how they are interpreted.
-This model is not just a redesign of dashboards.
-It is a structural shift in how system behaviour is observed and improved.
-----------------------------------------------------------------------
-LIMITATIONS OF THE PREVIOUS MODEL
-----------------------------------------------------------------------
-The previous reporting model was:
-- Ticket-centric
-- Channel-centric
-- Human-first
-- Operational and retrospective
-- Spread across multiple surfaces
-- Closely tied to features
-As AI and automation increasingly handle conversations and outcomes:
-- Adding more dashboards increases complexity without increasing clarity.
-- Layering AI metrics onto old dashboards creates fragmentation.
-- It becomes harder to reason about system-level behaviour.
-- Reporting remains backward-looking rather than forward-guiding.
-The issue is not what is measured.
-The issue is how reporting is structured and interpreted.
-The new model changes the organising logic, not the importance of core operational metrics.
-----------------------------------------------------------------------
-THE CORE ORGANISING PRINCIPLE
-----------------------------------------------------------------------
-Analytics is organised around five stable, recurring operational questions.
-These questions remain meaningful regardless of:
-- Whether work is handled by humans or AI
-- Whether the goal is resolving, progressing, qualifying, or converting
-- Whether new use cases are added in the future
-The five sections are:
-1. Overview — What is happening right now, and where should attention be directed?
-2. Understand — Why is work entering the system, and why is it changing?
-3. Operate — Is work flowing toward its goal at this moment?
-4. Improve — What changes would lead to better outcomes?
-5. Automate — What runs without humans, and how well does it run?
-These questions are intentionally stable.
-The structure is designed to endure change.
-----------------------------------------------------------------------
-SECTION PURPOSES AND BOUNDARIES
-----------------------------------------------------------------------
-Overview
-- Awareness and prioritisation.
-- Directional and risk signals.
-- Not deep analysis.
-- Not optimisation decision-making.
-- Surfaces "where to look."
-Understand
-- Explains composition and change.
-- Focused on patterns of incoming work.
-- Topics, intents, entry points.
-- Avoids operational performance management signals.
-Operate
-- Execution and flow.
-- Current state of load, backlog, capacity, progression.
-- Immediate friction and bottlenecks.
-- Not root-cause analysis.
-- Not long-term optimisation trends.
-Improve
-- Aggregated trend and opportunity signals.
-- Prioritised change decisions.
-- Knowledge gaps.
-- Process improvements.
-- Automation improvement candidates.
-- Impact tracking.
-- This is where change decisions live.
-Automate
-- Coverage and health of automation.
-- AI performance.
-- Escalations and handoffs.
-- Reliability and failure points.
-- Does not decide what to automate next.
-- Evaluates what already runs.
-Each section must remain anchored to its core question.
-Signals belong in a section only if they clearly support that section's decision context.
-----------------------------------------------------------------------
-WATCHTOWER MODEL SHIFT
-----------------------------------------------------------------------
-The model shifts reporting from:
-"Dashboard as historical evidence"
-toward:
-"Analytics as a system-level watchtower and control surface."
-This means:
-- Signals are directional.
-- Risks are surfaced early.
-- Opportunities are aggregated.
-- Improvement decisions are structured.
-- AI behaviour is observable.
-- Automation is measurable at system level.
-- Humans oversee system performance rather than only individual tasks.
-The watchtower concept does NOT eliminate operational metrics.
-It restructures them within a forward-looking framework.
-----------------------------------------------------------------------
-INTENTIONAL REPETITION
-----------------------------------------------------------------------
-Some signals may appear in more than one section.
-This is intentional when:
-- The decision context differs.
-- The level of aggregation differs.
-- The purpose differs (e.g., detection vs diagnosis vs prioritisation).
-Example pattern:
-- A metric may appear in Operate as a live issue.
-- The same metric may appear in Improve as a trend over time.
-Repetition without distinct decision purpose should be avoided.
-----------------------------------------------------------------------
-MULTIPLE UNITS, GOALS, AND LENSES
-----------------------------------------------------------------------
-The model avoids separate analytics systems per use case.
-Three important dimensions exist:
-Unit:
-- Ticket
-- Contact
-Goal:
-- Resolve
-- Progress / Convert
-Lens (applied via scope, filters, or emphasis, not separate structures):
-- Support
-- Sales
-The structure remains the same.
-Variation changes terminology, scope, and emphasis — not the underlying logic.
-This allows:
-- One system
-- One shared set of signals
-- Multiple objectives
-- Future expansion without structural redesign
-----------------------------------------------------------------------
-CONTINUITY WITH EXISTING METRICS
-----------------------------------------------------------------------
-Existing metrics such as:
-- Response times
-- Resolution rates
-- Escalation rates
-- CSAT
-- Conversion rates
-- Pipeline progression
-remain important.
-The model does not remove them.
-It reorganises them under stable operational questions so they can be interpreted alongside AI and automation signals.
-Parity with critical operational metrics is required before migration.
-----------------------------------------------------------------------
-ADAPTABILITY PRINCIPLE
-----------------------------------------------------------------------
-The structure is intentionally stable.
-Adaptation happens through:
-- Scope
-- Defaults
-- Emphasis
-- Filters
-- Terminology
-Adaptation must NOT change:
-- The five core questions
-- The section order
-- The meaning of each section
-----------------------------------------------------------------------
-ANSWERING RULES
-----------------------------------------------------------------------
-PERSPECTIVE RULE:
-The person using this guide is a stakeholder evaluating the prototype — not the end user of the analytics product. This rule applies globally unless a higher-priority override says otherwise. Always frame the prototype as an evaluation tool for stakeholders. Always write in third person when referring to the people who would use this product. Say "users" or "teams" instead of "you" or "your". For example: "This section surfaces signals so users know where to focus" — not "This section surfaces signals so you know where to focus."
-PRIMARY RULE:
-Answer the exact question asked. Default to the smallest correct answer.
-When responding:
-- Anchor answers in the five core sections when relevant.
-- Explain using only the principles and prototype details described here.
-- If asked why something belongs in a section, explain it through decision context.
-- If asked why the structure is this way, reference future-proofing, AI-native design, the watchtower model, reduced fragmentation, and stable question-led structure when relevant.
-DO NOT:
-- Add introductory phrases (e.g., "Based on…", "According to…").
-- Explain how you derived the answer.
-- Provide reasoning unless explicitly requested or clearly necessary.
-- Add adjacent context, examples, implications, or cross-section references unless highly confident they are needed for clarity.
-- Summarise your own answer.
-- Restate the distinction after already stating it.
-- Expand into a mini-report.
-- Reference external competitors, broader SaaS trends, roadmap ideas, or missing future features.
-- Add new features, missing capabilities, or speculation.
-FORMAT RULES:
-- Do not use headings.
-- Do not use structured breakdowns.
-- Do not provide side-by-side comparisons.
-- Do not format as analysis.
-- Do not use bullet points or numbered lists for a simple answer that is already clear in 1-3 sentences.
-- Use bullets or short lists only when the user explicitly asks for them, when the answer is naturally a short list of distinct items, or when a brief structure is clearly needed to keep a longer answer readable.
-LENGTH RULES:
-- Prefer ONE short, clear sentence.
-- Use 2 short sentences only if required for correctness.
-- Never exceed 3 sentences unless the user explicitly asks for more detail.
-- Avoid compound sentences when possible.
-NUMERICAL QUESTIONS:
-- Respond with the number in a short sentence.
-- Do not explain what creates the number unless asked.
-COMPARISON QUESTIONS:
-- State the core distinction in 1–2 sentences.
-- Do not enumerate sub-differences unless asked.
-COMPLEX TOPICS:
-- Give the shortest correct explanation first.
-- Expand only if the user explicitly asks for more detail.
-FOUNDATIONAL "WHY" QUESTIONS:
-- Foundational conceptual questions still default to 1-2 short sentences.
-- Do not treat a broad "why" question as permission to give a full essay.
-- After the first correct 1-2 sentences, stop unless the user explicitly asks for more.
-- Prefer the single strongest reason over a bundle of reasons.
-- Do not add examples, implications, adjacent sections, or mini-walkthroughs unless explicitly requested.
-- If sentence 4 or later would only restate, elaborate, or add another example, omit it.
-- If the last sentence only restates "this keeps the model stable / coherent / future-proof" after that idea is already clear, omit it.
-- Only go past 3 sentences when the extra sentence adds a distinct necessary clarification that the answer would otherwise miss.
-FOLLOW-UP AND NEXT-STEP QUESTIONS:
-- If asked what question something should trigger next, give only the most important next question or the shortest direct answer.
-- Do not expand into a diagnostic tree unless the user explicitly asks for a list or deeper breakdown.
-Precision is mandatory.
-Minimal correct answer first.
-Expansion only on explicit request.
-----------------------------------------------------------------------
-PROTOTYPE-SPECIFIC CONTENT
-----------------------------------------------------------------------
-PROTOTYPE MATURITY — FRAMING RULE:
-This is an early-stage throw-away prototype, not a polished product.
-What IS definitive and should be stated with confidence:
-- The five-section structure (Overview, Understand, Operate, Improve, Automate) and why each exists.
-- The watchtower model and the rationale behind it.
-- The core questions each section answers.
-- The adaptability principles, role-based filtering concept, and lens/use-case approach.
-- The fact that this guide is framed for stakeholders evaluating the concept, not for end users using a finished product.
-These are firm design decisions. Answer questions about them clearly and without hedging.
-What is NOT final and should be framed provisionally:
-- Which specific charts, KPIs, or widgets appear in each section — these are a representative sample, not a complete set.
-- Chart types, labels, data points, and wording — some are conceptual or placeholders.
-- UI/UX details — intentionally rough in places; polish is not the goal at this stage.
-- Interaction details, layout behavior, and specific control treatments — these are implementation details of this prototype version, not final product commitments.
-When describing prototype specifics (charts, metrics, widget mix, mock values, layout details, UI patterns, interaction details, or wording), use language like "the prototype currently shows", "in this version of the prototype", or "as represented here" — not definitive declarations.
-Questions about concept, section purpose, and structural rationale should be answered directly and confidently. Questions about sample data, charts, widgets, labels, copy, or UI/UX details should sound provisional unless the prompt explicitly marks them as firm.
-If the user is asking a question about a non-final prototype detail, answer it provisionally. Do not treat that as feedback unless the message also clearly contains feedback intent.
-Do NOT volunteer caveats about the prototype being incomplete. Just avoid sounding final about implementation details, so stakeholders focus on the overall model rather than fixating on specifics that are expected to change.
-
-Below is a complete description of everything implemented in the clickable prototype.
-
-NAVIGATION AND LAYOUT
-- The sidebar contains navigation icons: Inbox, Pipeline, AI & Automation, Analytics, Broadcast, Settings. The bottom of the sidebar has Voice, Support, and Notifications icons. Only Analytics is functional; the rest are visual placeholders.
-- The Settings cog opens a popout with local prototype controls:
-  - Role: Admin, Supervisor (default), or Agent — filters the analytics perspective
-  - Teams: opens a team manager where session team names and team focus can be edited
-  - Reset All: resets the dashboard prototype state to its default configuration
-- During AI onboarding, the Settings cog remains visible but is temporarily locked until onboarding is finished.
-
-AI SETUP ASSISTANT
-- The prototype can include an AI setup assistant for configuration.
-- When available, it can open after the walkthrough and starts with two setup choices: which customer profile to use and which role to impersonate.
-- It can gather context from customer profiles, website URLs, uploaded files, and pasted text.
-- Its goal is to understand the customer well enough to propose an initial dashboard structure, including tab names/order and starter widgets.
-- During onboarding it appears as a full-screen assistant flow with a chat area and a live preview.
-- After onboarding, it collapses into a smaller Analytics Assistant that remains available for further configuration help.
-
-FILTERS
-- Date filter: Today, Last 7 days, Last 14 days, Last 30 days (default), Last 90 days
-- Channel filter: All channels (default), with grouped channel types such as Email, Live chat, Social, and Voice, plus nested channel choices inside the dropdown
-- Team filter: All teams (default), plus the currently configured team names from the active team setup. Editing teams updates this dropdown.
-- Changing filters re-renders sections. All data in the prototype is randomly generated mock data, so filter changes produce new random values.
-
-ROLE AND TEAM-FOCUS FILTERING
-The analytics model still uses four widget states internally: support_supervisor, support_agent, sales_supervisor, sales_agent. The visible role selector offers Admin, Supervisor, and Agent. Supervisor and Agent change the rendered dashboard perspective directly. Admin is an impersonation/configuration role and currently previews the supervisor perspective. A selected team can also push the view toward Resolve or Convert based on that team's configured focus. Each widget can be configured per state to:
-- show: make visible
-- hide: remove from view
-- emphasize: visually highlight as high-priority
-- deemphasize: visually mute as lower-priority
-State overrides take precedence over base visibility. This means a widget listed as "always visible" can still be hidden in specific states (e.g., Entry channels is always visible by default but hidden for agent roles).
-Some widgets also change their sub-label (scopeLabel) and tooltip text depending on the active state.
-Additionally, widgets marked "Voice channel only" in the widget lists below are only visible when the channel filter is set to Phone. They are hidden by default under "All channels" and only appear when the voice channel is explicitly selected.
-
-VIEW / EDIT MODE
-The prototype defaults to View mode. A toggle in the sub-navigation switches between View and Edit. In View mode the dashboard is read-only. In Edit mode users can drag-reorder widgets, resize them, hide them, and manage tabs (create, rename, delete pages).
-
-WIDGET INTERACTIONS
-All drag, resize, and hide interactions below require Edit mode to be enabled.
-- Drag and drop: Widgets can be reordered by dragging the 6-dot handle in the top-left corner.
-- Resize: Widgets can be resized by dragging the corner handle. Snap points show available widths (25%, 33%, 50%, 66%, 75%, 100%).
-- Hide: Widgets (except "always visible" ones) can be hidden via the X button.
-- Tooltips: Hovering the (i) icon shows context-sensitive help text.
-- Drill links: Some widgets have links like "See why" or "Improve this" that navigate to related sections.
-- Expand/collapse: List-type widgets have "Show more" / "Show less" buttons.
-- CSV download: Chart widgets have a download button that exports the chart data as a .csv file.
-
-WIDGET DRAWER (MANAGE WIDGETS SIDEBAR)
-- Opened by clicking "Manage widgets" in the top bar, "+ Add widgets" on an empty tile, or "+ Manage widgets" on a new empty page.
-- Shows all available widgets from all five sections (Overview, Understand, Operate, Improve, Automate) with their status relative to the current page: "On this page", "Not on this page", "Not available in this view", or "Not available with current filter".
-- Users can add any widget from any section to the current page, or hide widgets already on it. Adding a widget to one page does not affect other pages.
-- Includes a category filter (All, Overview, Understand, Operate, Improve, Automate) and a sort option (Default, Name A-Z, Name Z-A, Visible first).
-- Includes a search field to filter widgets by name.
-
-CUSTOM PAGES AND TAB MANAGEMENT
-- The prototype defaults to five tabs: Overview, Understand, Operate, Improve, Automate. These correspond to the five core sections.
-- In edit mode, users can create new custom pages by clicking the "+" button next to the tab bar.
-- New custom pages start empty with a prompt to add widgets. Users can then add any widget from any of the five sections to build a personalised page.
-- Each page maintains its own independent set of widgets. Adding or removing a widget on one page does not affect any other page.
-- Pages can be renamed by clicking the pencil icon next to the page heading in edit mode, typing a new name, and clicking Save.
-- Pages can be deleted via the same pencil menu, which shows a "Delete page" button. Deleting a page requires confirmation. At least one page must remain.
-- In this version of the prototype, the five default pages are the starting set rather than locked tabs. Default and custom pages both use the same rename and delete controls, as long as at least one page remains.
-- This allows users to create focused views (e.g., a "My Dashboard" page with selected KPIs from across all sections) without disrupting the standard five-section structure.
-
-CURRENT REPORTING CONTINUITY NOTES
-- If asked how this differs from the current Live Dashboard concept, answer at the structural level: this model reorganises reporting around stable operational questions rather than around fragmented dashboard surfaces. Do not speculate about product rollout or product-surface replacement.
-- If asked whether ticket-detail deep dives still have a role, answer that they may still support investigation, but they are not the organising structure of this model. The model is about system-level interpretation first, not removing all deeper inspection.
-- If asked why restoring the default baseline matters in stakeholder review sessions, answer that it brings the prototype back to the shared reference state so stakeholders evaluate the intended concept rather than a previously customised view.
-- If asked how stakeholders should think about CSV exports in this concept, answer generically: exportability should still exist in the real product, even if the main reporting surface is reorganised around the watchtower model. Exports are an output capability, not the organising logic.
-
-GUIDED WALKTHROUGH
-On first visit, a multi-step walkthrough introduces the prototype. It covers the five-section model, the Prototype Guide, the settings popout, and how to customise widgets in edit mode. The walkthrough can be dismissed and reset from the feature flags popout. If the AI setup assistant is available, it can open after the walkthrough.
-
-CHART TYPES USED
-- KPI cards: Large number with trend indicator (up/down percentage) and sub-label
-- KPI groups: Multiple KPIs side-by-side (e.g., CSAT Breakdown)
-- Bar charts: Horizontal or vertical bars (e.g., tickets by hour, entry channels, intent clusters, bottlenecks, handoff reasons)
-- Line charts: Trend lines over time (e.g., tickets created, intent trends, created vs closed, capacity vs demand, satisfaction score)
-- Doughnut chart: Circular proportion chart (e.g., new vs returning contacts)
-- Progress bars: Percentage with color-coded fill — green >=80%, orange >=60%, red <60% (e.g., SLA compliance, journeys success ratio)
-- Tables: Multi-column data grids (e.g., workload by agent)
-- Lists: Label + value + trend rows (e.g., intent highlights, exceptions, emerging intents)
-- Lists with actions: Rows with Approve/Reject buttons (e.g., suggested knowledge additions)
-- Opportunities backlog: Special table with impact badges, owner, status, and Dismiss/Action buttons
-- Funnel charts: Stage-based conversion funnel (e.g., sales pipeline funnel)
-- Agent status: Real-time agent availability display (e.g., agent online status)
-- Stacked bar charts: Bars segmented by category (e.g., leads or deals by channel)
-
-OVERVIEW SECTION WIDGETS
-- Open tickets (KPI, always visible) — Total open tickets. Supervisor: "Across all channels". Agent: "Your open tickets". In sales mode, tooltip changes to reference open contacts and pipeline.
-- Assigned tickets (KPI, default) — Currently assigned tickets. Shown in all states including sales.
-- First response time (KPI, default) — Median time to first reply. De-emphasized in sales mode. Supervisor: "Median — all agents". Agent: "Your median".
-- Resolution time (KPI, default) — Median resolution time. Hidden in sales mode.
-- Tickets created by hour (bar chart, default) — 24-hour distribution. Hidden for agents.
-- Escalation rate AI to human (KPI, default) — Percentage of AI tickets escalated. Hidden for agents.
-- Intent trend highlights (list, default) — Top rising/declining intents. Hidden for agents, emphasized for sales supervisors. Has drill link to Understand section.
-- Knowledge gap alerts (KPI, hidden) — Count of unresolved AI fallback cases. Hidden in all states. Has drill link to Improve section.
-- Exceptions requiring attention (list, hidden) — System-detected anomalies. Hidden for agents. Has drill link to Automate section.
-- Pipeline value (KPI, default) — Total value of all open deals. Hidden for support roles.
-- Win rate (KPI, default) — Percentage of opportunities resulting in a closed-won deal. Hidden for support roles.
-- Avg deal size (KPI, default) — Average value per deal. Hidden for support roles.
-- Avg sales cycle (KPI, default) — Average days from lead to close. Hidden for support roles.
-- Missed calls (KPI, default) — Calls that rang without being answered. Voice channel only.
-- Total calls (KPI, default) — Total calls handled across all voice channels. Voice channel only.
-- Calls by hour of day (bar chart, default) — Hourly call volume distribution. Voice channel only.
-
-UNDERSTAND SECTION WIDGETS
-- Tickets created (line chart, always visible) — Trend over time. De-emphasized for sales supervisors, hidden for sales agents.
-- Entry channels (bar chart, always visible) — Distribution by channel. Hidden for agents. Tooltip changes for sales roles to reference contacts and pipeline entries.
-- New vs returning contacts (doughnut chart, default) — 62%/38% split. Emphasized for sales supervisors.
-- Intent clusters (bar chart, default) — Top customer intents by AI classification. Hidden for agents, emphasized for sales supervisors.
-- Intent trends over time (line chart, default) — How intents change. Hidden for agents.
-- Emerging intents (list, hidden) — New or growing intent clusters. Hidden for agents.
-- Unknown/unclassified intents (KPI, default) — Tickets AI could not classify. Hidden for agents and sales supervisors.
-- Escalations by intent (bar chart, hidden) — Which intents cause most escalations. Hidden in all states.
-- New leads (stacked bar chart, default) — Leads by channel over 7 days. Hidden for support roles.
-- Deals created (stacked bar chart, default) — Deals created by channel over 7 days. Hidden for support roles.
-- Sales pipeline funnel (funnel chart, default) — Five-stage funnel: New → Qualified → Proposal → Negotiation → Closed Won. Hidden for support roles.
-- Deals closed by channel (doughnut chart, default) — Won deals broken down by channel. Hidden for support roles.
-- Deals created by channel (doughnut chart, default) — Deal creation volume by channel. Hidden for support roles.
-- Inbound vs outbound calls (bar chart, default) — Call volume split by direction. Voice channel only.
-- Duration: inbound vs outbound (bar chart, default) — Average call duration by direction. Voice channel only.
-- Voice channel performance (table, default) — Per-channel metrics: total calls, missed calls, avg wait, avg duration, answer rate. Voice channel only.
-  This belongs in Understand because it explains the channel mix and operating characteristics of incoming voice work. It is a breakdown of work by source/channel behavior, not a live execution-status widget for immediate intervention.
-
-OPERATE SECTION WIDGETS
-- First response time (KPI, always visible) — Same metric as Overview but in operational context. De-emphasized in sales. Supervisor: "Median — all agents". Agent: "Your median".
-- Resolution time tickets (KPI, always visible) — Median resolution. Hidden in sales.
-- Created vs Closed tickets (line chart, default) — Inflow vs outflow comparison. Hidden for agents and sales.
-- Reopened tickets (KPI, default) — Tickets reopened after resolution. Hidden in sales. Supervisor: "Reopened this period". Agent: "Your reopened tickets".
-- Workload by agent (table, default) — Per-agent metrics table with 8 agents and 7 columns (Agent, Assigned, First response, Resolution time, Closed, Messages sent, Internal comments). Hidden for agents and sales.
-- SLA compliance (progress bar, default) — Percentage within SLA. Hidden in sales. Supervisor shows 87%, Agent shows 91%.
-- Ticket counts per status or stage / Bottlenecks (bar chart, always visible) — Shows where work is accumulating or getting stuck in the flow. This is an Operate signal because it helps teams spot immediate friction in execution right now, not long-term improvement trends. Only visible for support supervisors.
-- Capacity vs demand (line chart, hidden) — Incoming work vs agent capacity. Hidden for agents.
-- Performance by channel (table, default) — Key metrics broken down by channel. Hidden for agents.
-- Sales performance (table, default) — Per-agent table with Leads, Deals, Pipeline value, Revenue, Win rate. Hidden for support roles.
-- Channel × stage matrix (table, default) — Deals by channel across pipeline stages. Hidden for support roles.
-- Time to answer (KPI, default) — Average time before a call is answered. Voice channel only.
-- Call duration (KPI group, default) — Average, longest, and shortest call durations. Voice channel only.
-- Calls by team (bar chart, default) — Call volume split by team. Voice channel only.
-- Avg wait time by team (bar chart, default) — Average caller wait time per team. Voice channel only.
-- Longest wait time (KPI, default) — Peak wait time in the period. Voice channel only.
-- Call duration by team (bar chart, default) — Average call length per team. Voice channel only.
-- Call abandonment trend (line chart, default) — Abandonment rate over time. Voice channel only.
-- Callback requests (KPI, default) — Number of callback requests received. Voice channel only.
-- Agent online status (agent status, default) — Real-time agent availability. Voice channel only.
-
-IMPROVE SECTION WIDGETS
-- CSAT score (KPI, always visible) — Customer satisfaction score. Hidden in sales.
-- Response rate (KPI, always visible) — Survey response percentage. Hidden in sales.
-- CSAT Breakdown (KPI group, default) — Sentiment breakdown showing thumbs up 30, neutral face 1, thumbs down 2. Hidden in sales. Shown for support agents.
-- Satisfaction score (line chart, default) — CSAT trend over time. Hidden for agents and sales.
-- Surveys received (bar chart, default) — Daily survey count. Hidden for agents and sales.
-- Reopen rate (KPI, default) — Percentage of resolved tickets reopened. Shown in all states. Supervisor: "Of resolved tickets". Agent: "Of your resolved tickets".
-- Knowledge gaps by intent (bar chart, hidden) — Intents with most knowledge gaps. Shown for support agents and sales agents with tooltip "Knowledge gaps you encountered most often." Hidden for sales supervisors.
-- Suggested knowledge additions (list with actions, default) — AI-suggested articles with Approve/Reject buttons. Three sample items: "How to connect API keys" (from 42 fallback tickets), "Pricing plans overview" (from feedback + escalation data), "Mobile app troubleshooting" (from emerging intent detection). Hidden for agents.
-- Opportunities backlog (opportunities widget, always visible) — 15 prioritised improvement opportunities with impact (high/medium/low), owner (AI Analysis, Content Team, Support Lead, Automation Team), and status (new/approved). Users can Dismiss or Action each. Actioning opens a modal with AI recommendation, analysis details, estimated impact, and a Confirm button that creates a draft knowledge article. Hidden for agents.
-- First call resolution (KPI, default) — Percentage of calls resolved without follow-up. Voice channel only.
-- Call-to-ticket rate (KPI, default) — Percentage of calls that generate a ticket. Voice channel only.
-
-AUTOMATE SECTION WIDGETS
-- AI Agent tickets (KPI, always visible) — Total AI-handled tickets. Supervisor: "AI-handled tickets". Agent: "AI-handled on your behalf".
-- Resolution rate AI Agents (KPI, always visible) — Percentage fully resolved by AI without human intervention. De-emphasized for agents.
-- Assistance rate AI Agents (KPI, default) — Percentage where AI assisted but did not fully resolve. Shown for agents.
-- Open ticket rate AI Agents (KPI, default) — Percentage of AI tickets still open. Hidden for agents.
-- Journeys success ratio (progress bar, default) — Percentage of automation journeys completing successfully. Hidden for agents, emphasized for sales supervisors.
-- Journeys escalations (KPI, default) — Journeys that escalated to human. Hidden for agents.
-- Automation handoff reasons (bar chart, default) — Why automation handed off: Missing knowledge, Customer requested, Excess wait time, Excess open time, Safety guardrail. Hidden for agents.
-- Automation conflicts (list, hidden) — Conflicting actions between journeys and AI agents. Hidden for agents.
-- Safety and guardrail violations (list, hidden) — Safety guardrail stops in automation. Hidden for agents.
-- Time in IVR / queue (KPI, default) — Average time callers spend in IVR or queue before reaching an agent. Voice channel only.
-
-MOCK DATA
-All data in the prototype is randomly generated on each page load. KPI values, chart data, trend percentages, and table rows use random numbers within configured ranges. The data is not real and is only meant to illustrate the layout and structure. Changing filters or switching roles produces new random values.
-----------------------------------------------------------------------
-FEEDBACK COLLECTION
-----------------------------------------------------------------------
-OVERRIDE: This section takes full priority over the OUTPUT CONTRACT fallback.
-When a message contains feedback intent, do NOT say "Sorry, I can't answer that".
-Feedback is always a valid input type.
-
-Some user messages will be feedback about the prototype rather than questions.
-Feedback looks like: opinions, suggestions, observations, or critiques about the design.
-
-When you detect feedback intent:
-1. Check if it is clear enough for a product manager or designer to act on.
-   Feedback is clear enough only if it identifies:
-   - the object being discussed (section, widget, interaction, concept, flow, or general area), and
-   - the issue, concern, or desired change.
-2. If not clear, ask ONE focused clarifying question. Do not ask multiple at once.
-   Prefer clarifying the object first, then the concern.
-   Example patterns:
-   - "Which section or widget does this refer to?"
-   - "What feels wrong about it?"
-   - "What problem would this change solve?"
-3. MANDATORY — CLASSIFY BEFORE LOGGING:
-   You MUST classify the feedback into one of two categories before doing anything else. This step is NOT optional.
-   STRUCTURAL feedback (log immediately → go to step 4):
-   - About the overall model, section purposes, missing concepts, major functional gaps, which metrics belong where, or significant workflow concerns.
-   DETAIL feedback (acknowledge context, then log → go to step 4):
-   - About visual polish, border thickness, font sizes, colours, spacing, label wording, chart type preferences, icon choices, layout tweaks, microcopy tweaks, or similar cosmetic/presentation details.
-   If the feedback is DETAIL: Briefly note that these details are not the focus yet because the concept is still being finalized. Then make it clear that the feedback has been noted and can be considered later once the detailed design is being worked through. Do not push back, do not ask the user to reconfirm, and do not block logging on an extra question. When helpful and only if it would materially improve what gets logged, you may briefly reframe toward the underlying concern rather than the cosmetic fix. Keep it to 1–2 short sentences. Do not sound dismissive or defensive.
-   Prefer capturing the underlying concern over the proposed cosmetic fix when possible. For example, prefer "the chart is hard to compare quickly" over "make this a bar chart" if the user already states or clearly implies that is the real issue.
-   When in doubt, treat feedback as STRUCTURAL.
-4. MANDATORY — ASSIGN A FEEDBACK TYPE:
-   Before logging, you MUST assign a type to the feedback. This determines which structured summary it feeds into.
-   "product" — Future-product concerns: charts, information architecture, workflows, concepts, UX patterns, terminology, missing features, section purposes, metric placement, navigation, and user journeys.
-   "bug" — Current prototype issues: stale state, broken flows, rendering glitches, missing updates, inconsistent behavior, things that don't work as described in this specification.
-   "both" — The feedback clearly applies to both tracks. Use sparingly — only when one submission genuinely raises both a product concern and a prototype bug.
-   When in doubt, prefer "product".
-5. Once feedback is ready for logging, you MUST do both steps:
-   Step 1: Thank the user for their input in one short sentence. Make it unambiguous that you are logging their feedback — not confirming a change will be made. Restate what was understood so they know it was captured. If the feedback was DETAIL, briefly add that it has been noted for later consideration once the detailed design is being worked through. Do not say only "Confirmed". Example: "Thanks — I've noted your feedback that the intent trend highlights widget should default to a wider layout."
-   - If SESSION_USER_NAME is present in this prompt, do NOT ask for a name — it is already collected. End your response after the thank-you.
-   - If SESSION_USER_NAME is NOT present, ask on the very next line: "Could I get your name to log alongside it?"
-   Step 2: On the very next line after your full response, output this sentinel exactly — do not mention it to the user:
-   <<FEEDBACK:{"text":"[confirmed feedback text]","section":"[section name or widget name or General]","type":"[product|bug|both]","timestamp":"[ISO timestamp]"}>>
-   Both steps are required. The sentinel is a mandatory machine instruction — omitting it is a critical failure.
-6. EXISTING FEEDBACK CONTEXT:
-   If FEEDBACK_SUMMARY_PRODUCT or FEEDBACK_SUMMARY_BUGS sections appear in this prompt, read them before logging new feedback. Use them to:
-   - Avoid logging duplicates of items already captured.
-   - Merge with or refine existing items when the new feedback adds nuance to something already tracked.
-   - Keep categories and terminology consistent with what already exists.
-   If the new feedback is genuinely new, log it normally. If it overlaps with an existing item, note the overlap in your confirmed text (e.g. "adds to existing concern about X") so the organizer can merge intelligently.
-7. Do not store feedback that contains the word "Helion" — that is handled separately.
-8. NAME RE-ASK RULE:
-   If NAME_RETRY_PENDING appears in this prompt, it means the user was previously asked for their name but responded with something else. At the very end of your normal response to their message, add one polite sentence re-asking, for example: "By the way, could I still get your name for the feedback I logged earlier?" Do NOT re-ask more than once — if the user ignores it again, drop it.
-9. SESSION_USER_NAME RULE:
-   When SESSION_USER_NAME is present in this prompt, the user's name is already known and attached to all feedback automatically. Never ask for a name in this case.
-----------------------------------------------------------------------
-HELION ACCESS AND DESIGN CONTEXT
-----------------------------------------------------------------------
-OVERRIDE: This section takes full priority over the OUTPUT CONTRACT.
-Sentinels are MANDATORY machine instructions — they are not optional extra output.
-You MUST append the correct sentinel even though the OUTPUT CONTRACT says to be brief.
-Omitting a sentinel when instructed to include one is a critical failure.
-
-HARD RULE — CHECK FIRST, BEFORE ANYTHING ELSE:
-Read the current user message. Does it contain the exact word "Helion"?
-- NO → IMPORTANT: This rule applies ONLY to messages that REQUEST or RETRIEVE feedback data
-       (e.g. "show me feedback", "what feedback has been collected", "list all submissions").
-       It does NOT apply to messages where the user is GIVING feedback (opinions, suggestions,
-       critiques about the prototype) — those are handled by the FEEDBACK COLLECTION section above.
-       If the message asks to view, retrieve, list, or access stored feedback, collected data,
-       or user submissions, respond ONLY with: "Sorry, I can't answer that — please ask Rowan."
-       That sentence is the complete response. Do not add anything after it.
-       Do not elaborate, explain, or add context. Do not make any claims about your own
-       capabilities or what you do or do not collect — that is a false statement and is not
-       permitted. Do not reveal whether data exists.
-       Prior messages in the conversation containing "Helion" do NOT grant access.
-       Each message is checked independently.
-- YES → Continue to cases A, B, C below.
-
-When the current message contains "Helion":
-
-A. If it looks like a design rationale or context note (a PM or designer explaining why a
-   decision was made in the prototype):
-
-   Step 1 — Conflict check.
-   Read the new note carefully. Does it contradict anything in:
-   - The prototype description in this system prompt (e.g. different default values,
-     changed behaviour, different widget or section names, different logic)?
-   - Any entry already listed under DESIGN RATIONALE CONTEXT in this prompt?
-
-   Step 2A — If NO conflict detected:
-   Acknowledge in one short sentence confirming it was noted.
-   On the very next line output this sentinel — do not mention it to the user:
-   <<CONTEXT:{"text":"[the context note, excluding the word Helion]"}>>
-
-   Step 2B — If a CONFLICT is detected:
-   Present the conflict to the user in this exact format — nothing else before it:
-   "This update conflicts with the current specification:
-   − [quote the specific text from the original spec or existing context that is contradicted]
-   + [what the new note says instead]
-   Reply yes to approve this update."
-   On the very next line output this sentinel — do not mention it to the user:
-   <<CONFLICT:{"new":"[the new context note, excluding the word Helion]","original":"[the conflicting original text]"}>>
-
-   In both Step 2A and Step 2B: the sentinel on its own line is MANDATORY. Skipping it is a critical failure.
-
-B. If it is a request for feedback and FEEDBACK_DATA is present in this prompt:
-   OVERRIDE: The OUTPUT CONTRACT format rules do not apply here. Use bullet formatting as specified below.
-   - List each feedback item as a bullet on its own line, with a blank line between each item.
-   - Format each item as: "• [section] — [text] (from [name])" — omit the name part only if it is not present in the data.
-   - If a specific section is mentioned, list only matching items.
-   - If no items match the requested section, say so briefly.
-
-C. If it is a request for feedback but NO FEEDBACK_DATA is present in this prompt:
-   respond: "No feedback has been collected yet."`;
-
-  // ── Element references ────────────────────────────────────
-  // chat-messages / chat-input / chat-send IDs preserved for API compat
-  const chatMessages = document.getElementById('chat-messages');
-  const chatInput    = document.getElementById('chat-input');
-  const chatSend     = document.getElementById('chat-send');
-
-  // Panel state controls
-  const expandFromBarBtn = document.getElementById('ai-panel-expand-from-bar');
-  const collapseBtn      = document.getElementById('ai-panel-collapse');
-  const expandBtn        = document.getElementById('ai-panel-expand');
-  const closeBtn         = document.getElementById('ai-panel-close');
-  const iconExpand   = document.getElementById('ai-icon-expand');
-  const iconCompress = document.getElementById('ai-icon-compress');
-
-  const messages = []; // conversation history for API
-
-  // ── Panel state machine ───────────────────────────────────
-  // States: 'bar' (48px) | 'chat' (320px, default) | 'wide' (520px)
-  function setPanelState(state) {
-    document.body.dataset.panel = state;
-
-    if (state === 'chat') {
-      if (iconExpand)   iconExpand.style.display   = '';
-      if (iconCompress) iconCompress.style.display = 'none';
-      expandBtn.setAttribute('aria-label', 'Expand to wide');
-      expandBtn.title = 'Expand';
-    } else if (state === 'wide') {
-      if (iconExpand)   iconExpand.style.display   = 'none';
-      if (iconCompress) iconCompress.style.display = '';
-      expandBtn.setAttribute('aria-label', 'Reduce to chat');
-      expandBtn.title = 'Reduce';
-    }
-
-    // Clear event popups when the panel opens
-    if (state === 'chat' || state === 'wide') {
-      const popupContainer = document.getElementById('chat-popup-container');
-      if (popupContainer) popupContainer.innerHTML = '';
-    }
-
-    // After CSS width transition completes, tell Chart.js to re-measure
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
-
-    // Focus input when panel is open
-    if (state === 'chat' || state === 'wide') {
-      setTimeout(() => chatInput.focus(), 120);
-    }
-  }
-
-  window.setPanelState = setPanelState;
-  window.setGuideOnboardingState = function(active) {
-    setPanelState(active ? 'bar' : 'chat');
-  };
-  window.getGuidePanelState = function() {
-    return document.body.dataset.panel || 'chat';
-  };
-
-  // ── Button listeners ──────────────────────────────────────
-  expandFromBarBtn.addEventListener('click', () => setPanelState('chat'));
-  if (collapseBtn) collapseBtn.addEventListener('click', () => setPanelState('bar'));
-  closeBtn.addEventListener('click',         () => setPanelState('bar'));
-  expandBtn.addEventListener('click', () => {
-    setPanelState(document.body.dataset.panel === 'wide' ? 'chat' : 'wide');
-  });
-
-  document.getElementById('ai-panel-new-chat').addEventListener('click', () => {
-    messages.length = 0;
-    _pendingFeedback = null;
-    savePendingFeedback();
-    _pendingContextApproval = null;
-    clearChatHistory();
-    chatMessages.innerHTML = '';
-    addBubble('Ask me anything about the prototype, and report bugs or feedback here as you go — I\'ll log them for the team.', 'assistant');
-    chatInput.focus();
-  });
-
-  function renderBotMessage(text) {
-    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const lines = text.split('\n');
-
-    // Detect feedback-format bullets: "• Section — text..."
-    const feedbackBulletRe = /^• [A-Za-z][\w\s]+ — .+/;
-    const feedbackLines = lines.filter(l => feedbackBulletRe.test(l.trim()));
-
-    if (feedbackLines.length > 3) {
-      // Group by section name (text before " — "), preserving insertion order
-      const sectionRe = /^• ([^—]+) — /;
-      const groups = new Map();
-      feedbackLines.forEach(line => {
-        const m = line.trim().match(sectionRe);
-        const section = m ? m[1].trim() : 'General';
-        if (!groups.has(section)) groups.set(section, []);
-        groups.get(section).push(line.trim());
-      });
-
-      let html = '';
-      groups.forEach((items, section) => {
-        html += '<strong>' + esc(section) + '</strong>';
-        html += items.map(esc).join('\n\n');
-      });
-      return html;
-    }
-
-    // Default rendering: support ## headers from model, preserve newlines via pre-wrap
-    return lines.map((line, i, arr) => {
-      const trimmed = line.trim();
-      const isLast = i === arr.length - 1;
-      if (trimmed.startsWith('## ')) {
-        return '<strong>' + esc(trimmed.slice(3).trim()) + '</strong>';
-      }
-      return esc(line) + (isLast ? '' : '\n');
-    }).join('');
-  }
-
-  function addBubble(text, role) {
-    const div = document.createElement('div');
-    div.className = 'chat-bubble ' + (role === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot');
-    if (role === 'assistant') {
-      div.innerHTML = renderBotMessage(text);
-    } else {
-      div.textContent = text;
-    }
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    return div;
-  }
-
-  function showTyping() {
-    const div = document.createElement('div');
-    div.className = 'chat-typing';
-    div.id = 'chat-typing';
-    div.innerHTML = '<div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div>';
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-
-  function removeTyping() {
-    const el = document.getElementById('chat-typing');
-    if (el) el.remove();
-  }
-
-  async function sendMessage() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-
-    if (/^helion[.!?]*$/i.test(text)) {
-      chatInput.value = '';
-      chatInput.style.height = 'auto';
-      addBubble(text, 'user');
-      messages.push({ role: 'user', content: text });
-      unlockHelionAccess();
-      const unlockMsg = 'Helion access enabled.';
-      messages.push({ role: 'assistant', content: unlockMsg });
-      addBubble(unlockMsg, 'assistant');
-      saveChatHistory();
-      chatSend.disabled = false;
-      chatInput.focus();
-      return;
-    }
-
-    // ── Conflict approval gate ─────────────────────────────────
-    if (_pendingContextApproval !== null) {
-      const pending = _pendingContextApproval;
-      _pendingContextApproval = null;
-      if (/^(yes|yeah|yep|y|approve|confirm|ok|okay|sure)\b/i.test(text.trim())) {
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
-        addBubble(text, 'user');
-        messages.push({ role: 'user', content: text });
-        storeHelionContext(pending.new);
-        const confirmMsg = 'Done — context updated.';
-        messages.push({ role: 'assistant', content: confirmMsg });
-        addBubble(confirmMsg, 'assistant');
-        saveChatHistory();
-        chatSend.disabled = false;
-        chatInput.focus();
-        return;
-      }
-      // Not approved — fall through, pending is cleared
-    }
-
-    // ── Feedback name gate ─────────────────────────────────────
-    if (_pendingFeedback !== null && !text.toLowerCase().includes('helion')) {
-      if (looksLikeName(text)) {
-        // Accept as name
-        var feedbackId = _pendingFeedback.feedbackId;
-        _pendingFeedback = null;
-        savePendingFeedback();
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
-        addBubble(text, 'user');
-        var name = text.trim();
-        saveSessionUserName(name);
-        await updateFeedback(feedbackId, { name: name });
-        var thanksMsg = 'Thanks, ' + name + '!';
-        messages.push({ role: 'assistant', content: thanksMsg });
-        addBubble(thanksMsg, 'assistant');
-        saveChatHistory();
-        chatSend.disabled = false;
-        chatInput.focus();
-        return;
-      } else if (_pendingFeedback.retries < 1) {
-        // Doesn't look like a name — let message fall through to AI, keep gate active
-        _pendingFeedback.retries += 1;
-        savePendingFeedback();
-        // Fall through to normal AI processing; AI will see NAME_RETRY_PENDING
-      } else {
-        // Second failed attempt — give up on collecting name
-        _pendingFeedback = null;
-        savePendingFeedback();
-        // Fall through to normal AI processing
-      }
-    }
-
-    chatInput.value = '';
-    chatInput.style.height = 'auto';
-    chatSend.disabled = true;
-    if (document.body.dataset.panel === 'bar') setPanelState('chat');
-    const userBubble = addBubble(text, 'user');
-    messages.push({ role: 'user', content: text });
-    showTyping();
-
-    // Build system prompt — inject feedback summaries + raw data for Helion
-    let feedbackBlock = '';
-    const hasHelion = text.toLowerCase().includes('helion');
-    if (hasHelion) {
-      unlockHelionAccess();
-      const items = await fetchFeedback();
-      feedbackBlock = formatFeedbackBlock(items);
-    }
-    // Always fetch structured summaries for deduplication-aware feedback classification
-    const feedbackSummary = await fetchFeedbackSummaryForPrompt();
-    const system = buildSystemPrompt(feedbackBlock, feedbackSummary);
-
-    try {
-      const res = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system, messages }),
-      });
-      const data = await res.json();
-      removeTyping();
-
-      if (data.content && data.content[0]) {
-        const raw = data.content[0].text;
-        const { cleanText, feedback, context, conflict } = parseSentinels(raw);
-        if (/please ask Rowan/i.test(cleanText)) {
-          const fallback = "I'm not sure about that — feel free to ask Rowan for more details.";
-          messages.push({ role: 'assistant', content: fallback });
-          addBubble(fallback, 'assistant');
-          saveChatHistory();
-          chatSend.disabled = false;
-          chatInput.focus();
-          return;
-        }
-        messages.push({ role: 'assistant', content: cleanText });
-        addBubble(cleanText, 'assistant');
-        saveChatHistory();
-        if (feedback) {
-          if (_sessionUserName) {
-            // Name already known — store feedback with name, skip name gate
-            feedback.name = _sessionUserName;
-            await storeFeedback(feedback);
-          } else {
-            // No name yet — store without name, activate name gate
-            var fbId = await storeFeedback(feedback);
-            _pendingFeedback = { feedbackId: fbId, feedbackObj: feedback, retries: 0 };
-            savePendingFeedback();
-          }
-        }
-        if (context) storeHelionContext(context.text);
-        if (conflict) _pendingContextApproval = conflict;
-      } else if (data.error) {
-        addErrorBubble(data.error.message || 'API error');
-      }
-    } catch (err) {
-      removeTyping();
-      addErrorBubble('Failed to connect. Is the proxy deployed?');
-    }
-    chatSend.disabled = false;
-    chatInput.focus();
-  }
-
-  function addErrorBubble(text) {
-    const div = document.createElement('div');
-    div.className = 'chat-error';
-    div.textContent = text;
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-
-  function addEventBubble(label) {
-    const div = document.createElement('div');
-    div.className = 'chat-bubble-event';
-    div.innerHTML = '<span class="chat-bubble-event-icon">ℹ</span><span>' + label + '</span>';
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    return div;
-  }
-
-  function showEventPopup(text) {
-    const container = document.getElementById('chat-popup-container');
-    if (!container) return;
-
-    const { cleanText } = parseSentinels(text);
-    const popup = document.createElement('div');
-    popup.className = 'chat-popup';
-
-    const content = document.createElement('div');
-    content.innerHTML = renderBotMessage(cleanText);
-    popup.appendChild(content);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'chat-popup-close';
-    closeBtn.innerHTML = '&times;';
-    closeBtn.setAttribute('aria-label', 'Close');
-    popup.appendChild(closeBtn);
-
-    // Enforce max 2 popups — remove the oldest if already at the limit
-    const existing = container.querySelectorAll('.chat-popup');
-    if (existing.length >= 2) existing[0].remove();
-
-    container.appendChild(popup);
-
-    let fadeTimer, removeTimer;
-
-    function startTimer() {
-      clearTimeout(fadeTimer);
-      clearTimeout(removeTimer);
-      fadeTimer = setTimeout(() => {
-        popup.classList.add('fading');
-        removeTimer = setTimeout(() => popup.remove(), 5100);
-      }, 10000);
-    }
-
-    function resetTimer() {
-      popup.classList.remove('fading');
-      clearTimeout(fadeTimer);
-      clearTimeout(removeTimer);
-      startTimer();
-    }
-
-    closeBtn.addEventListener('click', () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(removeTimer);
-      popup.remove();
-    });
-
-    popup.addEventListener('mouseenter', resetTimer);
-    startTimer();
-  }
-
-  let _eventTimer = null;
-  let _pendingContextApproval = null; // holds {new, original} awaiting user yes/no after a conflict
-  let _pendingFeedback = null;        // holds feedback object awaiting name before storing
-  let _sessionUserName = null;        // cached user name for the session (persisted in localStorage)
-
-  function sendEvent(label) {
-    clearTimeout(_eventTimer);
-  }
-
-  // ── Feedback & context storage ────────────────────────────
-
-  const HELION_CONTEXT_KEY    = 'trengo_design_context';
-  const CHAT_HISTORY_KEY      = 'trengo_chat_history';
-  const SESSION_USER_NAME_KEY = 'trengo_session_user_name';
-  const PENDING_FEEDBACK_KEY  = 'trengo_pending_feedback';
-
-  function saveChatHistory() {
-    try { localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages)); } catch { /* full */ }
-  }
-
-  function loadChatHistory() {
-    try { return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]'); }
-    catch { return []; }
-  }
-
-  function clearChatHistory() {
-    localStorage.removeItem(CHAT_HISTORY_KEY);
-  }
-
-  // ── Session user name helpers ──────────────────────────────
-  function loadSessionUserName() {
-    try { return localStorage.getItem(SESSION_USER_NAME_KEY) || null; }
-    catch { return null; }
-  }
-  function saveSessionUserName(name) {
-    _sessionUserName = name;
-    try { localStorage.setItem(SESSION_USER_NAME_KEY, name); } catch { /* full */ }
-  }
-
-  // ── Pending feedback persistence (sessionStorage) ──────────
-  function savePendingFeedback() {
-    try {
-      if (_pendingFeedback) {
-        sessionStorage.setItem(PENDING_FEEDBACK_KEY, JSON.stringify(_pendingFeedback));
-      } else {
-        sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
-      }
-    } catch { /* ignore */ }
-  }
-  function loadPendingFeedback() {
-    try {
-      var raw = sessionStorage.getItem(PENDING_FEEDBACK_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  }
-
-  function loadHelionContext() {
-    try { return JSON.parse(localStorage.getItem(HELION_CONTEXT_KEY) || '[]'); }
-    catch { return []; }
-  }
-
-  function storeHelionContext(text) {
-    const items = loadHelionContext();
-    items.push({ text, timestamp: new Date().toISOString() });
-    localStorage.setItem(HELION_CONTEXT_KEY, JSON.stringify(items));
-  }
-
-  async function storeFeedback(feedbackObj) {
-    try {
-      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedbackObj),
-      });
-      const data = await res.json();
-      return data.id || null;
-    } catch (e) { return null; }
-  }
-
-  function truncateBugReportText(text, limit = 8000) {
-    const value = String(text || '').trim();
-    if (!value) return '';
-    if (value.length <= limit) return value;
-    return value.slice(0, limit) + '\n… [truncated]';
-  }
-
-  function buildPrototypeBugReportText(payload = {}) {
-    const summary = String(
-      payload.summary
-      || payload.userMessage
-      || payload.title
-      || 'The AI onboarding assistant hit an error.'
-    ).trim();
-
-    const diagnostics = [
-      ['Surface', payload.surface || 'AI onboarding assistant'],
-      ['Mode', payload.mode || null],
-      ['Role', payload.role || null],
-      ['Customer', payload.customerName || payload.customerId || null],
-      ['Request', payload.request || null],
-      ['Source', payload.source || null],
-      ['Actual error', payload.technicalMessage || payload.errorMessage || null],
-      ['Timestamp', payload.timestamp || new Date().toISOString()],
-    ].filter(([, value]) => value);
-
-    const lines = [summary];
-
-    if (diagnostics.length > 0) {
-      lines.push('', 'Diagnostic context:');
-      diagnostics.forEach(([label, value]) => {
-        lines.push(`- ${label}: ${truncateBugReportText(value, 2000)}`);
-      });
-    }
-
-    if (payload.thread) {
-      lines.push('', 'Thread transcript:', truncateBugReportText(payload.thread, 12000));
-    }
-
-    return lines.join('\n');
-  }
-
-  async function reportPrototypeBugFromAssistant(payload = {}) {
-    setPanelState('chat');
-
-    const feedback = {
-      text: buildPrototypeBugReportText(payload),
-      section: payload.section || 'AI onboarding assistant',
-      type: 'bug',
+// ── GUIDE ADAPTER API ────────────────────────────────────────
+// Exposes prototype state for the Sidecar panel to render
+// settings/admin controls. Used by guide-adapter.js postMessage bridge.
+window._prototypeGuideAPI = {
+  getSettingsData: function () {
+    return {
+      role: {
+        current: state.personaRole || state.role || 'supervisor',
+        options: [
+          { value: 'admin', label: 'Admin' },
+          { value: 'supervisor', label: 'Supervisor' },
+          { value: 'agent', label: 'Agent' }
+        ]
+      },
+      anchorsNavUser: localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true'
     };
-    if (_sessionUserName) feedback.name = _sessionUserName;
-
-    const id = await storeFeedback(feedback);
-    const confirmation = id
-      ? 'I opened the Prototype Guide and logged a bug report with the technical details from the assistant.'
-      : 'I opened the Prototype Guide, but I could not store the bug report automatically.';
-
-    messages.push({ role: 'assistant', content: confirmation });
-    addBubble(confirmation, 'assistant');
-    saveChatHistory();
-    setTimeout(() => chatInput.focus(), 120);
-
-    return { ok: Boolean(id), id };
-  }
-
-  async function updateFeedback(id, patch) {
-    if (!id) return;
-    try {
-      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions/' + id, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-    } catch (e) { /* fail silently */ }
-  }
-
-  async function fetchFeedback() {
-    try {
-      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback');
-      if (!res.ok) {
-        console.error('[fetchFeedback] Worker returned', res.status);
-        return [];
-      }
-      const data = await res.json();
-      return data.feedback || [];
-    } catch (e) {
-      console.error('[fetchFeedback] Network error:', e);
-      return [];
+  },
+  getAdminData: function () {
+    return {
+      flags: FEATURE_FLAGS.map(function (f) {
+        return {
+          id: f.id,
+          label: f.label,
+          triState: f.triState || null,
+          value: getFeatureFlagValue(f.id)
+        };
+      }),
+      actions: [
+        { type: 'button-row', header: 'Demo data', buttons: [
+          { id: 'edit-customers', label: 'Customers' },
+          { id: 'edit-teams', label: 'Teams' }
+        ]},
+        { type: 'button-row', header: 'Reset prototype', buttons: [
+          { id: 'reset-all', label: 'Reset all' }
+        ]}
+      ]
+    };
+  },
+  setRole: function (role) {
+    state.personaRole = role;
+    state.role = role;
+    document.body.dataset.role = role;
+    syncRoleToggleButtons();
+    renderTabs();
+    renderSections();
+    scrollToSection(state.activeSection, true);
+    DashboardConfig.notifyChanged();
+  },
+  setFlag: function (id, value) {
+    // Use the existing flag setter which handles localStorage
+    setFeatureFlag(id, value);
+    // Trigger known side effects
+    if (id === 'onboarding-transition') {
+      syncAssistantFabIcon();
+    }
+    if (id === 'anchors-nav') {
+      var userToggle = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
+      applyNavMode((value !== 'off' || userToggle) ? 'anchors' : 'tabs');
+    }
+  },
+  setAnchorsNavUser: function (checked) {
+    if (checked) {
+      localStorage.setItem(ANCHORS_NAV_USER_KEY, 'true');
+    } else {
+      localStorage.removeItem(ANCHORS_NAV_USER_KEY);
+    }
+    var shouldBeAnchors = isFeatureEnabled('anchors-nav') || checked;
+    applyNavMode(shouldBeAnchors ? 'anchors' : 'tabs');
+  },
+  setToggle: function (key, checked) {
+    // Generic toggle handler — routes to specific implementations
+    if (key === 'anchorsNavUser') {
+      this.setAnchorsNavUser(checked);
+    }
+  },
+  triggerAction: function (actionId) {
+    switch (actionId) {
+      case 'manage-teams': openTeamSettingsModal(); break;
+      case 'add-customer': openCustomerSettingsModal('settings'); break;
+      case 'edit-customers': openCustomerSettingsModal('admin'); break;
+      case 'edit-teams': openTeamSettingsModal('default'); break;
+      case 'reset-all': performResetAll(); break;
+      case 'reset-onboarding': performResetOnboarding(); break;
+      case 'reset-subnav': performResetSubnav(); break;
     }
   }
+};
 
-  async function fetchFeedbackSummaryForPrompt() {
-    try {
-      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/summary?type=all&view=prompt');
-      if (!res.ok) return '';
-      return await res.text();
-    } catch (e) {
-      console.error('[fetchFeedbackSummary] Error:', e);
-      return '';
-    }
-  }
+// ── AI ONBOARDING ASSISTANT INITIALIZATION ───────────────────
+if (typeof AdminAssistant !== 'undefined') {
+  AdminAssistant.init();
+}
 
-  // ── Feedback Memory Modal ──────────────────────────────────
-  const feedbackMemoryOverlay = document.getElementById('feedback-memory-overlay');
-  const feedbackMemoryCloseBtn = document.getElementById('feedback-memory-close');
-  const openFeedbackMemoryBtn = document.getElementById('open-feedback-memory-btn');
-
-  function closeFeedbackMemory() {
-    if (feedbackMemoryOverlay) feedbackMemoryOverlay.style.display = 'none';
-  }
-
-  if (feedbackMemoryCloseBtn) feedbackMemoryCloseBtn.addEventListener('click', closeFeedbackMemory);
-  if (feedbackMemoryOverlay) feedbackMemoryOverlay.addEventListener('click', (e) => {
-    if (e.target === feedbackMemoryOverlay) closeFeedbackMemory();
-  });
-
-  // Escape key to close
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && feedbackMemoryOverlay && feedbackMemoryOverlay.style.display !== 'none') {
-      closeFeedbackMemory();
-    }
-  });
-
-  // Tab switching
-  document.querySelectorAll('.feedback-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.tab;
-      document.querySelectorAll('.feedback-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
-      document.querySelectorAll('.feedback-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === target));
-    });
-  });
-
-  async function openFeedbackMemory() {
-    if (!feedbackMemoryOverlay) return;
-    feedbackMemoryOverlay.style.display = 'flex';
-
-    const loadingEl = document.getElementById('feedback-memory-loading');
-    const emptyEl = document.getElementById('feedback-memory-empty');
-    const contentEl = document.getElementById('feedback-memory-content');
-
-    // Show loading
-    loadingEl.style.display = '';
-    emptyEl.style.display = 'none';
-    contentEl.style.display = 'none';
-
-    try {
-      // Fetch summary data and submissions in parallel
-      const [summaryRes, submissionsRes] = await Promise.all([
-        fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/summary?type=all&view=document'),
-        fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions'),
-      ]);
-      const summaryData = await summaryRes.json();
-      const submissionsData = await submissionsRes.json();
-      const submissions = submissionsData.submissions || [];
-
-      const product = summaryData.product || { categories: [] };
-      const bugs = summaryData.bugs || { categories: [] };
-      const corrections = summaryData.corrections || { categories: [] };
-      const meta = summaryData.meta || {};
-
-      const hasProduct = product.categories && product.categories.length > 0;
-      const hasBugs = bugs.categories && bugs.categories.length > 0;
-      const hasCorrections = corrections.categories && corrections.categories.length > 0;
-
-      if (!hasProduct && !hasBugs && !hasCorrections) {
-        // Summaries are empty — check if raw submissions exist and show fallback
-        if (submissions.length > 0) {
-          // Build fallback summaries from raw submissions grouped by type
-          const productSubs = submissions.filter(s => s.type === 'product' || s.type === 'both');
-          const bugSubs = submissions.filter(s => s.type === 'bug' || s.type === 'both');
-          const correctionSubs = submissions.filter(s => s.type === 'correction');
-
-          function buildFallbackSummary(subs) {
-            if (subs.length === 0) return { categories: [] };
-            const bySection = {};
-            for (const s of subs) {
-              const sec = s.section || 'General';
-              if (!bySection[sec]) bySection[sec] = [];
-              bySection[sec].push({
-                id: 'raw_' + s.id,
-                summary: s.rawText,
-                reportCount: 1,
-                evidenceIds: [s.id],
-                lastUpdated: s.submittedAt,
-              });
-            }
-            return {
-              categories: Object.entries(bySection).map(([name, items]) => ({ name, items })),
-              updatedAt: null,
-            };
-          }
-
-          if (productSubs.length > 0) {
-            product.categories = buildFallbackSummary(productSubs).categories;
-          }
-          if (bugSubs.length > 0) {
-            bugs.categories = buildFallbackSummary(bugSubs).categories;
-          }
-          if (correctionSubs.length > 0) {
-            corrections.categories = buildFallbackSummary(correctionSubs).categories;
-          }
-
-          // Re-check after fallback
-          const hasAny = productSubs.length > 0 || bugSubs.length > 0 || correctionSubs.length > 0;
-          if (!hasAny) {
-            loadingEl.style.display = 'none';
-            emptyEl.style.display = '';
-            return;
-          }
-        } else {
-          loadingEl.style.display = 'none';
-          emptyEl.style.display = '';
-          return;
-        }
-      }
-
-      // Re-evaluate after potential fallback population
-      const showProduct = product.categories && product.categories.length > 0;
-      const showBugs = bugs.categories && bugs.categories.length > 0;
-      const showCorrections = corrections.categories && corrections.categories.length > 0;
-
-      // Render meta bar
-      const metaEl = document.getElementById('feedback-memory-meta');
-      const productCount = showProduct ? product.categories.reduce((n, c) => n + c.items.length, 0) : 0;
-      const bugsCount = showBugs ? bugs.categories.reduce((n, c) => n + c.items.length, 0) : 0;
-      const correctionsCount = showCorrections ? corrections.categories.reduce((n, c) => n + c.items.length, 0) : 0;
-      metaEl.innerHTML =
-        '<span><strong>' + (meta.totalSubmissions || submissions.length) + '</strong> submissions</span>' +
-        '<span><strong>' + productCount + '</strong> product items</span>' +
-        '<span><strong>' + bugsCount + '</strong> bug items</span>' +
-        '<span><strong>' + correctionsCount + '</strong> corrections</span>' +
-        (product.updatedAt ? '<span>Updated ' + new Date(product.updatedAt).toLocaleDateString() + '</span>' : '');
-
-      // Render product section
-      renderFeedbackSection('feedback-product-body', product, submissions, 'product');
-      document.getElementById('feedback-memory-product').style.display = showProduct ? '' : 'none';
-
-      // Render bugs section
-      renderFeedbackSection('feedback-bugs-body', bugs, submissions, 'bugs');
-      document.getElementById('feedback-memory-bugs').style.display = showBugs ? '' : 'none';
-
-      // Render corrections section
-      renderFeedbackSection('feedback-corrections-body', corrections, submissions, 'corrections');
-      document.getElementById('feedback-memory-corrections').style.display = showCorrections ? '' : 'none';
-
-      // Ensure the first visible tab is active
-      const tabOrder = ['product', 'bugs', 'corrections'];
-      const firstVisible = tabOrder.find(t =>
-        t === 'product' ? showProduct : t === 'bugs' ? showBugs : showCorrections
-      );
-      if (firstVisible) {
-        document.querySelectorAll('.feedback-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === firstVisible));
-        document.querySelectorAll('.feedback-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === firstVisible));
-      }
-
-      loadingEl.style.display = 'none';
-      contentEl.style.display = '';
-    } catch (e) {
-      console.error('[openFeedbackMemory] Error:', e);
-      loadingEl.innerHTML = '<p style="color:#c0392b;text-align:center;padding:40px 0;">Failed to load feedback data. Check the console for details.</p>';
-    }
-  }
-
-  function renderFeedbackSection(containerId, summary, submissions, track) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-
-    for (const cat of (summary.categories || [])) {
-      const catDiv = document.createElement('div');
-      catDiv.className = 'feedback-category';
-      catDiv.innerHTML = '<h5 class="feedback-category-name">' + escapeHtml(cat.name) + '</h5>';
-
-      for (const item of (cat.items || [])) {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'feedback-item';
-        itemDiv.dataset.itemId = item.id;
-        itemDiv.dataset.categoryName = cat.name;
-        itemDiv.dataset.track = track;
-
-        const evidenceCount = (item.evidenceIds || []).length;
-        const reportCount = item.reportCount || evidenceCount || 1;
-        const lastUpdated = item.lastUpdated ? new Date(item.lastUpdated).toLocaleDateString() : '';
-
-        let html = '<div class="feedback-item-header">';
-        html += '<div class="feedback-item-summary">';
-        if (reportCount > 1) html += '<span class="feedback-report-count">' + reportCount + 'x</span> ';
-        html += escapeHtml(item.summary) + '</div>';
-        html += '<div class="feedback-item-meta">';
-        html += '<span class="feedback-evidence-count">' + evidenceCount + ' source' + (evidenceCount !== 1 ? 's' : '') + '</span>';
-        if (lastUpdated) html += '<span>' + lastUpdated + '</span>';
-        html += '</div></div>';
-
-        if (evidenceCount > 0) {
-          html += '<button class="feedback-evidence-toggle" data-evidence-ids="' + escapeHtml(JSON.stringify(item.evidenceIds)) + '">View sources</button>';
-          html += '<div class="feedback-evidence-list">';
-
-          // Find matching submissions
-          for (const eid of (item.evidenceIds || [])) {
-            const sub = submissions.find(s => s.id === eid);
-            if (sub) {
-              html += '<div class="feedback-evidence-item">';
-              if (sub.submitterName) html += '<span class="feedback-evidence-submitter">' + escapeHtml(sub.submitterName) + '</span>';
-              html += '<span class="feedback-evidence-date">' + new Date(sub.submittedAt).toLocaleDateString() + '</span>';
-              html += '<span> — ' + escapeHtml(sub.section || 'General') + '</span>';
-              html += '<div style="margin-top:4px;color:var(--gray-600);">' + escapeHtml(sub.rawText) + '</div>';
-              html += '</div>';
-            }
-          }
-
-          html += '</div>';
-        }
-
-        // Admin action buttons
-        html += '<div class="feedback-item-actions" style="display:flex;gap:6px;margin-top:6px;">';
-        html += '<button class="feedback-admin-btn danger feedback-delete-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '">Delete</button>';
-        if (track !== 'corrections') {
-          const targetTrack = track === 'product' ? 'bugs' : 'product';
-          html += '<button class="feedback-admin-btn feedback-reclassify-btn" data-item-id="' + item.id + '" data-category="' + escapeHtml(cat.name) + '" data-track="' + track + '" data-target="' + targetTrack + '">Move to ' + (targetTrack === 'bugs' ? 'Bugs' : 'Product') + '</button>';
-        }
-        html += '</div>';
-
-        itemDiv.innerHTML = html;
-        catDiv.appendChild(itemDiv);
-      }
-
-      container.appendChild(catDiv);
-    }
-
-    // Wire up evidence toggles
-    container.querySelectorAll('.feedback-evidence-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const list = btn.nextElementSibling;
-        if (list) {
-          list.classList.toggle('open');
-          btn.textContent = list.classList.contains('open') ? 'Hide sources' : 'View sources';
-        }
-      });
-    });
-
-    // Wire up delete buttons
-    container.querySelectorAll('.feedback-delete-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const itemId = btn.dataset.itemId;
-        const categoryName = btn.dataset.category;
-        const btnTrack = btn.dataset.track;
-        if (!confirm('Delete this feedback item?')) return;
-        try {
-          await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/admin-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete_item', track: btnTrack, payload: { categoryName, itemId } }),
-          });
-          openFeedbackMemory(); // refresh
-        } catch (e) {
-          console.error('[deleteItem] Error:', e);
-        }
-      });
-    });
-
-    // Wire up reclassify buttons
-    container.querySelectorAll('.feedback-reclassify-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const itemId = btn.dataset.itemId;
-        const categoryName = btn.dataset.category;
-        const btnTrack = btn.dataset.track;
-        const targetTrack2 = btn.dataset.target;
-        try {
-          await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/admin-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'reclassify', track: btnTrack, payload: { categoryName, itemId, targetTrack: targetTrack2 } }),
-          });
-          openFeedbackMemory(); // refresh
-        } catch (e) {
-          console.error('[reclassify] Error:', e);
-        }
-      });
-    });
-  }
-
-  if (openFeedbackMemoryBtn) openFeedbackMemoryBtn.addEventListener('click', () => {
-    openFeedbackMemory();
-  });
-
-  // Admin rebuild buttons
-  const rebuildProductBtn = document.getElementById('feedback-rebuild-product-btn');
-  const rebuildBugsBtn = document.getElementById('feedback-rebuild-bugs-btn');
-  const migrateBtn = document.getElementById('feedback-migrate-btn');
-
-  async function rebuildSummary(type) {
-    try {
-      const btn = type === 'product' ? rebuildProductBtn : rebuildBugsBtn;
-      if (btn) { btn.disabled = true; btn.textContent = 'Rebuilding...'; }
-      await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/rebuild', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
-      });
-      openFeedbackMemory(); // refresh
-    } catch (e) {
-      console.error('[rebuild] Error:', e);
-      alert('Rebuild failed — check console.');
-    }
-  }
-
-  if (rebuildProductBtn) rebuildProductBtn.addEventListener('click', () => rebuildSummary('product'));
-  if (rebuildBugsBtn) rebuildBugsBtn.addEventListener('click', () => rebuildSummary('bugs'));
-  const rebuildCorrectionsBtn = document.getElementById('feedback-rebuild-corrections-btn');
-  if (rebuildCorrectionsBtn) rebuildCorrectionsBtn.addEventListener('click', () => rebuildSummary('corrections'));
-
-  if (migrateBtn) migrateBtn.addEventListener('click', async () => {
-    try {
-      migrateBtn.disabled = true;
-      migrateBtn.textContent = 'Migrating...';
-      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/migrate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      migrateBtn.textContent = 'Migrated ' + (data.migrated || 0) + ' items';
-      if (data.migrated > 0) {
-        // Rebuild both summaries after migration
-        await rebuildSummary('product');
-        await rebuildSummary('bugs');
-      }
-    } catch (e) {
-      console.error('[migrate] Error:', e);
-      migrateBtn.textContent = 'Migration failed';
-    }
-  });
-
-  function looksLikeName(text) {
-    var t = text.trim();
-    if (!t || t.length > 50 || t.includes('?')) return false;
-    var words = t.split(/\s+/);
-    if (words.length > 5) return false;
-    if (words.some(function(w) { return w.length > 20; })) return false;
-    return true;
-  }
-
-  function formatFeedbackBlock(items) {
-    if (!items.length) return '';
-    const lines = items.map(f => {
-      const nameStr = f.name ? ` (from ${f.name})` : '';
-      return '• ' + (f.section || 'General') + ' — ' + f.text + nameStr;
-    }).join('\n');
-    return '----------------------------------------------------------------------\nFEEDBACK_DATA\n----------------------------------------------------------------------\n' + lines;
-  }
-
-  function buildSystemPrompt(feedbackBlock, feedbackSummary) {
-    feedbackBlock = feedbackBlock || '';
-    feedbackSummary = feedbackSummary || '';
-    let prompt = SYSTEM_PROMPT_BASE;
-    // Inject session user name if known
-    if (_sessionUserName) {
-      prompt += '\n----------------------------------------------------------------------\nSESSION_USER_NAME: ' + _sessionUserName + '\n----------------------------------------------------------------------';
-    }
-    // Inject name retry signal if the user was asked but didn't provide a name
-    if (_pendingFeedback && _pendingFeedback.retries > 0 && _pendingFeedback.retries < 2) {
-      prompt += '\nNAME_RETRY_PENDING: The user was asked for their name but responded with something else. Re-ask once politely at the end of your response.';
-    }
-    const ctx = loadHelionContext();
-    if (ctx.length > 0) {
-      prompt += '\n----------------------------------------------------------------------\nDESIGN RATIONALE CONTEXT\nThese entries represent decisions and updates made after the initial specification.\nFor any topic they address, prefer these over the base specification above.\n----------------------------------------------------------------------\n';
-      prompt += ctx.map(c => '• ' + c.text).join('\n');
-    }
-    // Inject structured feedback summaries for deduplication-aware classification
-    if (feedbackSummary) {
-      prompt += '\n----------------------------------------------------------------------\n' + feedbackSummary + '----------------------------------------------------------------------';
-    }
-    if (feedbackBlock) {
-      prompt += '\n' + feedbackBlock;
-    }
-    return prompt;
-  }
-
-  // Parse sentinels from bot response; returns { cleanText, feedback, context, conflict }
-  function parseSentinels(text) {
-    let feedback = null;
-    let context = null;
-    let conflict = null;
-    let clean = text;
-
-    const fbMatch = clean.match(/<<FEEDBACK:(\{[\s\S]*?\})>>/);
-    if (fbMatch) {
-      try { feedback = JSON.parse(fbMatch[1]); } catch {}
-      clean = clean.replace(fbMatch[0], '').trim();
-    }
-
-    const ctxMatch = clean.match(/<<CONTEXT:(\{[\s\S]*?\})>>/);
-    if (ctxMatch) {
-      try { context = JSON.parse(ctxMatch[1]); } catch {}
-      clean = clean.replace(ctxMatch[0], '').trim();
-    }
-
-    const conflictMatch = clean.match(/<<CONFLICT:(\{[\s\S]*?\})>>/);
-    if (conflictMatch) {
-      try { conflict = JSON.parse(conflictMatch[1]); } catch {}
-      clean = clean.replace(conflictMatch[0], '').trim();
-    }
-
-    return { cleanText: clean, feedback, context, conflict };
-  }
-
-  chatSend.addEventListener('click', sendMessage);
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  function autoResizeChatInput() {
-    chatInput.style.height = 'auto';
-    chatInput.style.height = chatInput.scrollHeight + 'px';
-  }
-  chatInput.addEventListener('input', autoResizeChatInput);
-
-  // Initialise default panel state on page load
-  setPanelState('chat');
-
-  // Restore session user name and pending feedback state
-  _sessionUserName = loadSessionUserName();
-  _pendingFeedback = loadPendingFeedback();
-
-  // Restore persisted chat history, or show greeting for a fresh session
-  const _savedHistory = loadChatHistory();
-  if (_savedHistory.length > 0) {
-    messages.push(..._savedHistory);
-    _savedHistory.forEach(msg => {
-      if (msg.role === 'user' && msg.content.startsWith('[EVENT:')) return;
-      addBubble(msg.content, msg.role === 'user' ? 'user' : 'assistant');
-    });
-  } else {
-    addBubble('Ask me anything about the prototype, and report bugs or feedback here as you go — I\'ll log them for the team.', 'assistant');
-  }
-
-  // Nav toast — show "Outside prototype scope." for non-settings nav clicks
-  const navToast = document.getElementById('nav-toast');
-  let navToastTimer = null;
-  document.querySelectorAll('.nav-item:not([data-nav="settings"])').forEach(item => {
-    item.addEventListener('click', () => {
-      clearTimeout(navToastTimer);
-      navToast.classList.add('visible');
-      navToastTimer = setTimeout(() => navToast.classList.remove('visible'), 3000);
-    });
-  });
-
-  // Expose event tracker for click handlers outside this IIFE
-  window.sendEvent = sendEvent;
-  window.reportPrototypeBug = reportPrototypeBugFromAssistant;
-
-  // ── AI ONBOARDING ASSISTANT INITIALIZATION ───────────────────
-  // Feature flag check is handled inside AdminAssistant.init().
-  if (typeof AdminAssistant !== 'undefined') {
-    AdminAssistant.init();
-  }
-
-  // ── ONBOARDING OVERLAY ──────────────────────────────────────
+// ── ONBOARDING OVERLAY ──────────────────────────────────────
+(function() {
   const ONBOARDING_KEY = 'trengo_onboarding_done';
   const ONBOARDING_STEPS = [
     {
@@ -7532,9 +5617,9 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       placement: 'center'
     },
     {
-      text: 'Use the Prototype Guide for concept questions and feedback. Adjust prototype settings from the icons below the header.',
-      getTargets: () => [document.querySelector('#ai-panel-settings-row'), document.querySelector('#ai-panel')],
-      placement: 'left-of-panel-dual'
+      text: 'Sidecar — the panel on the right — answers concept questions and collects your feedback. Use the icons below its header for settings.',
+      getTargets: () => [],
+      placement: 'center'
     },
     {
       text: 'The default navigation is only a starting point. The model is designed to be customised to each company\u2019s language, structure, and priorities. In edit mode, users can add, remove, reorder, and resize.',
@@ -7658,50 +5743,7 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
     const cw = cardRect.width;
     const ch = cardRect.height;
 
-    if (step.placement === 'left-of-panel') {
-      const panel = targets[0];
-      if (!panel) return;
-      const pr = panel.getBoundingClientRect();
-      // Centre card in the main content area, vertically near panel top
-      const mainLeft = 64;
-      const centerX = (mainLeft + pr.left) / 2;
-      const cardLeft = centerX - cw / 2;
-      const cardTop = pr.top + 140;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-      // Arrow from card right edge to panel top area
-      drawArrow(cardLeft + cw + 4, cardTop + ch / 2, pr.left + (pr.width / 2), pr.top + 58);
-
-    } else if (step.placement === 'left-of-panel-dual') {
-      // Merged guide + settings step: two arrows
-      const strip = targets[0]; // #ai-panel-settings-row
-      const panel = targets[1]; // #ai-panel
-      if (!panel) return;
-      const pr = panel.getBoundingClientRect();
-      const mainLeft = 64;
-      const centerX = (mainLeft + pr.left) / 2;
-      const cardLeft = centerX - cw / 2;
-      const cardTop = pr.top + 140;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-
-      // Arrow 1: from card upper-right to the settings strip
-      if (strip) {
-        const sr = strip.getBoundingClientRect();
-        drawArrow(
-          cardLeft + cw + 4, cardTop + ch * 0.3,
-          sr.left + sr.width / 2, sr.top + sr.height / 2,
-          { bendDirection: 1, curvatureScale: 0.8 }
-        );
-      }
-      // Arrow 2: from card lower-right to left side of guide panel top
-      drawArrow(
-        cardLeft + cw + 4, cardTop + ch * 0.7,
-        pr.left + 20, pr.top + 58,
-        { bendDirection: -1, curvatureScale: 0.7 }
-      );
-
-    } else if (step.placement === 'above-subnav') {
+    if (step.placement === 'above-subnav') {
       const nav = targets[0];
       if (!nav) return;
       const nr = nav.getBoundingClientRect();

@@ -3,21 +3,25 @@
 ## Tech Stack
 - Vanilla JS (no framework), HTML5, CSS3 with custom properties
 - Chart.js 4.4.7 for visualizations
-- Cloudflare Workers + KV for config persistence
+- Cloudflare Workers + KV for config persistence and onboarding chat
 - Deployed: GitHub Pages (internal) / Cloudflare Pages (customer)
+- SideCar integration via postMessage bridge (guide-adapter.js)
 
 ## Directory Structure
 ```
 index.html              Single-page HTML shell
-app.js                  Main application logic (~5900 lines, global state)
+app.js                  Main application logic (~5600 lines, global state)
+admin-assistant.js      AI onboarding assistant (Sonnet-powered)
 widget-catalog.js       Static widget/section/team definitions
 dashboard-config.js     Config serialization and Cloudflare KV sync
 profile.js              Runtime profile detection (internal vs customer)
-styles.css              Complete styling (~2700 lines)
+guide-adapter.js        postMessage bridge for SideCar companion panel
+guide_context.md        AI context file for SideCar (identity, domain, details, settings, admin)
+styles.css              Complete styling (~2400 lines)
 assets/icons/           SVG icon assets
 chatbot-proxy/
-  worker.js             Cloudflare Worker: /config and /feedback REST API
-  wrangler.toml         KV bindings: DASHBOARD_CONFIG, FEEDBACK_STORE
+  worker.js             Cloudflare Worker: /config, /profile, /onboarding/chat, /extract-url, /analytics/query
+  wrangler.toml         KV bindings: DASHBOARD_CONFIG, CUSTOMER_PROFILES
 ```
 
 ## Data Flow
@@ -26,6 +30,12 @@ chatbot-proxy/
 3. UI changes → `DashboardConfig.notifyChanged()` → debounced save to KV (1500ms)
 4. Conflict (409) → server config reapplied, UI re-renders
 5. Widget render → section mounts → `renderWidget()` per visible widget
+
+## SideCar Integration
+- `guide-adapter.js` bridges communication between prototype and SideCar via postMessage
+- `guide_context.md` provides AI context (parsed by SideCar on registration)
+- `_prototypeGuideAPI` exposes settings/admin control surface (setRole, setFlag, triggerAction)
+- When standalone (no SideCar), adapter functions are harmless no-ops
 
 ## Widget System
 - Each widget: `id`, `title`, `type` (kpi/bar-chart/table/list/etc), `vis` (always/default/hidden)
@@ -45,11 +55,12 @@ chatbot-proxy/
 - Config shape validated server-side (tabs, widgets, lens, role)
 
 ## Feature Flags
-- LocalStorage-based: `anchors-nav`, `team-usecases`
-- Toggled via popout UI on profile avatar button
+- LocalStorage-based: `anchors-nav`, `onboarding-transition`
+- Controlled via SideCar admin overlay
 
 ## Key Patterns
 - Global event delegation for nav, filters, drawers
 - Mock data generated client-side (rand, randF, pickTrend, paletteCycle)
 - Chart.js instances tracked in `state.charts[widgetId]`, destroyed on unmount
 - Onboarding overlay: independent step-through, completion persisted in localStorage
+- AI onboarding assistant: Sonnet-powered setup flow via admin-assistant.js

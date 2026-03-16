@@ -112,13 +112,10 @@ const AdminAssistant = (() => {
       },
     };
     try {
-      const res = await fetch(PROXY_URL.replace(/\/$/, '') + '/feedback/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedbackObj),
-      });
-      const data = await res.json();
-      return data.id || null;
+      if (typeof window.storeFeedback === 'function') {
+        await window.storeFeedback(feedbackObj);
+      }
+      return null;
     } catch (e) {
       console.warn('[AdminAssistant] Failed to store correction:', e);
       return null;
@@ -476,9 +473,9 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 
 <product_framing>
 - Do not describe this experience, its data, or its behavior as a prototype, mock, synthetic, or placeholder.
-- Do not volunteer implementation caveats like "this is a prototype limitation" or direct the user to the Prototype Guide.
+- Do not volunteer implementation caveats like "this is a prototype limitation" or direct the user to Sidecar.
 - If something is unavailable, say so in normal product language and focus on the best next answer or action.
-- The Prototype Guide is the only surface that should explicitly discuss prototype framing.
+- Sidecar is the only surface that should explicitly discuss prototype framing.
 </product_framing>
 
 <conversation_style>
@@ -1145,9 +1142,6 @@ ${role === 'agent'
     if (typeof window.syncSidebarRobotPreviewAvailability === 'function') {
       window.syncSidebarRobotPreviewAvailability();
     }
-    document.querySelectorAll('#role-toggle .role-preview-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.role === (state.personaRole || role));
-    });
     refreshDashboardAfterAssistantChange();
     DashboardConfig.notifyChanged();
     renderPreview();
@@ -1713,7 +1707,7 @@ ${role === 'agent'
 
   async function reportErrorToGuide(errorConfig, reportButton, statusEl) {
     if (typeof window.reportPrototypeBug !== 'function') {
-      if (statusEl) statusEl.textContent = 'The Prototype Guide is not available right now.';
+      if (statusEl) statusEl.textContent = 'Sidecar is not available right now.';
       return { ok: false };
     }
 
@@ -1727,7 +1721,7 @@ ${role === 'agent'
       const result = await window.reportPrototypeBug(buildGuideBugReportPayload(errorConfig));
       if (result?.ok) {
         if (reportButton) reportButton.textContent = 'Reported';
-        if (statusEl) statusEl.textContent = 'Bug report sent to the Prototype Guide.';
+        if (statusEl) statusEl.textContent = 'Bug report sent to Sidecar.';
         return result;
       }
       if (reportButton) {
@@ -5752,7 +5746,7 @@ ${role === 'agent'
       if (compactToggle) compactToggle.title = 'Compact view';
     }
 
-    // Collapse prototype guide if open
+    // Collapse Sidecar if open
     if (window.setPanelState) {
       window.setPanelState('bar');
     }
@@ -5823,8 +5817,6 @@ ${role === 'agent'
   let _initialized = false;
 
   function init() {
-    // Check feature flag — bail out if not enabled
-    if (typeof isFeatureEnabled === 'function' && !isFeatureEnabled('ai-onboarding')) return;
     _initialized = true;
 
     const mode = localStorage.getItem(AI_SETUP_MODE_KEY);
@@ -5852,10 +5844,9 @@ ${role === 'agent'
           timestamp: new Date().toISOString(),
         },
       };
-      navigator.sendBeacon(
-        PROXY_URL.replace(/\/$/, '') + '/feedback/submissions',
-        new Blob([JSON.stringify(feedbackObj)], { type: 'application/json' })
-      );
+      if (typeof window.storeFeedback === 'function') {
+        window.storeFeedback(feedbackObj);
+      }
     });
 
     if (mode === 'assistant') {
@@ -5998,8 +5989,7 @@ ${role === 'agent'
 
   async function resetAssistantState(options = {}) {
     const { restartOnboarding = false } = options;
-    const shouldRestart = restartOnboarding
-      && (typeof isFeatureEnabled !== 'function' || isFeatureEnabled('ai-onboarding'));
+    const shouldRestart = restartOnboarding;
 
     hideTypingIndicator();
     _runGeneration += 1;
