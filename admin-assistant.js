@@ -1871,14 +1871,8 @@ ${role === 'agent'
     AssistantStorage.save(_session);
     localStorage.setItem(AI_SETUP_MODE_KEY, 'assistant');
 
-    const useRobotTransition = typeof window.canUseOnboardingTransition === 'function'
-      && window.canUseOnboardingTransition();
-    if (useRobotTransition) {
-      await animateOnboardingCollapseToFABRobot();
-      hideOnboarding();
-    } else {
-      hideOnboarding();
-    }
+    await animateOnboardingToAssistant();
+    hideOnboarding();
     showConfigChange(`Setup complete!`);
     // Open assistant panel directly at compact height
     localStorage.setItem(COMPACT_PREF_KEY, '1');
@@ -5009,6 +5003,20 @@ ${role === 'agent'
       skipBtn.addEventListener('click', handleSkip);
       skipBtn.dataset.wired = 'true';
     }
+
+    // Scroll-to-bottom button
+    const msgs = document.getElementById('ai-setup-messages');
+    const scrollBtn = document.getElementById('ai-setup-scroll-btn');
+    if (msgs && scrollBtn && !msgs.dataset.scrollWired) {
+      function updateScrollBtn() {
+        const atBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 60;
+        scrollBtn.style.display = atBottom ? 'none' : 'flex';
+      }
+      msgs.addEventListener('scroll', updateScrollBtn);
+      new MutationObserver(updateScrollBtn).observe(msgs, { childList: true, subtree: true });
+      scrollBtn.addEventListener('click', () => scrollToBottom(msgs));
+      msgs.dataset.scrollWired = 'true';
+    }
   }
 
   function wireAssistantInput() {
@@ -5111,6 +5119,36 @@ ${role === 'agent'
         setTimeout(() => fab.classList.remove('pulse'), 3000);
       }
     }
+  }
+
+  async function animateOnboardingToAssistant() {
+    const overlay = document.getElementById('ai-setup-overlay');
+    const split = document.getElementById('ai-setup-split');
+
+    if (!overlay || !split) return;
+
+    const duration = 700;
+
+    overlay.style.pointerEvents = 'none';
+
+    // Trigger chat collapse + preview expand via CSS class
+    split.classList.add('completing');
+
+    // Fade overlay background to reveal analytics underneath
+    const bg = getComputedStyle(overlay).background;
+    overlay.animate([
+      { opacity: 1 },
+      { opacity: 0 },
+    ], {
+      duration: duration + 300,
+      easing: 'ease-out',
+      fill: 'forwards',
+      delay: 200,
+    });
+
+    await new Promise(resolve => setTimeout(resolve, duration + 500));
+
+    split.classList.remove('completing');
   }
 
   async function animateOnboardingCollapseToFAB() {
