@@ -5286,14 +5286,22 @@ ${role === 'agent'
     const sidebar = document.querySelector('.sidebar');
     const panel = document.getElementById('ai-panel');
     const sidebarRect = sidebar?.getBoundingClientRect();
-    const panelRect = panel?.getBoundingClientRect();
     const left = Math.round(sidebarRect?.right || 64);
-    const right = Math.round(panelRect?.left || window.innerWidth);
-    const width = Math.max(180, right - left);
+
+    // Use CSS variables for the TARGET panel width to avoid mid-transition measurements.
+    // The panel has transition: width 0.28s, so getBoundingClientRect() may return stale values.
+    const panelState = document.body.dataset.panel || 'chat';
+    const rootStyles = getComputedStyle(document.documentElement);
+    const panelVarW = parseFloat(rootStyles.getPropertyValue(`--panel-${panelState}-w`)) || 0;
+    const panelTotalW = panelVarW + 30; // 30px = .ai-panel padding (15px × 2)
+    const panelVisible = panel && getComputedStyle(panel).display !== 'none';
+    const rightReserved = panelVisible ? panelTotalW : 0;
+
+    const width = Math.max(180, window.innerWidth - left - rightReserved);
     const height = Math.max(170, Math.min(320, Math.round(width * (500 / 1668))));
 
     scene.style.left = left + 'px';
-    scene.style.right = '';
+    scene.style.right = rightReserved + 'px';
     scene.style.width = width + 'px';
     scene.style.height = height + 'px';
   }
@@ -5346,8 +5354,8 @@ ${role === 'agent'
 
     const legacyCollapseEasing = 'cubic-bezier(0.2, 0.82, 0.18, 1)';
     const collapseDuration = 2140;
-    const introFadeDelay = Math.round(collapseDuration * 0.5);
-    const introFadeDuration = collapseDuration - introFadeDelay;
+    const introFadeDelay = 0;
+    const introFadeDuration = Math.round(collapseDuration * 0.9);
     const analyticsRevealDuration = collapseDuration;
     const shrinkDuration = 1200;
     const analyticsRevealKeyframes = [
@@ -5433,21 +5441,21 @@ ${role === 'agent'
           {
             offset: 0.34,
             transform: `translate3d(${translateX * 0.3}px, ${translateY * 0.3}px, 0) scale(${firstStageScale})`,
-            opacity: 0.98,
+            opacity: 1,
             borderRadius: '20px',
             filter: 'blur(0.12px)',
           },
           {
             offset: 0.74,
             transform: `translate3d(${translateX * 0.72}px, ${translateY * 0.72}px, 0) scale(${midpointScale})`,
-            opacity: 0.84,
+            opacity: 1,
             borderRadius: '36px',
             filter: 'blur(0.55px)',
           },
           {
             offset: 1,
             transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${finalScale})`,
-            opacity: 0.16,
+            opacity: 1,
             borderRadius: '999px',
             filter: 'blur(1.4px)',
           },
@@ -5514,7 +5522,7 @@ ${role === 'agent'
     const freestyleDuration = Math.round(travelDuration * 0.25);
     const fallDuration = 950;
     const standDuration = 1700;         // cubic-bezier front-loads motion; visually upright by ~70% (was 2400)
-    const speechDuration = 1000;        // just reading time (was 1400)
+    const speechDuration = 2000;        // comfortable reading time
     const finaleDanceDuration = 1200;   // 0.75 cycles — cut short into shrink (was 1800)
 
     const moveRobotTo = (progress, duration) => {
