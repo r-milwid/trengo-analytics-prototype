@@ -4202,11 +4202,10 @@ function createNewTab() {
   renderTabs();
   renderSections();
   scrollToSection(id, true);
-  // Open rename popover after a tick so DOM is ready
+  // Open rename popover below the new tab button in the nav bar
   setTimeout(() => {
-    const editBtn = document.querySelector(`.sub-nav-edit-btn[data-tab-id="${id}"]`)
-      || document.querySelector(`[data-section="${id}"] .section-edit-btn`);
-    if (editBtn) openTabEditMenu({ target: editBtn });
+    const tabBtn = document.querySelector(`.sub-nav-btn[data-section="${id}"]`);
+    if (tabBtn) openTabEditMenu({ target: tabBtn }, tabBtn);
   }, 50);
   window.sendEvent('New tab — created');
   DashboardConfig.notifyChanged();
@@ -4278,10 +4277,10 @@ function confirmDeleteTab() {
   DashboardConfig.notifyChanged();
 }
 
-function openTabEditMenu(event) {
+function openTabEditMenu(event, anchorEl) {
   closeTabEditMenu();
   const btn = event.target.closest('.section-edit-btn');
-  const tabId = btn ? btn.dataset.tabId : state.activeSection;
+  const tabId = btn ? btn.dataset.tabId : (anchorEl?.dataset?.section || state.activeSection);
   const activeTab = state.tabs.find(t => t.id === tabId);
   if (!activeTab) return;
 
@@ -4306,8 +4305,9 @@ function openTabEditMenu(event) {
 
   document.body.appendChild(popover);
 
-  // Position below-right of the edit button
-  const rect = event.target.closest('.section-edit-btn')?.getBoundingClientRect() || event.target.getBoundingClientRect();
+  // Position below the anchor element (tab button) or the edit button
+  const anchor = anchorEl || event.target.closest('.section-edit-btn') || event.target;
+  const rect = anchor.getBoundingClientRect();
   popover.style.top = (rect.bottom + 8) + 'px';
   popover.style.left = rect.left + 'px';
 
@@ -4323,7 +4323,7 @@ function openTabEditMenu(event) {
   // Close popover when clicking outside
   setTimeout(() => {
     _tabEditOutsideClick = function(e) {
-      if (!popover.contains(e.target) && !e.target.closest('.section-edit-btn')) {
+      if (!popover.contains(e.target) && !e.target.closest('.section-edit-btn') && !e.target.closest('.sub-nav-btn')) {
         closeTabEditMenu();
       }
     };

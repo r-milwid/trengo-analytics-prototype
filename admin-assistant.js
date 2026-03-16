@@ -3547,16 +3547,26 @@ ${role === 'agent'
       filePanel.dataset.panel = 'file';
       filePanel.innerHTML = `
         <div class="ai-setup-source-column-header">
-          <div class="ai-setup-source-column-title">File</div>
-          <div class="ai-setup-source-column-subtitle">Upload PDF, DOCX, TXT, or CSV</div>
+          <div class="ai-setup-source-column-header-left">
+            <div class="ai-setup-source-column-title">File</div>
+            <div class="ai-setup-source-column-subtitle">Upload PDF, DOCX, TXT, or CSV</div>
+          </div>
+          <button type="button" class="ai-setup-source-column-toggle" aria-label="Toggle file upload">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 7 9 11 5"/></svg>
+          </button>
         </div>
-        <div class="ai-setup-source-dropzone" id="ai-setup-dropzone">
-          <p>Drop a file here or click to browse</p>
-          <p class="ai-setup-source-hint">PDF, DOCX, TXT, CSV</p>
-          <input type="file" id="ai-setup-file-input" accept=".pdf,.docx,.txt,.csv" style="display:none">
+        <div class="ai-setup-source-column-body">
+          <div class="ai-setup-source-dropzone" id="ai-setup-dropzone">
+            <p>Drop a file here or click to browse</p>
+            <p class="ai-setup-source-hint">PDF, DOCX, TXT, CSV</p>
+            <input type="file" id="ai-setup-file-input" accept=".pdf,.docx,.txt,.csv" style="display:none">
+          </div>
+          <div class="ai-setup-source-file-name" id="ai-setup-file-name" style="display:none"></div>
         </div>
-        <div class="ai-setup-source-file-name" id="ai-setup-file-name" style="display:none"></div>
       `;
+      filePanel.querySelector('.ai-setup-source-column-header').addEventListener('click', () => {
+        filePanel.classList.toggle('collapsed');
+      });
       grid.appendChild(filePanel);
     }
 
@@ -3567,12 +3577,22 @@ ${role === 'agent'
       urlPanel.dataset.panel = 'url';
       urlPanel.innerHTML = `
         <div class="ai-setup-source-column-header">
-          <div class="ai-setup-source-column-title">Website URL</div>
-          <div class="ai-setup-source-column-subtitle">Homepage, help center, or docs URL</div>
+          <div class="ai-setup-source-column-header-left">
+            <div class="ai-setup-source-column-title">Website URL</div>
+            <div class="ai-setup-source-column-subtitle">Homepage, help center, or docs URL</div>
+          </div>
+          <button type="button" class="ai-setup-source-column-toggle" aria-label="Toggle URL input">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 7 9 11 5"/></svg>
+          </button>
         </div>
-        <div class="ai-setup-source-url-list" id="ai-setup-url-list"></div>
-        <button type="button" class="ai-setup-inline-action-secondary ai-setup-source-add-btn" id="ai-setup-add-url-btn">Add URL</button>
+        <div class="ai-setup-source-column-body">
+          <div class="ai-setup-source-url-list" id="ai-setup-url-list"></div>
+          <button type="button" class="ai-setup-inline-action-secondary ai-setup-source-add-btn" id="ai-setup-add-url-btn">Add URL</button>
+        </div>
       `;
+      urlPanel.querySelector('.ai-setup-source-column-header').addEventListener('click', () => {
+        urlPanel.classList.toggle('collapsed');
+      });
 
       const listEl = urlPanel.querySelector('#ai-setup-url-list');
       const renderUrlRows = () => {
@@ -3624,24 +3644,40 @@ ${role === 'agent'
       pastePanel.dataset.panel = 'paste';
 
       if (_role === 'agent') {
-        // Agent: read-only company context + separate editable notes textarea
         pastePanel.innerHTML = `
           <div class="ai-setup-source-column-header">
-            <div class="ai-setup-source-column-title">Context & notes</div>
-            <div class="ai-setup-source-column-subtitle">Known company context is shown for reference</div>
+            <div class="ai-setup-source-column-header-left">
+              <div class="ai-setup-source-column-title">Context & notes</div>
+              <div class="ai-setup-source-column-subtitle">Known company context is shown for reference</div>
+            </div>
+            <button type="button" class="ai-setup-source-column-toggle" aria-label="Toggle context notes">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 7 9 11 5"/></svg>
+            </button>
           </div>
-          ${initialPasteText ? `<div class="ai-setup-source-context-readonly">${escapeHtml(initialPasteText)}</div>` : ''}
-          <textarea class="ai-setup-source-paste-input" placeholder="Add your own notes here..." rows="3" id="ai-setup-paste-input"></textarea>
+          <div class="ai-setup-source-column-body">
+            ${initialPasteText ? `<div class="ai-setup-source-context-readonly">${escapeHtml(initialPasteText)}</div>` : ''}
+            <textarea class="ai-setup-source-paste-input" placeholder="Add your own notes here..." rows="3" id="ai-setup-paste-input"></textarea>
+          </div>
         `;
       } else {
         pastePanel.innerHTML = `
           <div class="ai-setup-source-column-header">
-            <div class="ai-setup-source-column-title">Pasted text</div>
-            <div class="ai-setup-source-column-subtitle">${initialPasteText ? 'Edit the starter context below, or add more.' : 'Paste notes, docs, or copied content'}</div>
+            <div class="ai-setup-source-column-header-left">
+              <div class="ai-setup-source-column-title">Pasted text</div>
+              <div class="ai-setup-source-column-subtitle">${initialPasteText ? 'Edit the starter context below, or add more.' : 'Paste notes, docs, or copied content'}</div>
+            </div>
+            <button type="button" class="ai-setup-source-column-toggle" aria-label="Toggle paste input">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 5 7 9 11 5"/></svg>
+            </button>
           </div>
-          <textarea class="ai-setup-source-paste-input" placeholder="Paste text here..." rows="5" id="ai-setup-paste-input">${escapeHtml(initialPasteText)}</textarea>
+          <div class="ai-setup-source-column-body">
+            <textarea class="ai-setup-source-paste-input" placeholder="Paste text here..." rows="5" id="ai-setup-paste-input">${escapeHtml(initialPasteText)}</textarea>
+          </div>
         `;
       }
+      pastePanel.querySelector('.ai-setup-source-column-header').addEventListener('click', () => {
+        pastePanel.classList.toggle('collapsed');
+      });
       grid.appendChild(pastePanel);
     }
 
