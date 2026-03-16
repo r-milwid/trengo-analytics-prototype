@@ -94,11 +94,26 @@ function validateConfig(config) {
   return errors;
 }
 
+// ── Extract JSON from potentially markdown-wrapped responses ──
+function extractJSON(text) {
+  const trimmed = text.trim();
+  // Try direct parse first
+  try { return JSON.parse(trimmed); } catch (_) {}
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fenceMatch) return JSON.parse(fenceMatch[1].trim());
+  // Fallback: find first { to last }
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start !== -1 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
+  throw new Error('Could not extract JSON from response');
+}
+
 // ── Feedback organizer prompt ──────────────────────────────
 const ORGANIZER_SYSTEM_PROMPT = `You are a feedback organizer. You maintain a structured summary document for a product prototype's feedback.
 
 You will receive:
-1. The track type: "product" or "bugs"
+1. The track type: "product", "bugs", or "corrections"
 2. The current structured summary (JSON with categories and items)
 3. A new feedback submission to integrate
 
@@ -123,6 +138,12 @@ For "product" track:
 - reportCount tracks how many users raised the same feedback. Useful for prioritization.
 - Summaries should be actionable product insights, not raw user quotes.
 
+For "corrections" track:
+- These are AI assistant corrections (e.g., user changed an AI suggestion during onboarding).
+- Group by correction type (e.g., "Team Configuration", "Role Changes", "Focus Area Changes").
+- reportCount tracks frequency of similar corrections, useful for improving AI accuracy.
+- Summaries should describe what the AI got wrong and what the user chose instead.
+
 Output ONLY valid JSON matching this exact schema — no markdown, no explanation:
 {
   "categories": [
@@ -142,7 +163,7 @@ Output ONLY valid JSON matching this exact schema — no markdown, no explanatio
   "updatedAt": "ISO timestamp"
 }`;
 
-const REBUILD_SYSTEM_PROMPT = `You are a feedback organizer. You will receive a track type ("product" or "bugs") and a list of raw feedback submissions. Build a structured summary document from scratch.
+const REBUILD_SYSTEM_PROMPT = `You are a feedback organizer. You will receive a track type ("product", "bugs", or "corrections") and a list of raw feedback submissions. Build a structured summary document from scratch.
 
 Group related submissions into categories. Each category should have a meaningful name.
 Within each category, create items that summarize distinct concerns. AGGRESSIVELY merge submissions about the same concern into one item — do NOT create duplicates.
@@ -161,6 +182,12 @@ For "bugs" track:
 For "product" track:
 - Summaries should be actionable product insights, not raw user quotes.
 - reportCount shows how many users raised the same point, useful for prioritization.
+
+For "corrections" track:
+- These are AI assistant corrections where users changed AI suggestions during onboarding.
+- Group by correction type (e.g., "Team Configuration", "Role Changes", "Focus Area Changes").
+- reportCount tracks frequency, useful for improving AI accuracy.
+- Summaries should describe what the AI got wrong and what the user chose instead.
 
 Output ONLY valid JSON matching this exact schema — no markdown, no explanation:
 {
@@ -212,7 +239,7 @@ async function organizeFeedbackSummary(env, track, newSubmission) {
   if (!data.content || !data.content[0]) throw new Error('Empty organizer response');
 
   const text = data.content[0].text.trim();
-  const updated = JSON.parse(text);
+  const updated = extractJSON(text);
   await env.FEEDBACK_STORE.put(summaryKey, JSON.stringify(updated));
 }
 
@@ -255,7 +282,7 @@ async function rebuildFeedbackSummary(env, track, submissions) {
   if (!data.content || !data.content[0]) throw new Error('Empty rebuild response');
 
   const text = data.content[0].text.trim();
-  const rebuilt = JSON.parse(text);
+  const rebuilt = extractJSON(text);
   await env.FEEDBACK_STORE.put(`summary:${track}`, JSON.stringify(rebuilt));
 }
 
@@ -485,7 +512,7 @@ export default {
     if (path === '/feedback/rebuild' && request.method === 'POST') {
       try {
         const { type } = await request.json().catch(() => ({ type: 'all' }));
-        const tracks = type === 'all' ? ['product', 'bugs'] : [type === 'bug' ? 'bugs' : type];
+        const tracks = type === 'all' ? ['product', 'bugs', 'corrections'] : [type === 'bug' ? 'bugs' : type];
 
         // Gather all submissions
         let allKeys = [];
@@ -503,6 +530,7 @@ export default {
         for (const track of tracks) {
           const relevant = allSubmissions.filter(s => {
             if (track === 'bugs') return s.type === 'bug' || s.type === 'both';
+            if (track === 'corrections') return s.type === 'correction';
             return s.type === 'product' || s.type === 'both';
           });
           await rebuildFeedbackSummary(env, track, relevant);

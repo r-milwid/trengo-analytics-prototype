@@ -76,6 +76,7 @@ const DEFAULT_TEAMS_KEY   = 'trengo_default_teams';
 const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
 const CLASSIC_GUIDE_STYLE_FLAG = 'classic-guide-style';
 const LEGACY_GUIDE_STYLE_FLAG = 'guide-style';
+const ANCHORS_NAV_USER_KEY = 'trengo_anchors_nav_user';
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
   'northstar-health': {
@@ -106,18 +107,26 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 };
 
 const FEATURE_FLAGS = [
-  { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs' },
+  { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
   { id: 'ai-onboarding',   label: 'Onboarding',               desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
-  { id: 'onboarding-transition', label: 'Onboarding transition', desc: '' },
-  { id: CLASSIC_GUIDE_STYLE_FLAG, label: 'Guide style',       desc: '', toggleLabels: { off: 'Green', on: 'Classic' } },
+  { id: 'onboarding-transition', label: 'Onboarding transition', desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
+  { id: CLASSIC_GUIDE_STYLE_FLAG, label: 'Guide colour',       desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
 ];
 
 function migrateLegacyGuideStyleFlag() {
   try {
     const flags = JSON.parse(localStorage.getItem(FEATURE_FLAGS_KEY) || '{}');
-    if (!(LEGACY_GUIDE_STYLE_FLAG in flags)) return;
-    delete flags[LEGACY_GUIDE_STYLE_FLAG];
-    localStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify(flags));
+    let changed = false;
+    if (LEGACY_GUIDE_STYLE_FLAG in flags) {
+      delete flags[LEGACY_GUIDE_STYLE_FLAG];
+      changed = true;
+    }
+    // Migrate boolean values to tri-state 'off' (colour is now opt-in)
+    if (CLASSIC_GUIDE_STYLE_FLAG in flags && typeof flags[CLASSIC_GUIDE_STYLE_FLAG] === 'boolean') {
+      flags[CLASSIC_GUIDE_STYLE_FLAG] = 'off';
+      changed = true;
+    }
+    if (changed) localStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify(flags));
   } catch {}
 }
 
@@ -233,7 +242,7 @@ else hideHelionAvatar();
 syncSidebarRobotPreviewAvailability();
 
 // Bootstrap nav mode from feature flag (before sections render)
-if (isFeatureEnabled('anchors-nav')) state.navMode = 'anchors';
+if (isFeatureEnabled('anchors-nav') || localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true') state.navMode = 'anchors';
 
 // Apply nav mode change — shared by the feature flag toggle and page bootstrap
 function applyNavMode(mode) {
@@ -250,7 +259,7 @@ function applyNavMode(mode) {
 }
 
 function applyGuideStyle() {
-  document.body.dataset.guideStyle = isFeatureEnabled(CLASSIC_GUIDE_STYLE_FLAG) ? 'default' : 'notebook';
+  document.body.dataset.guideStyle = isFeatureEnabled(CLASSIC_GUIDE_STYLE_FLAG) ? 'notebook' : 'default';
 }
 
 function syncAssistantFabIcon() {
@@ -4594,6 +4603,8 @@ if (settingsNav && userPopout) {
       return;
     }
     syncSettingsOnboardingVisibility();
+    const _anchorsCb = document.getElementById('anchors-nav-user-cb');
+    if (_anchorsCb) _anchorsCb.checked = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
     if (userPopout.style.display === 'block') {
       userPopout.classList.remove('open');
       setTimeout(() => { userPopout.style.display = 'none'; }, 200);
@@ -4623,6 +4634,22 @@ document.addEventListener('click', (e) => {
     closeUserPopout();
   }
 });
+
+// Anchors navigation user toggle (in Settings popout)
+const anchorsNavUserCb = document.getElementById('anchors-nav-user-cb');
+if (anchorsNavUserCb) {
+  anchorsNavUserCb.checked = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
+  anchorsNavUserCb.addEventListener('change', () => {
+    if (anchorsNavUserCb.checked) {
+      localStorage.setItem(ANCHORS_NAV_USER_KEY, 'true');
+    } else {
+      localStorage.removeItem(ANCHORS_NAV_USER_KEY);
+    }
+    const shouldBeAnchors = isFeatureEnabled('anchors-nav') || anchorsNavUserCb.checked;
+    applyNavMode(shouldBeAnchors ? 'anchors' : 'tabs');
+  });
+}
+
 // Reset sub-navigation button
 const resetSubnavBtn = document.getElementById('reset-subnav-btn');
 const resetOnboardingSessionBtn = document.getElementById('reset-onboarding-session-btn');
@@ -4779,15 +4806,6 @@ function renderFlagList() {
         if (labels[0]) labels[0].classList.toggle('active', !cb.checked);
         if (labels[1]) labels[1].classList.toggle('active', cb.checked);
       }
-      // Flags with immediate side-effects
-      if (cb.dataset.flag === 'anchors-nav') {
-        applyNavMode(cb.checked ? 'anchors' : 'tabs');
-      } else if (cb.dataset.flag === CLASSIC_GUIDE_STYLE_FLAG) {
-        applyGuideStyle();
-      } else if (cb.dataset.flag === 'onboarding-transition') {
-        syncAssistantFabIcon();
-        syncSidebarRobotPreviewAvailability();
-      }
     });
   });
 
@@ -4821,7 +4839,18 @@ function renderFlagList() {
           b.classList.toggle('active', b.dataset.val === newVal)
         );
 
-        // Side effects for ai-onboarding
+        // Side effects per flag
+        if (flagId === CLASSIC_GUIDE_STYLE_FLAG) {
+          applyGuideStyle();
+        }
+        if (flagId === 'onboarding-transition') {
+          syncAssistantFabIcon();
+          syncSidebarRobotPreviewAvailability();
+        }
+        if (flagId === 'anchors-nav') {
+          const userToggle = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
+          applyNavMode((newVal !== 'off' || userToggle) ? 'anchors' : 'tabs');
+        }
         if (flagId === 'ai-onboarding') {
           if (newVal === 'off') {
             if (typeof AdminAssistant !== 'undefined') AdminAssistant.resetAll();
@@ -4884,6 +4913,8 @@ if (stripSettingsBtn && userPopout) {
     e.stopPropagation();
     closeFlagPopout();
     syncSettingsOnboardingVisibility();
+    const _anchorsCb2 = document.getElementById('anchors-nav-user-cb');
+    if (_anchorsCb2) _anchorsCb2.checked = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
     if (userPopout.style.display === 'block') {
       closeUserPopout();
     } else {
@@ -7098,16 +7129,67 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
       const hasCorrections = corrections.categories && corrections.categories.length > 0;
 
       if (!hasProduct && !hasBugs && !hasCorrections) {
-        loadingEl.style.display = 'none';
-        emptyEl.style.display = '';
-        return;
+        // Summaries are empty — check if raw submissions exist and show fallback
+        if (submissions.length > 0) {
+          // Build fallback summaries from raw submissions grouped by type
+          const productSubs = submissions.filter(s => s.type === 'product' || s.type === 'both');
+          const bugSubs = submissions.filter(s => s.type === 'bug' || s.type === 'both');
+          const correctionSubs = submissions.filter(s => s.type === 'correction');
+
+          function buildFallbackSummary(subs) {
+            if (subs.length === 0) return { categories: [] };
+            const bySection = {};
+            for (const s of subs) {
+              const sec = s.section || 'General';
+              if (!bySection[sec]) bySection[sec] = [];
+              bySection[sec].push({
+                id: 'raw_' + s.id,
+                summary: s.rawText,
+                reportCount: 1,
+                evidenceIds: [s.id],
+                lastUpdated: s.submittedAt,
+              });
+            }
+            return {
+              categories: Object.entries(bySection).map(([name, items]) => ({ name, items })),
+              updatedAt: null,
+            };
+          }
+
+          if (productSubs.length > 0) {
+            product.categories = buildFallbackSummary(productSubs).categories;
+          }
+          if (bugSubs.length > 0) {
+            bugs.categories = buildFallbackSummary(bugSubs).categories;
+          }
+          if (correctionSubs.length > 0) {
+            corrections.categories = buildFallbackSummary(correctionSubs).categories;
+          }
+
+          // Re-check after fallback
+          const hasAny = productSubs.length > 0 || bugSubs.length > 0 || correctionSubs.length > 0;
+          if (!hasAny) {
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = '';
+            return;
+          }
+        } else {
+          loadingEl.style.display = 'none';
+          emptyEl.style.display = '';
+          return;
+        }
       }
+
+      // Re-evaluate after potential fallback population
+      const showProduct = product.categories && product.categories.length > 0;
+      const showBugs = bugs.categories && bugs.categories.length > 0;
+      const showCorrections = corrections.categories && corrections.categories.length > 0;
 
       // Render meta bar
       const metaEl = document.getElementById('feedback-memory-meta');
-      const productCount = hasProduct ? product.categories.reduce((n, c) => n + c.items.length, 0) : 0;
-      const bugsCount = hasBugs ? bugs.categories.reduce((n, c) => n + c.items.length, 0) : 0;
-      const correctionsCount = hasCorrections ? corrections.categories.reduce((n, c) => n + c.items.length, 0) : 0;
+      const productCount = showProduct ? product.categories.reduce((n, c) => n + c.items.length, 0) : 0;
+      const bugsCount = showBugs ? bugs.categories.reduce((n, c) => n + c.items.length, 0) : 0;
+      const correctionsCount = showCorrections ? corrections.categories.reduce((n, c) => n + c.items.length, 0) : 0;
       metaEl.innerHTML =
         '<span><strong>' + (meta.totalSubmissions || submissions.length) + '</strong> submissions</span>' +
         '<span><strong>' + productCount + '</strong> product items</span>' +
@@ -7117,15 +7199,25 @@ C. If it is a request for feedback but NO FEEDBACK_DATA is present in this promp
 
       // Render product section
       renderFeedbackSection('feedback-product-body', product, submissions, 'product');
-      document.getElementById('feedback-memory-product').style.display = hasProduct ? '' : 'none';
+      document.getElementById('feedback-memory-product').style.display = showProduct ? '' : 'none';
 
       // Render bugs section
       renderFeedbackSection('feedback-bugs-body', bugs, submissions, 'bugs');
-      document.getElementById('feedback-memory-bugs').style.display = hasBugs ? '' : 'none';
+      document.getElementById('feedback-memory-bugs').style.display = showBugs ? '' : 'none';
 
       // Render corrections section
       renderFeedbackSection('feedback-corrections-body', corrections, submissions, 'corrections');
-      document.getElementById('feedback-memory-corrections').style.display = hasCorrections ? '' : 'none';
+      document.getElementById('feedback-memory-corrections').style.display = showCorrections ? '' : 'none';
+
+      // Ensure the first visible tab is active
+      const tabOrder = ['product', 'bugs', 'corrections'];
+      const firstVisible = tabOrder.find(t =>
+        t === 'product' ? showProduct : t === 'bugs' ? showBugs : showCorrections
+      );
+      if (firstVisible) {
+        document.querySelectorAll('.feedback-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === firstVisible));
+        document.querySelectorAll('.feedback-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === firstVisible));
+      }
 
       loadingEl.style.display = 'none';
       contentEl.style.display = '';
