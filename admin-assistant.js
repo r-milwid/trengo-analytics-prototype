@@ -577,6 +577,7 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - If you are naming possible answers inside the question, that is usually a sign the user should be able to click them instead. Prefer a choice UI rather than embedding those options in prose.
 - If a question has an obvious either/or structure, or a short list like "A, B, C, or something else", prefer show_options or show_boolean_choice over plain text.
 - After source analysis, if the next clarification has a small likely answer set, strongly prefer clickable choices. Do not ask "two quick questions" as plain text if either question could be answered faster by clicking.
+- RULE: If you are about to send a message that contains options embedded in prose (e.g. "Would you like to A, B, or C?"), you MUST convert it to a show_options call instead. Prose-embedded choices are never acceptable when a tool alternative exists.
 - Prefer the smallest tool or tool sequence that can answer well or move the workflow forward. Do not chain tools just because they are available.
 </tool_choice>
 
@@ -682,7 +683,8 @@ ${role === 'agent'
 - If the user keeps the defaults, respect that and move on.
 - No minimum completion is required. Defaults are valid. Preserve partial progress on skip.
 - Call complete_onboarding when the user is satisfied, wants to stop, or has enough configured for now.
-- When presenting a final review with show_options that includes a "done" / "looks good" option, set completesOnboarding: true on that option so clicking it skips the extra LLM round-trip.
+- MANDATORY: Every final review, confirmation, or "are you happy with this?" step MUST use show_options (never plain text). Include a "done" / "looks good" option with completesOnboarding: true. Do not ask the user to type a response when clickable choices would work — this is the single most important UX rule for the final step.
+- More broadly: any onboarding step where the likely answers form a small set (2-4 options) MUST use show_options or show_boolean_choice. Plain-text prompts are acceptable only when the answer space is genuinely open-ended (e.g. "describe your team's workflow").
 </onboarding>`;
     } else {
       prompt += `
@@ -2539,6 +2541,9 @@ ${role === 'agent'
     const options = typeof config === 'string'
       ? { userMessage: config }
       : (config || {});
+
+    // Always log technical details so they appear in browser console
+    console.error('[AdminAssistant] Error:', options.source || 'unknown', '|', options.technicalMessage || options.userMessage);
 
     const bubble = document.createElement('div');
     bubble.className = 'ai-setup-bubble assistant ai-setup-error';
