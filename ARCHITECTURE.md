@@ -16,7 +16,7 @@ widget-catalog.js       Static widget/section/team definitions
 dashboard-config.js     Config serialization and Cloudflare KV sync
 profile.js              Runtime profile detection (internal vs customer)
 guide-adapter.js        postMessage bridge for SideCar companion panel
-guide_context.md        AI context file for SideCar (identity, domain, details, settings, admin)
+sidecar_context.md        AI context file for SideCar (identity, domain, details, settings, admin)
 styles.css              Complete styling (~2400 lines)
 assets/icons/           SVG icon assets
 chatbot-proxy/
@@ -33,7 +33,7 @@ chatbot-proxy/
 
 ## SideCar Integration
 - `guide-adapter.js` bridges communication between prototype and SideCar via postMessage
-- `guide_context.md` provides AI context (parsed by SideCar on registration)
+- `sidecar_context.md` provides AI context (parsed by SideCar on registration)
 - `_prototypeGuideAPI` exposes settings/admin control surface (setRole, setFlag, triggerAction)
 - When standalone (no SideCar), adapter functions are harmless no-ops
 
