@@ -432,7 +432,3 @@ options: off=Off, me=Me, everyone=Everyone
 ### Demo data
 type: button-row
 buttons: edit-customers=Customers, edit-teams=Teams
-
-### Reset prototype
-type: button-row
-buttons: reset-all=Reset all
