@@ -417,15 +417,9 @@ action: reset-subnav
 
 ## Admin
 
-### Anchors navigation
-type: tristate
-flag: anchors-nav
-options: off=Off, me=Me, everyone=Everyone
-
 ### Onboarding transition
-type: tristate
+type: toggle
 flag: onboarding-transition
-options: off=Off, me=Me, everyone=Everyone
 
 ---
 
