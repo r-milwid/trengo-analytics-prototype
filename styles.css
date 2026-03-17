@@ -2862,27 +2862,47 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
 
 .ai-setup-option-card {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: 14px;
   cursor: pointer;
-  transition: border-color 0.15s, filter 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   text-align: left;
   font-family: var(--font);
 }
 
 .ai-setup-option-card:hover {
   border-color: var(--gray-400);
-  filter: brightness(0.97);
   transform: translateY(-1px);
 }
 
 .ai-setup-option-card.selected {
   border-color: var(--gray-900);
   box-shadow: 0 0 0 1px var(--gray-900);
+}
+
+.ai-setup-option-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ai-setup-option-icon svg {
+  /* stroke color is set inline per-card via OPTION_CARD_ICON_PAIRS */
+}
+
+.ai-setup-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .ai-setup-option-card .ai-setup-option-label {
@@ -2895,6 +2915,21 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   font-size: 12px;
   color: var(--gray-500);
   line-height: 1.4;
+}
+
+/* Disabled cards after selection */
+.ai-setup-option-card:disabled {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.45;
+  transform: none;
+  border-color: var(--border);
+  box-shadow: none;
+}
+.ai-setup-option-card:disabled.selected {
+  opacity: 1;
+  border-color: var(--gray-900);
+  box-shadow: 0 0 0 1px var(--gray-900);
 }
 
 /* ── Option chips ──────────────────────────────────────────── */
@@ -2930,6 +2965,14 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   border-color: var(--gray-900);
   background: var(--gray-900);
   color: #fff;
+}
+.ai-setup-option-chip:disabled {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.45;
+}
+.ai-setup-option-chip:disabled.selected {
+  opacity: 1;
 }
 
 /* ── "Other" option pill and inline input ──────────────────── */
@@ -3055,6 +3098,13 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   color: var(--gray-900);
 }
 
+.ai-setup-inline-action-primary:disabled,
+.ai-setup-inline-action-secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .ai-setup-inline-warning {
   margin-top: 6px;
   font-size: 11px;
@@ -3099,6 +3149,11 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   padding: 16px;
   margin-top: 4px;
   box-shadow: none;
+}
+.ai-setup-team-matrix > .ai-setup-inline-actions,
+.ai-setup-tab-editor > .ai-setup-inline-actions {
+  padding: 0;
+  margin-top: 12px;
 }
 
 .ai-setup-team-matrix-rows {
@@ -3350,30 +3405,31 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
 
 .ai-setup-source-url-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--white);
 }
 
-.ai-setup-source-url-meta {
+.ai-setup-source-url-input-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
 }
 
 .ai-setup-source-url-badge {
+  position: absolute;
+  right: 6px;
   display: inline-flex;
   align-items: center;
   height: 24px;
   padding: 0 10px;
   border-radius: 999px;
   background: var(--gray-100);
-  color: var(--gray-600);
+  color: var(--gray-500);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 /* ── Column accordion ── */
@@ -3485,6 +3541,9 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   outline: none;
   background: var(--white);
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ai-setup-source-url-input-wrapper:has(.ai-setup-source-url-badge) .ai-setup-source-url-input {
+  padding-right: 100px;
 }
 
 .ai-setup-source-url-input:focus {
@@ -3621,9 +3680,13 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   white-space: nowrap;
   font-family: var(--font);
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: normal;
   color: var(--gray-400);
+}
+.ai-setup-typing-word::after,
+.ai-setup-processing-word::after {
+  content: '...';
 }
 
 .ai-setup-typing-word {
@@ -3664,14 +3727,17 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: #ecfdf5;
+  padding: 5px 10px 5px 8px;
+  background: #C3EECA;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  color: #1e8a57;
-  align-self: center;
+  color: #00490C;
+  align-self: flex-start;
   animation: aiSetupFadeIn 0.3s ease;
+}
+.ai-setup-config-change svg {
+  flex-shrink: 0;
 }
 
 /* ── Chat input bar ────────────────────────────────────────── */
@@ -3727,6 +3793,7 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   line-height: 1.45;
   outline: none;
   max-height: 120px;
+  overflow: hidden;
   background: var(--white);
   box-sizing: border-box;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -3751,10 +3818,14 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
 }
-
 .ai-setup-send:hover { background: var(--gray-700); }
+.ai-setup-send:disabled {
+  background: var(--gray-300);
+  cursor: default;
+  pointer-events: none;
+}
 
 /* ── Preview panel ─────────────────────────────────────────── */
 .ai-setup-preview {
@@ -3768,45 +3839,53 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   border: 1px solid var(--border);
 }
 
-/* ── Completion transition: chat slides right, preview expands ── */
+/* ── Completion transition: chat slides right, preview expands to full-bleed ── */
 .ai-setup-split.preview-ready .ai-setup-chat {
-  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              min-width 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              margin 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s ease;
 }
 .ai-setup-split.preview-ready .ai-setup-preview {
-  transition: margin 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              border-radius 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-              border 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.4s ease;
 }
 .ai-setup-split.preview-ready .ai-setup-preview-header {
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 .ai-setup-split.completing .ai-setup-chat {
   width: 0;
   min-width: 0;
-  margin: 8px 0;
+  margin: 0;
+  padding: 0;
   opacity: 0;
-  transform: translateX(80px);
+  transform: translateX(60px);
   overflow: hidden;
-  border-right: none;
+  border-color: transparent;
   pointer-events: none;
 }
 .ai-setup-split.completing .ai-setup-preview {
   margin: 0;
   border-radius: 0;
-  border: none;
+  border-color: transparent;
 }
 .ai-setup-split.completing .ai-setup-preview-header {
   opacity: 0;
   max-height: 0;
   padding: 0 32px;
   border-bottom: none;
+}
+
+/* Overlay becomes transparent during completion so preview IS the dashboard */
+.ai-setup-overlay.completing-fade {
+  background: transparent;
 }
 
 .ai-setup-preview-header {
@@ -6088,7 +6167,12 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   transition: background 0.15s;
 }
 
-.assistant-panel-send:hover { background: var(--gray-700); }
+.assistant-panel-send:hover:not(:disabled) { background: var(--gray-700); }
+.assistant-panel-send:disabled {
+  background: var(--gray-300);
+  cursor: default;
+  pointer-events: none;
+}
 
 
 /* ── Sales Pipeline Funnel ─────────────────────────────────── */

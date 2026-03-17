@@ -41,6 +41,57 @@ const AdminAssistant = (() => {
     '#f4f5fc', // hint periwinkle  (from #b7c2e6)
     '#fef3f3', // hint coral/rose  (warm contrast)
   ];
+  // Option card icon system — background + dark icon color pairs
+  const OPTION_CARD_ICON_PAIRS = [
+    { bg: '#d6f5ee', stroke: '#1a7a5c' }, // teal
+    { bg: '#d6ebff', stroke: '#1d5da0' }, // blue
+    { bg: '#eedaff', stroke: '#6b3fa0' }, // purple
+    { bg: '#fbefd4', stroke: '#9a7020' }, // amber
+    { bg: '#dde1f5', stroke: '#3d4a8a' }, // indigo
+    { bg: '#fce0e0', stroke: '#b83c3c' }, // coral
+  ];
+  // Keyword-based Feather-style icon SVGs (16×16 viewBox, stroke-based)
+  const OPTION_CARD_ICON_KEYWORDS = [
+    { keywords: ['focused', 'essential', 'minimal', 'lean', 'simple', 'narrow', 'compact', 'core'],
+      svg: '<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3.5"/><circle cx="8" cy="8" r="1"/>' }, // target
+    { keywords: ['balanced', 'moderate', 'standard', 'default', 'middle', 'mix'],
+      svg: '<path d="M13 2v12"/><path d="M8 6v8"/><path d="M3 4v10"/>' }, // sliders/bar-chart
+    { keywords: ['broad', 'comprehensive', 'detailed', 'extensive', 'full', 'wide', 'complete', 'rich', 'deep', 'everything'],
+      svg: '<rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/>' }, // grid
+    { keywords: ['team', 'people', 'staff', 'agent', 'group'],
+      svg: '<path d="M11 14v-1a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v1"/><circle cx="6.5" cy="5" r="2.5"/><path d="M14 14v-1a2.5 2.5 0 0 0-2-2.4"/><circle cx="11" cy="4.5" r="2"/>' }, // users
+    { keywords: ['custom', 'other', 'specific', 'unique', 'tailored'],
+      svg: '<path d="M9.5 2.5l4 4L5 15H1v-4z"/><path d="M7.5 4.5l4 4"/>' }, // edit-2
+    { keywords: ['shared', 'global', 'company', 'organization', 'all'],
+      svg: '<circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13"/><path d="M8 1.5c2 1.5 3 3.5 3 6.5s-1 5-3 6.5"/><path d="M8 1.5c-2 1.5-3 3.5-3 6.5s1 5 3 6.5"/>' }, // globe
+    { keywords: ['accept', 'approve', 'confirm', 'looks good', 'done', 'yes', 'finish'],
+      svg: '<polyline points="2.5 8.5 6 12 13.5 4.5"/>' }, // check
+    { keywords: ['refine', 'adjust', 'tweak', 'modify', 'change', 'continue'],
+      svg: '<circle cx="8" cy="8" r="6.5"/><polyline points="8 4.5 8 8 10.5 9.5"/>' }, // clock — continue/refine
+    { keywords: ['reset', 'discard', 'undo', 'revert', 'start over', 'keep'],
+      svg: '<polyline points="1.5 2.5 1.5 6.5 5.5 6.5"/><path d="M2.5 6a6 6 0 1 1 1 4.5"/>' }, // rotate-ccw
+    { keywords: ['performance', 'speed', 'fast', 'metric', 'kpi'],
+      svg: '<polyline points="2 12 5.5 6 9 9 14 3"/><polyline points="10 3 14 3 14 7"/>' }, // trending-up
+    { keywords: ['channel', 'source', 'connect', 'integrate', 'link'],
+      svg: '<path d="M10 5.5a3.5 3.5 0 0 1 0 5l-1 1a3.5 3.5 0 0 1-5 0 3.5 3.5 0 0 1 0-5l.5-.5"/><path d="M6 10.5a3.5 3.5 0 0 1 0-5l1-1a3.5 3.5 0 0 1 5 0 3.5 3.5 0 0 1 0 5l-.5.5"/>' }, // link
+    { keywords: ['report', 'export', 'download', 'document', 'file'],
+      svg: '<path d="M10 1.5H3.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V5z"/><polyline points="10 1.5 10 5 13.5 5"/>' }, // file-text
+  ];
+  const OPTION_CARD_FALLBACK_ICONS = [
+    '<polyline points="2 12 5.5 6 9 9 14 3"/><polyline points="10 3 14 3 14 7"/>', // trending-up
+    '<circle cx="8" cy="8" r="6.5"/><path d="M5.5 8h5"/><path d="M8 5.5v5"/>', // plus-circle
+    '<path d="M2 5h12M2 8h12M2 11h8"/>', // align-left
+    '<circle cx="8" cy="8" r="6.5"/><path d="M6 6l4 4M10 6l-4 4"/>', // x-circle
+    '<rect x="1.5" y="3" width="13" height="10" rx="1.5"/><polyline points="1.5 5 8 9 14.5 5"/>', // mail
+    '<path d="M8 1.5l2 4h4.5l-3.5 3 1.5 4.5L8 10.5 3.5 13 5 8.5 1.5 5.5H6z"/>', // star
+  ];
+  function getOptionCardIcon(label, idx) {
+    const lower = (label || '').toLowerCase();
+    for (const entry of OPTION_CARD_ICON_KEYWORDS) {
+      if (entry.keywords.some(kw => lower.includes(kw))) return entry.svg;
+    }
+    return OPTION_CARD_FALLBACK_ICONS[idx % OPTION_CARD_FALLBACK_ICONS.length];
+  }
 
   function formatCompactNumber(n) {
     const v = Number(n);
@@ -1593,7 +1644,7 @@ ${role === 'agent'
 
     const uniqueWords = [...new Set(
       (Array.isArray(words) ? words : [])
-        .map(word => String(word || '').trim().toLowerCase())
+        .map(word => { const w = String(word || '').trim().toLowerCase(); return w.charAt(0).toUpperCase() + w.slice(1); })
         .filter(Boolean)
     )];
     if (uniqueWords.length === 0) return;
@@ -1861,6 +1912,70 @@ ${role === 'agent'
   }
 
   async function handleCompleteOnboarding({ summary }) {
+    // Show confirmation buttons before completing
+    return new Promise((resolve) => {
+      const container = getMessagesContainer();
+      if (!container) {
+        // Fallback: complete immediately if no UI container
+        return doCompleteOnboarding(summary).then(resolve);
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'ai-setup-options style-cards';
+
+      const promptEl = document.createElement('div');
+      promptEl.className = 'ai-setup-inline-prompt';
+      promptEl.textContent = summary || 'Your dashboard is ready!';
+      wrapper.appendChild(promptEl);
+
+      const options = [
+        { id: 'done', label: 'Looks good, finish setup', description: 'Start using your analytics dashboard.' },
+        { id: 'continue', label: 'Continue refining', description: 'Keep adjusting before finishing.' },
+      ];
+
+      options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'ai-setup-option-card';
+        const pair = OPTION_CARD_ICON_PAIRS[idx % OPTION_CARD_ICON_PAIRS.length];
+        const iconSvg = getOptionCardIcon(opt.label, idx);
+        btn.innerHTML = `
+          <div class="ai-setup-option-icon" style="background:${pair.bg}">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${pair.stroke}"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>
+          </div>
+          <div class="ai-setup-option-text">
+            <span class="ai-setup-option-label">${escapeHtml(opt.label)}</span>
+            <span class="ai-setup-option-desc">${escapeHtml(opt.description)}</span>
+          </div>
+        `;
+
+        btn.addEventListener('click', () => {
+          wrapper.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          wrapper.classList.add('ai-setup-options-resolved');
+          disableOptions(wrapper);
+
+          if (opt.id === 'done') {
+            doCompleteOnboarding(summary).then(() => {
+              resolve({ success: true, summary });
+            });
+          } else {
+            // Continue refining — stay in onboarding mode
+            markNextSequenceShouldFollow();
+            _pendingResolve = null;
+            resolve({ success: false, continued: true });
+          }
+        });
+
+        wrapper.appendChild(btn);
+      });
+
+      mountInteractiveThreadBlock(wrapper);
+      scrollToBottom(container);
+    });
+  }
+
+  async function doCompleteOnboarding(summary) {
     AssistantStorage.setMode(_session, 'assistant');
     AssistantStorage.setAssistantThreadInitialized(_session, false);
     AssistantStorage.setAssistantDisplayStartIndex(_session, null);
@@ -1873,6 +1988,24 @@ ${role === 'agent'
     // Open assistant panel directly at compact height
     localStorage.setItem(COMPACT_PREF_KEY, '1');
     openAssistantPanel();
+
+    // Animate the assistant panel sliding in from right (where the chat was)
+    const panel = document.getElementById('assistant-panel');
+    if (panel) {
+      // Force a reflow so the initial transform is applied
+      void panel.offsetHeight;
+      panel.style.transition = 'opacity 0.35s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+      panel.style.opacity = '1';
+      panel.style.transform = 'translateX(0)';
+      // Clean up inline styles after animation
+      setTimeout(() => {
+        panel.style.animation = '';
+        panel.style.transition = '';
+        panel.style.opacity = '';
+        panel.style.transform = '';
+      }, 500);
+    }
+
     return { success: true, summary };
   }
 
@@ -2652,7 +2785,7 @@ ${role === 'agent'
     if (!container) return;
     const pill = document.createElement('div');
     pill.className = 'ai-setup-config-change';
-    pill.textContent = text;
+    pill.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#00490C" fill-opacity="0.15"/><path d="M5 8l2 2 4-4" stroke="#00490C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${escapeHtml(text)}</span>`;
     container.appendChild(pill);
     animateThreadElement(pill);
     scrollThreadRevealIntoView(container, pill);
@@ -2710,11 +2843,17 @@ ${role === 'agent'
       el.dataset.optionId = opt.id;
 
       if (style === 'cards') {
-        // Assign pastel background — cycle through palette
-        el.style.background = OPTION_CARD_PASTELS[idx % OPTION_CARD_PASTELS.length];
+        const pair = OPTION_CARD_ICON_PAIRS[idx % OPTION_CARD_ICON_PAIRS.length];
+        const iconSvg = getOptionCardIcon(opt.label, idx);
         el.innerHTML = `
-          <span class="ai-setup-option-label">${escapeHtml(opt.label)}</span>
-          ${opt.description ? `<span class="ai-setup-option-desc">${escapeHtml(opt.description)}</span>` : ''}
+          <div class="ai-setup-option-icon" style="background:${pair.bg}">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${pair.stroke}"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>
+          </div>
+          <div class="ai-setup-option-text">
+            <span class="ai-setup-option-label">${escapeHtml(opt.label)}</span>
+            ${opt.description ? `<span class="ai-setup-option-desc">${escapeHtml(opt.description)}</span>` : ''}
+          </div>
         `;
       } else {
         el.textContent = opt.label;
@@ -2737,7 +2876,7 @@ ${role === 'agent'
             _pendingResolve = null;
             _runGeneration++;
             _loopRunning = false;
-            handleCompleteOnboarding({ summary: opt.label });
+            doCompleteOnboarding(opt.label);
             return;
           }
 
@@ -3179,12 +3318,20 @@ ${role === 'agent'
       },
     ];
 
-    decisionOptions.forEach(option => {
+    decisionOptions.forEach((option, idx) => {
       const button = document.createElement('button');
       button.className = 'ai-setup-option-card';
+      const pair = OPTION_CARD_ICON_PAIRS[idx % OPTION_CARD_ICON_PAIRS.length];
+      const iconSvg = getOptionCardIcon(option.label, idx);
       button.innerHTML = `
-        <span class="ai-setup-option-label">${escapeHtml(option.label)}</span>
-        <span class="ai-setup-option-desc">${escapeHtml(option.description)}</span>
+        <div class="ai-setup-option-icon" style="background:${pair.bg}">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${pair.stroke}"
+               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>
+        </div>
+        <div class="ai-setup-option-text">
+          <span class="ai-setup-option-label">${escapeHtml(option.label)}</span>
+          <span class="ai-setup-option-desc">${escapeHtml(option.description)}</span>
+        </div>
       `;
       button.addEventListener('click', () => {
         if (option.id === 'accept_proposal') {
@@ -3601,15 +3748,17 @@ ${role === 'agent'
           row.className = 'ai-setup-source-url-row';
           row.dataset.rowId = entry.id;
           row.innerHTML = `
-            <div class="ai-setup-source-url-meta">
+            <div class="ai-setup-source-url-input-wrapper">
+              <input type="url" class="ai-setup-source-url-input" placeholder="https://example.com" value="${escapeHtml(entry.url || '')}">
               ${entry.sourceLabel ? `<span class="ai-setup-source-url-badge">${escapeHtml(entry.sourceLabel)}</span>` : ''}
             </div>
-            <input type="url" class="ai-setup-source-url-input" placeholder="https://example.com" value="${escapeHtml(entry.url || '')}">
             <button type="button" class="ai-setup-source-url-remove">Remove</button>
           `;
           row.querySelector('.ai-setup-source-url-input')?.addEventListener('input', (event) => {
             entry.url = event.target.value;
             entry.sourceLabel = '';
+            const badge = row.querySelector('.ai-setup-source-url-badge');
+            if (badge) badge.remove();
           });
           row.querySelector('.ai-setup-source-url-remove')?.addEventListener('click', () => {
             const idx = urlDraft.findIndex(item => item.id === entry.id);
@@ -4588,7 +4737,13 @@ ${role === 'agent'
     if (input) {
       input.value = '';
       input.style.height = 'auto';
+      input.style.overflowY = 'hidden';
     }
+    // Sync both send buttons to disabled after clearing
+    const setupSend = document.getElementById('ai-setup-send');
+    const assistSend = document.getElementById('assistant-panel-send');
+    if (setupSend) setupSend.disabled = true;
+    if (assistSend) assistSend.disabled = true;
   }
 
   function getInputValue() {
@@ -5017,6 +5172,10 @@ ${role === 'agent'
     const sendBtn = document.getElementById('ai-setup-send');
     const skipBtn = document.getElementById('ai-setup-skip-btn');
 
+    function syncSendState() {
+      if (sendBtn) sendBtn.disabled = !input?.value.trim();
+    }
+
     if (input && !input.dataset.wired) {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -5024,8 +5183,11 @@ ${role === 'agent'
           handleSend();
         }
       });
-      // Auto-grow
-      input.addEventListener('input', () => autoGrow(input));
+      // Auto-grow + sync send button
+      input.addEventListener('input', () => {
+        autoGrow(input);
+        syncSendState();
+      });
       input.dataset.wired = 'true';
     }
 
@@ -5033,6 +5195,9 @@ ${role === 'agent'
       sendBtn.addEventListener('click', handleSend);
       sendBtn.dataset.wired = 'true';
     }
+
+    // Set initial disabled state
+    syncSendState();
 
     if (skipBtn && !skipBtn.dataset.wired) {
       skipBtn.addEventListener('click', handleSkip);
@@ -5058,6 +5223,10 @@ ${role === 'agent'
     const input = document.getElementById('assistant-panel-input');
     const sendBtn = document.getElementById('assistant-panel-send');
 
+    function syncAssistantSendState() {
+      if (sendBtn) sendBtn.disabled = !input?.value.trim();
+    }
+
     if (input && !input.dataset.wired) {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -5065,7 +5234,10 @@ ${role === 'agent'
           handleSend();
         }
       });
-      input.addEventListener('input', () => autoGrow(input));
+      input.addEventListener('input', () => {
+        autoGrow(input);
+        syncAssistantSendState();
+      });
       input.dataset.wired = 'true';
     }
 
@@ -5073,6 +5245,9 @@ ${role === 'agent'
       sendBtn.addEventListener('click', handleSend);
       sendBtn.dataset.wired = 'true';
     }
+
+    // Set initial disabled state
+    syncAssistantSendState();
   }
 
   function handleSend() {
@@ -5124,7 +5299,7 @@ ${role === 'agent'
     repairOrphanedToolUseHistory('User skipped onboarding.');
 
     // Preserve partial progress, switch to assistant mode
-    handleCompleteOnboarding({ summary: 'User skipped setup — defaults applied.' }).then(() => {
+    doCompleteOnboarding('User skipped setup — defaults applied.').then(() => {
       // Re-render the main dashboard so any partial changes from onboarding are visible
       if (typeof renderTabs === 'function')     renderTabs();
       if (typeof renderSections === 'function') renderSections();
@@ -5133,7 +5308,9 @@ ${role === 'agent'
 
   function autoGrow(textarea) {
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    const h = Math.min(textarea.scrollHeight, 120);
+    textarea.style.height = h + 'px';
+    textarea.style.overflowY = textarea.scrollHeight > 120 ? 'auto' : 'hidden';
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -5159,31 +5336,42 @@ ${role === 'agent'
   async function animateOnboardingToAssistant() {
     const overlay = document.getElementById('ai-setup-overlay');
     const split = document.getElementById('ai-setup-split');
+    const panel = document.getElementById('assistant-panel');
 
     if (!overlay || !split) return;
 
-    const duration = 700;
-
     overlay.style.pointerEvents = 'none';
 
-    // Trigger chat collapse + preview expand via CSS class
+    // Phase 1: Chat collapses, preview expands to full-bleed (matches dashboard exactly)
     split.classList.add('completing');
 
-    // Fade overlay background to reveal analytics underneath
-    const bg = getComputedStyle(overlay).background;
+    // Wait for the chat to collapse and preview to fill the space
+    await new Promise(r => setTimeout(r, 500));
+
+    // Phase 2: Make overlay background transparent, then fade the entire overlay out
+    // Since the preview already fills the space, the dashboard beneath lines up
+    overlay.classList.add('completing-fade');
+
     overlay.animate([
       { opacity: 1 },
       { opacity: 0 },
     ], {
-      duration: duration + 300,
+      duration: 350,
       easing: 'ease-out',
       fill: 'forwards',
-      delay: 200,
     });
 
-    await new Promise(resolve => setTimeout(resolve, duration + 500));
+    await new Promise(r => setTimeout(r, 400));
 
     split.classList.remove('completing');
+    overlay.classList.remove('completing-fade');
+
+    // Phase 3: Prepare the assistant panel to slide in from the right
+    if (panel) {
+      panel.style.animation = 'none';
+      panel.style.opacity = '0';
+      panel.style.transform = 'translateX(40px)';
+    }
   }
 
   async function animateOnboardingCollapseToFAB() {
