@@ -1517,28 +1517,6 @@ ${role === 'agent'
     return 'I’m here to help with analytics, dashboard setup, charts, metrics, and support or sales data questions. I can’t help with general questions like that, but I can help you explore metrics, trends, tickets, teams, or dashboard changes.';
   }
 
-  function stringifyErrorForReport(value) {
-    if (!value) return '';
-    if (typeof value === 'string') return value;
-    if (value instanceof Error) return value.stack || value.message || String(value);
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
-    }
-  }
-
-  function getLastUserMessageText() {
-    const messages = AssistantStorage.getMessages(_session);
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const message = messages[i];
-      if (message?.role === 'user' && typeof message.content === 'string' && message.content.trim()) {
-        return message.content.trim();
-      }
-    }
-    return '';
-  }
-
   function hashStatusSeed(text) {
     const source = String(text || '');
     let hash = 0;
@@ -1669,129 +1647,6 @@ ${role === 'agent'
 
   function shouldShowWorkingIndicatorForTool(toolName) {
     return BACKGROUND_WORKING_TOOLS.has(toolName);
-  }
-
-  function summarizeThreadMessageContent(message) {
-    if (!message) return '';
-    if (typeof message.content === 'string') return message.content.trim();
-
-    if (message.role === 'assistant_artifact') {
-      const title = message.content?.presentation?.title;
-      return title ? `[artifact] ${title}` : '[artifact]';
-    }
-
-    if (!Array.isArray(message.content)) {
-      return stringifyErrorForReport(message.content);
-    }
-
-    const parts = [];
-    message.content.forEach((block) => {
-      if (!block) return;
-      if (typeof block === 'string') {
-        if (block.trim()) parts.push(block.trim());
-        return;
-      }
-      if (block.type === 'text' && block.text) {
-        parts.push(String(block.text).trim());
-        return;
-      }
-      if (block.type === 'tool_use') {
-        parts.push(`[tool_use:${block.name || 'unknown'}]`);
-        return;
-      }
-      if (block.type === 'tool_result') {
-        let parsed = block.content;
-        try {
-          parsed = JSON.parse(block.content);
-        } catch {
-          parsed = block.content;
-        }
-        if (parsed?.error) {
-          parts.push(`[tool_result_error:${parsed.tool || block.tool_use_id || 'unknown'}] ${parsed.error}`);
-        } else if (parsed?.skipped) {
-          parts.push(`[tool_result:${block.tool_use_id || 'unknown'}] skipped`);
-        } else {
-          parts.push(`[tool_result:${block.tool_use_id || 'unknown'}]`);
-        }
-      }
-    });
-
-    return parts.join(' ').trim();
-  }
-
-  function buildAssistantThreadTranscript(limit = 18) {
-    const mode = AssistantStorage.getMode(_session) || 'onboarding';
-    const sourceMessages = mode === 'assistant' && typeof AssistantStorage.getAssistantDisplayMessages === 'function'
-      ? AssistantStorage.getAssistantDisplayMessages(_session)
-      : AssistantStorage.getMessages(_session);
-
-    return sourceMessages
-      .slice(-limit)
-      .map((message) => {
-        const role = message?.role === 'assistant_artifact'
-          ? 'artifact'
-          : String(message?.role || 'unknown');
-        const content = summarizeThreadMessageContent(message);
-        return `${role.toUpperCase()}: ${content || '[empty]'}`;
-      })
-      .join('\n\n');
-  }
-
-  function buildGuideBugReportPayload(errorConfig = {}) {
-    const mode = AssistantStorage.getMode(_session) || 'onboarding';
-    return {
-      section: mode === 'onboarding' ? 'AI onboarding assistant' : 'Analytics assistant',
-      surface: mode === 'onboarding' ? 'AI onboarding flow' : 'Post-onboarding analytics assistant',
-      summary: errorConfig.reportSummary
-        || errorConfig.userMessage
-        || 'The AI onboarding assistant hit an error.',
-      userMessage: errorConfig.userMessage || '',
-      technicalMessage: stringifyErrorForReport(errorConfig.technicalMessage || errorConfig.rawError || ''),
-      role: _role || 'admin',
-      mode,
-      customerName: _customerData?.company || '',
-      customerId: _customerId || '',
-      request: errorConfig.request || getLastUserMessageText(),
-      source: errorConfig.source || 'admin-assistant',
-      thread: buildAssistantThreadTranscript(),
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  async function reportErrorToGuide(errorConfig, reportButton, statusEl) {
-    if (typeof window.reportPrototypeBug !== 'function') {
-      if (statusEl) statusEl.textContent = 'Sidecar is not available right now.';
-      return { ok: false };
-    }
-
-    if (reportButton) {
-      reportButton.disabled = true;
-      reportButton.textContent = 'Reporting...';
-    }
-    if (statusEl) statusEl.textContent = '';
-
-    try {
-      const result = await window.reportPrototypeBug(buildGuideBugReportPayload(errorConfig));
-      if (result?.ok) {
-        if (reportButton) reportButton.textContent = 'Reported';
-        if (statusEl) statusEl.textContent = 'Bug report sent to Sidecar.';
-        return result;
-      }
-      if (reportButton) {
-        reportButton.disabled = false;
-        reportButton.textContent = 'Report bug';
-      }
-      if (statusEl) statusEl.textContent = 'I could not send the bug report automatically.';
-      return { ok: false };
-    } catch (error) {
-      console.error('[AdminAssistant] Bug report failed:', error);
-      if (reportButton) {
-        reportButton.disabled = false;
-        reportButton.textContent = 'Report bug';
-      }
-      if (statusEl) statusEl.textContent = 'I could not send the bug report automatically.';
-      return { ok: false, error };
-    }
   }
 
   function buildModelMessages() {
@@ -2056,7 +1911,6 @@ ${role === 'agent'
       renderErrorBubble({
         userMessage: 'Something went wrong while I was working on that.',
         technicalMessage: e,
-        reportSummary: 'The assistant hit an unexpected loop error.',
         source: 'sendMessage.catch',
       });
     } finally {
@@ -2097,7 +1951,6 @@ ${role === 'agent'
         renderErrorBubble({
           userMessage: 'Something went wrong while I was contacting the assistant.',
           technicalMessage: e,
-          reportSummary: 'A network error interrupted the assistant request.',
           source: 'runAgenticLoop.fetch',
         });
         return;
@@ -2111,7 +1964,6 @@ ${role === 'agent'
         renderErrorBubble({
           userMessage: 'Something went wrong while I was processing that request.',
           technicalMessage: data?.error?.message || data?.message || data?.error || 'Assistant API error',
-          reportSummary: 'The assistant API returned an error during the main chat loop.',
           source: 'runAgenticLoop.api',
         });
         return;
@@ -2688,7 +2540,7 @@ ${role === 'agent'
 
     const helper = document.createElement('div');
     helper.className = 'ai-setup-error-helper';
-    helper.textContent = options.helperMessage || 'Try again, or report a bug using the Guide.';
+    helper.textContent = options.helperMessage || 'Please try again.';
     bubble.appendChild(helper);
 
     const actions = document.createElement('div');
@@ -2707,7 +2559,6 @@ ${role === 'agent'
           renderErrorBubble({
             userMessage: 'Something went wrong while retrying that.',
             technicalMessage: error,
-            reportSummary: 'Retrying an onboarding assistant error failed.',
             source: 'error-retry',
           });
         }
@@ -2715,20 +2566,7 @@ ${role === 'agent'
       actions.appendChild(retryBtn);
     }
 
-    const reportBtn = document.createElement('button');
-    reportBtn.type = 'button';
-    reportBtn.className = 'ai-setup-inline-action-secondary ai-setup-error-btn';
-    reportBtn.textContent = options.reportLabel || 'Report bug';
-    actions.appendChild(reportBtn);
     bubble.appendChild(actions);
-
-    const status = document.createElement('div');
-    status.className = 'ai-setup-error-status';
-    bubble.appendChild(status);
-
-    reportBtn.addEventListener('click', () => {
-      void reportErrorToGuide(options, reportBtn, status);
-    });
 
     container.appendChild(bubble);
     animateThreadElement(bubble);
@@ -4027,11 +3865,8 @@ ${role === 'agent'
           userMessage: websiteFailure
             ? 'Something went wrong while fetching the source material.'
             : 'Something went wrong while processing the source material.',
-          helperMessage: 'Try again, or report a bug using the Guide. You can also continue without the source.',
+          helperMessage: 'Try again, or continue without the source.',
           technicalMessage: failures.map(item => `${item.label}: ${item.message}`).join('\n'),
-          reportSummary: websiteFailure
-            ? 'Source fetching failed during onboarding.'
-            : 'Source extraction failed during onboarding.',
           source: 'processSourceSubmit.empty-results',
           onRetry: () => processSourceSubmit(wrapper, allowedTypes, resolve),
         });
@@ -4073,9 +3908,8 @@ ${role === 'agent'
       console.error('[AdminAssistant] Source processing error:', e);
       renderErrorBubble({
         userMessage: 'Something went wrong while processing the source material.',
-        helperMessage: 'Try again, or report a bug using the Guide. You can also continue without the source.',
+        helperMessage: 'Try again, or continue without the source.',
         technicalMessage: e,
-        reportSummary: 'Source processing threw an unexpected error during onboarding.',
         source: 'processSourceSubmit.catch',
         onRetry: () => processSourceSubmit(wrapper, allowedTypes, resolve),
       });
@@ -5110,7 +4944,6 @@ ${role === 'agent'
         renderErrorBubble({
           userMessage: 'Something went wrong while starting the onboarding assistant.',
           technicalMessage: data?.error?.message || data?.message || data?.error || 'Welcome API error',
-          reportSummary: 'The onboarding assistant failed before the welcome step completed.',
           source: 'triggerWelcome.api',
           onRetry: () => triggerWelcome({ seedInitialMessage: false }),
         });
@@ -5166,7 +4999,6 @@ ${role === 'agent'
       renderErrorBubble({
         userMessage: 'Something went wrong while starting the onboarding assistant.',
         technicalMessage: e,
-        reportSummary: 'The onboarding assistant welcome request failed to connect.',
         source: 'triggerWelcome.catch',
         onRetry: () => triggerWelcome({ seedInitialMessage: false }),
       });

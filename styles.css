@@ -2771,13 +2771,6 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   min-width: 110px;
 }
 
-.ai-setup-error-status {
-  min-height: 16px;
-  margin-top: 10px;
-  color: #9f5b21;
-  font-size: 12px;
-}
-
 /* ── Option cards (rendered by show_options tool) ──────────── */
 .ai-setup-options {
   display: flex;
