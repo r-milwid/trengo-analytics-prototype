@@ -864,7 +864,7 @@ ${role === 'agent'
     return names.map((teamName) => ({
       id: buildInlineDraftId('team'),
       name: teamName,
-      usecase: getTeamAssignmentSuggestion(teamName) || '',
+      usecase: getTeamAssignmentSuggestion(teamName) || 'both',
     }));
   }
 
@@ -1461,6 +1461,7 @@ ${role === 'agent'
 
     let repaired = false;
 
+    // ── Pass 1: ensure every assistant tool_use has a matching tool_result in the next user message ──
     for (let i = 0; i < messages.length; i += 1) {
       const message = messages[i];
       if (message?.role !== 'assistant' || !Array.isArray(message.content)) continue;
@@ -1494,7 +1495,57 @@ ${role === 'agent'
       repaired = true;
     }
 
+    // ── Pass 2: remove tool_result blocks that have no matching tool_use in the previous message ──
+    // This is the reverse of Pass 1 — orphaned tool_results left by retries or interruptions.
+    for (let i = 1; i < messages.length; i += 1) {
+      const message = messages[i];
+      if (message?.role !== 'user' || !Array.isArray(message.content)) continue;
+
+      const hasToolResults = message.content.some(b => b?.type === 'tool_result');
+      if (!hasToolResults) continue;
+
+      const prev = messages[i - 1];
+      const prevToolUseIds = new Set(
+        (prev?.role === 'assistant' && Array.isArray(prev?.content))
+          ? prev.content.filter(b => b?.type === 'tool_use' && b.id).map(b => b.id)
+          : []
+      );
+
+      const filtered = message.content.filter(b => {
+        if (b?.type !== 'tool_result') return true;   // keep non-tool-result blocks (e.g. text)
+        return prevToolUseIds.has(b.tool_use_id);      // keep only those with a matching tool_use
+      });
+
+      if (filtered.length === message.content.length) continue; // nothing to remove
+
+      repaired = true;
+      if (filtered.length === 0) {
+        // The entire message was orphaned tool_results — remove the message
+        messages.splice(i, 1);
+        i -= 1;
+      } else {
+        message.content = filtered;
+      }
+    }
+
+    // ── Pass 3: merge any consecutive same-role messages created by the above passes ──
+    for (let i = messages.length - 1; i > 0; i -= 1) {
+      const curr = messages[i];
+      const prev = messages[i - 1];
+      if (!curr || !prev || curr.role !== prev.role) continue;
+
+      repaired = true;
+      if (Array.isArray(prev.content) && Array.isArray(curr.content)) {
+        prev.content = [...prev.content, ...curr.content];
+      } else if (typeof prev.content === 'string' && typeof curr.content === 'string') {
+        prev.content = prev.content + '\n' + curr.content;
+      }
+      // Remove the duplicate
+      messages.splice(i, 1);
+    }
+
     if (repaired) {
+      console.warn('[AdminAssistant] repairOrphanedToolUseHistory: fixed message history');
       AssistantStorage.save(_session);
     }
     return repaired;
@@ -2540,11 +2591,21 @@ ${role === 'agent'
 
     const helper = document.createElement('div');
     helper.className = 'ai-setup-error-helper';
-    helper.textContent = options.helperMessage || 'Please try again.';
+    helper.textContent = options.helperMessage || 'Click "Try again" or type a new message below.';
     bubble.appendChild(helper);
 
     const actions = document.createElement('div');
     actions.className = 'ai-setup-error-actions';
+
+    // Show the raw technical error as small detail text so it's visible without DevTools
+    if (options.technicalMessage) {
+      const detail = document.createElement('div');
+      detail.className = 'ai-setup-error-detail';
+      const raw = options.technicalMessage;
+      detail.textContent = typeof raw === 'string' ? raw
+        : (raw?.message || (raw?.type ? `${raw.type}` : JSON.stringify(raw)));
+      bubble.appendChild(detail);
+    }
 
     if (options.retry !== false) {
       const retryBtn = document.createElement('button');
@@ -2552,10 +2613,14 @@ ${role === 'agent'
       retryBtn.className = 'ai-setup-inline-action-primary ai-setup-error-btn';
       retryBtn.textContent = options.retryLabel || 'Try again';
       retryBtn.addEventListener('click', async () => {
+        retryBtn.disabled = true;
+        retryBtn.textContent = 'Retrying…';
         try {
           await Promise.resolve((options.onRetry || (() => retryLastMessage()))());
         } catch (error) {
           console.error('[AdminAssistant] Retry action failed:', error);
+          retryBtn.disabled = false;
+          retryBtn.textContent = options.retryLabel || 'Try again';
           renderErrorBubble({
             userMessage: 'Something went wrong while retrying that.',
             technicalMessage: error,
@@ -2571,6 +2636,23 @@ ${role === 'agent'
     container.appendChild(bubble);
     animateThreadElement(bubble);
     scrollThreadRevealIntoView(container, bubble);
+
+    // Re-enable the chat input so the user can type a reply without needing to click Try again
+    requestAnimationFrame(() => {
+      const mode = AssistantStorage.getMode(_session);
+      const input = mode === 'assistant'
+        ? document.getElementById('assistant-panel-input')
+        : document.getElementById('ai-setup-input');
+      const sendBtn = mode === 'assistant'
+        ? document.getElementById('assistant-panel-send')
+        : document.getElementById('ai-setup-send');
+      if (input) {
+        input.disabled = false;
+        input.focus();
+      }
+      // Send button stays disabled until the user actually types something
+      if (sendBtn) sendBtn.disabled = !(input?.value.trim());
+    });
   }
 
   function removeTypingIndicators() {
@@ -2979,7 +3061,7 @@ ${role === 'agent'
       draft.push({
         id: buildInlineDraftId('team'),
         name: '',
-        usecase: '',
+        usecase: 'both',
       });
       renderRows();
       requestAnimationFrame(() => {
@@ -3015,7 +3097,7 @@ ${role === 'agent'
         cleaned.push({
           id: row.id,
           name,
-          usecase: row.usecase || getTeamAssignmentSuggestion(name) || '',
+          usecase: row.usecase || getTeamAssignmentSuggestion(name) || 'both',
         });
       }
       errorEl.style.display = 'none';
@@ -3050,12 +3132,12 @@ ${role === 'agent'
 
       const assignments = {};
       const teamState = cleaned.map((row) => {
-        const normalized = normalizeTeamAssignment(row.usecase || getTeamAssignmentSuggestion(row.name));
+        const normalized = normalizeTeamAssignment(row.usecase || getTeamAssignmentSuggestion(row.name)) || 'both';
         if (normalized) assignments[row.name] = normalized;
         return {
           name: row.name,
           members: [],
-          usecase: normalized === 'support' ? 'resolve' : normalized === 'sales' ? 'convert' : normalized || 'resolve',
+          usecase: normalized === 'support' ? 'resolve' : normalized === 'sales' ? 'convert' : normalized || 'both',
         };
       });
 
@@ -6036,6 +6118,9 @@ ${role === 'agent'
 
   function retryLastMessage() {
     if (!_session || _loopRunning) return;
+    // Cancel any stale loop / pending UI tool so the retry starts clean
+    _runGeneration++;
+    _pendingResolve = null;
     const messages = AssistantStorage.getMessages(_session);
     const startIndex = (AssistantStorage.getMode(_session) === 'assistant')
       ? (AssistantStorage.getAssistantDisplayStartIndex(_session) ?? 0)
@@ -6043,7 +6128,7 @@ ${role === 'agent'
     // Find last user text message
     for (let i = messages.length - 1; i >= startIndex; i--) {
       if (messages[i].role === 'user' && typeof messages[i].content === 'string') {
-        // Remove everything after this message to retry
+        // Remove everything from this message onwards, then re-send
         _session.messages = messages.slice(0, i);
         AssistantStorage.save(_session);
         sendMessage(messages[i].content);
