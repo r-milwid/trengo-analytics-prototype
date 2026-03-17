@@ -3488,10 +3488,19 @@ ${role === 'agent'
         labelInput.addEventListener('input', () => {
           tab.label = labelInput.value;
           typoConfirmedIds.delete(tab.id);
-          AssistantStorage.setPendingTabDraft(_session, draft);
+          // Persist draft data without triggering a full re-render
+          const draftForSave = buildTabDraftForApply(draft);
+          const currentDraft = _session?.structured?.suggestedConfigDraft || {};
+          AssistantStorage.setPendingTabDraft(_session, draftForSave);
+          AssistantStorage.setSuggestedConfigDraft(_session, {
+            ...currentDraft,
+            tabs: draftForSave,
+            widgetIdsByTab: currentDraft.widgetIdsByTab || {},
+          });
           AssistantStorage.setPendingProposalSource(_session, 'user');
           AssistantStorage.save(_session);
-          applyTabDraftToPreview(draft);
+          // Lightweight update — just change the label text in the preview, no full re-render
+          updatePreviewTabLabel(tab.id, tab.label);
           const suspicious = looksLikeTypo(tab.label);
           warning.style.display = suspicious ? '' : 'none';
           warning.textContent = suspicious
@@ -4200,6 +4209,34 @@ ${role === 'agent'
   //  PREVIEW PANEL (simplified dashboard preview)
   // ═══════════════════════════════════════════════════════════
 
+  let _activePreviewTabId = null;
+
+  function switchPreviewTab(tabId) {
+    _activePreviewTabId = tabId;
+    const content = document.getElementById('ai-setup-preview-content');
+    if (!content) return;
+    // Update tab bar active state
+    content.querySelectorAll('.preview-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tabId === tabId);
+    });
+    // Show/hide sections
+    content.querySelectorAll('.preview-section').forEach(sec => {
+      sec.style.display = sec.dataset.tabId === tabId ? '' : 'none';
+    });
+  }
+
+  /** Lightweight label-only update — no full re-render */
+  function updatePreviewTabLabel(tabId, newLabel) {
+    const content = document.getElementById('ai-setup-preview-content');
+    if (!content) return;
+    // Update the tab button text
+    const tabBtn = content.querySelector(`.preview-tab[data-tab-id="${tabId}"]`);
+    if (tabBtn) tabBtn.textContent = newLabel;
+    // Update the section header text
+    const sectionHeader = content.querySelector(`.preview-section[data-tab-id="${tabId}"] .preview-section-header span:first-child`);
+    if (sectionHeader) sectionHeader.textContent = newLabel;
+  }
+
   function renderPreview() {
     const content = document.getElementById('ai-setup-preview-content');
     if (!content) return;
@@ -4209,17 +4246,26 @@ ${role === 'agent'
 
     content.innerHTML = '';
     if (previewTabs.length === 0) {
+      _activePreviewTabId = null;
       updatePreviewRoleBadge();
       return;
+    }
+
+    // Determine which tab to show — keep the previously active one if still valid
+    const validIds = new Set(previewTabs.map(t => t.id));
+    if (!_activePreviewTabId || !validIds.has(_activePreviewTabId)) {
+      _activePreviewTabId = previewTabs[0].id;
     }
 
     // Tab bar
     const tabBar = document.createElement('div');
     tabBar.className = 'preview-tab-bar preview-reveal-item';
-    previewTabs.forEach((tab, index) => {
+    previewTabs.forEach(tab => {
       const btn = document.createElement('button');
-      btn.className = 'preview-tab' + (index === 0 ? ' active' : '');
+      btn.className = 'preview-tab' + (tab.id === _activePreviewTabId ? ' active' : '');
       btn.textContent = tab.label;
+      btn.dataset.tabId = tab.id;
+      btn.addEventListener('click', () => switchPreviewTab(tab.id));
       tabBar.appendChild(btn);
     });
     content.appendChild(tabBar);
@@ -4243,6 +4289,9 @@ ${role === 'agent'
 
       const section = document.createElement('div');
       section.className = 'preview-section';
+      section.dataset.tabId = tab.id;
+      // Only show the active tab's section
+      if (tab.id !== _activePreviewTabId) section.style.display = 'none';
 
       const header = document.createElement('div');
       header.className = 'preview-section-header preview-reveal-item';
@@ -5126,21 +5175,179 @@ ${role === 'agent'
     }
   }
 
+  /**
+   * Build a lookup of tool_use_id → parsed tool_result payload from the message history.
+   * Tool results are stored as user messages with content: [{ type: 'tool_result', tool_use_id, content }]
+   */
+  function buildToolResultMap(messages) {
+    const map = {};
+    for (const msg of messages) {
+      if (msg.role !== 'user' || !Array.isArray(msg.content)) continue;
+      for (const block of msg.content) {
+        if (block.type === 'tool_result' && block.tool_use_id) {
+          try { map[block.tool_use_id] = JSON.parse(block.content); } catch { /* ignore */ }
+        }
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Render a resolved (read-only) version of an interactive UI tool for replay.
+   * Shows option cards/chips in their final selected+disabled state.
+   */
+  function renderResolvedUI(toolName, toolInput, toolResult) {
+    const container = getMessagesContainer();
+    if (!container || !toolInput) return;
+
+    // If the user skipped/interrupted, just show a subtle pill
+    if (toolResult?.skipped || toolResult?.interruptedByUser) return;
+
+    if (toolName === 'show_options' || toolName === 'show_boolean_choice') {
+      const options = toolInput.options || [];
+      const style = toolInput.style || 'cards';
+      const selectedLabels = new Set(toolResult?.selectedLabels || []);
+      const selectedIds = new Set(toolResult?.selected || []);
+      const hasSelection = selectedIds.size > 0 || selectedLabels.size > 0;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `ai-setup-options style-${style}` + (hasSelection ? ' ai-setup-options-resolved' : '');
+
+      options.forEach((opt, idx) => {
+        const el = document.createElement('button');
+        const isSelected = selectedIds.has(opt.id) || selectedLabels.has(opt.label);
+
+        if (style === 'cards') {
+          el.className = 'ai-setup-option-card' + (isSelected ? ' selected' : '');
+          const pair = OPTION_CARD_ICON_PAIRS[idx % OPTION_CARD_ICON_PAIRS.length];
+          const iconSvg = getOptionCardIcon(opt.label, idx);
+          el.innerHTML = `
+            <div class="ai-setup-option-icon" style="background:${pair.bg}">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${pair.stroke}"
+                   stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>
+            </div>
+            <div class="ai-setup-option-text">
+              <span class="ai-setup-option-label">${escapeHtml(opt.label)}</span>
+              ${opt.description ? `<span class="ai-setup-option-desc">${escapeHtml(opt.description)}</span>` : ''}
+            </div>
+          `;
+        } else {
+          el.className = 'ai-setup-option-chip' + (isSelected ? ' selected' : '');
+          el.textContent = opt.label;
+        }
+
+        // Only disable if it was already answered
+        if (hasSelection) {
+          el.disabled = true;
+        }
+
+        wrapper.appendChild(el);
+      });
+
+      container.appendChild(wrapper);
+      return wrapper;
+    }
+    // For complex editors (team matrix, tab editor, source input), show a config-change pill
+    else if (toolName === 'show_team_assignment_matrix') {
+      showConfigChange('Team assignments configured');
+    } else if (toolName === 'show_tab_editor') {
+      showConfigChange('Tabs configured');
+    } else if (toolName === 'show_tab_proposal_choice') {
+      const decision = toolResult?.decision;
+      if (decision === 'accept_proposal') showConfigChange('Tab proposals accepted');
+      else if (decision === 'keep_defaults') showConfigChange('Kept default tabs');
+      else showConfigChange('Tab proposal reviewed');
+    } else if (toolName === 'show_source_input') {
+      showConfigChange('Sources configured');
+    }
+    return null;
+  }
+
+  /**
+   * Re-render an unanswered UI tool as fully interactive.
+   * When the user clicks, the result is stored and the agentic loop resumes.
+   */
+  function replayLiveUI(toolName, toolInput, toolUseId) {
+    if (!toolInput) return;
+
+    function onResolved(result) {
+      // Store the tool result so it persists across future refreshes
+      const toolResults = [buildToolResultBlock(toolUseId, result)];
+      AssistantStorage.appendToolResult(_session, toolResults);
+      AssistantStorage.save(_session);
+      _pendingResolve = null;
+
+      // Resume the agentic loop with this result
+      if (!result?.skipped && !result?.interruptedByUser) {
+        markNextSequenceShouldFollow();
+        _loopRunning = true;
+        void runAgenticLoop();
+      }
+    }
+
+    if (toolName === 'show_options') {
+      const { prompt, options, multiSelect, style, allowOther } = toolInput;
+      _pendingResolve = onResolved;
+      void renderOptionsUI(prompt, options, multiSelect || false, style || 'cards', allowOther || false, onResolved);
+    } else if (toolName === 'show_boolean_choice') {
+      const { prompt, yesLabel, noLabel } = toolInput;
+      _pendingResolve = onResolved;
+      void renderBooleanChoiceUI(prompt, yesLabel || 'Yes', noLabel || 'No', onResolved);
+    } else if (toolName === 'show_team_assignment_matrix') {
+      const { prompt, teams } = toolInput;
+      _pendingResolve = onResolved;
+      void renderTeamAssignmentMatrixUI(prompt, teams?.length ? teams : getKnownTeamNames(), onResolved);
+    } else if (toolName === 'show_tab_editor') {
+      const { prompt, tabs } = toolInput;
+      _pendingResolve = onResolved;
+      void renderTabEditorUI(prompt, tabs?.length ? tabs : getCurrentTabDraft(), onResolved);
+    } else if (toolName === 'show_tab_proposal_choice') {
+      const { prompt, tabs } = toolInput;
+      _pendingResolve = onResolved;
+      void renderTabProposalChoiceUI(prompt, tabs || [], onResolved);
+    } else if (toolName === 'show_source_input') {
+      const { prompt, allowedTypes } = toolInput;
+      let types = allowedTypes || ['file', 'url', 'paste'];
+      if (_role === 'agent') types = types.filter(t => t !== 'url');
+      _pendingResolve = onResolved;
+      void renderSourceInputUI(prompt, types, onResolved);
+    }
+  }
+
   function replayMessages(messages) {
     const container = getMessagesContainer();
     if (!container) return;
     container.innerHTML = '';
-    const uiOnlyTools = new Set([
-      'show_options', 'show_boolean_choice', 'show_team_assignment_matrix', 'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input',
+
+    const toolResultMap = buildToolResultMap(messages);
+
+    const uiTools = new Set([
+      'show_options', 'show_boolean_choice', 'show_team_assignment_matrix',
+      'show_tab_editor', 'show_tab_proposal_choice', 'show_source_input',
+    ]);
+    const silentTools = new Set([
       'inspect_data_capability', 'plan_semantic_query', 'run_semantic_query', 'summarize_query_result',
     ]);
+
+    // Track the last unanswered UI tool so we can make it live
+    let lastUnansweredUI = null;
+    // First pass: find the last unanswered UI tool
+    for (const msg of messages) {
+      if (msg.role !== 'assistant') continue;
+      const content = Array.isArray(msg.content) ? msg.content : [msg.content];
+      for (const block of content) {
+        if (block.type === 'tool_use' && uiTools.has(block.name) && !toolResultMap[block.id]) {
+          lastUnansweredUI = block;
+        }
+      }
+    }
 
     messages.forEach(msg => {
       if (msg.role === 'user') {
         if (typeof msg.content === 'string') {
           renderUserBubble(msg.content);
         }
-        // Skip tool_result messages in replay (they were just data for the AI)
+        // tool_result arrays are handled via the toolResultMap, not rendered directly
       } else if (msg.role === 'assistant_artifact') {
         if (msg.content?.type === 'analytics_result') {
           renderAnalyticsArtifact(msg.content.presentation, msg.content.meta || {}, { skipPersist: true });
@@ -5153,9 +5360,19 @@ ${role === 'agent'
           } else if (block.type === 'text') {
             renderAssistantBubble(block.text);
           }
-          // Tool uses in replay are shown as config changes (already applied)
-          if (block.type === 'tool_use' && !uiOnlyTools.has(block.name)) {
-            showConfigChange(`Applied: ${block.name}`);
+
+          if (block.type === 'tool_use') {
+            if (uiTools.has(block.name)) {
+              const result = toolResultMap[block.id];
+              if (block === lastUnansweredUI) {
+                // This is the last pending interaction — render it live
+                replayLiveUI(block.name, block.input, block.id);
+              } else {
+                renderResolvedUI(block.name, block.input, result);
+              }
+            } else if (!silentTools.has(block.name)) {
+              showConfigChange(`Applied: ${block.name}`);
+            }
           }
         });
       }

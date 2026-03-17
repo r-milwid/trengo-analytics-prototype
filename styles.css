@@ -2977,10 +2977,16 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
 
 /* ── "Other" option pill and inline input ──────────────────── */
 .ai-setup-option-other {
-  border-style: dashed !important;
+  border-color: var(--gray-200);
+  background: var(--gray-50);
+}
+.ai-setup-option-other:hover {
+  border-color: var(--gray-400);
+  background: var(--white);
 }
 .ai-setup-option-other.selected {
-  border-style: solid !important;
+  border-color: var(--gray-900);
+  background: var(--white);
 }
 
 .ai-setup-other-input-row {
@@ -3944,6 +3950,7 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   font-weight: 500;
   font-family: var(--font);
   color: var(--gray-500);
+  cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
 
