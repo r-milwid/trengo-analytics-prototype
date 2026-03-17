@@ -90,19 +90,6 @@
     };
   }
 
-  // ── Bug reporting ──────────────────────────────────────────
-  if (typeof window.reportPrototypeBug !== 'function') {
-    window.reportPrototypeBug = function (payload) {
-      if (isInIframe) {
-        window.parent.postMessage({
-          type: 'prototype:bug-report',
-          payload: payload
-        }, '*');
-      }
-      return Promise.resolve({ ok: true });
-    };
-  }
-
   // ── Feedback submission ──────────────────────────────────────
   // Corrections and other feedback from the prototype's admin assistant
   // are routed through SideCar's feedback API via postMessage.
