@@ -1059,7 +1059,6 @@ function renderWidget(w, section, placement, rows, layout) {
   }
 
   dragHandle.addEventListener('pointerdown', (e) => {
-    if (document.body.dataset.viewmode === 'view') return;
     startDrag(e, section, w.id);
   });
   const resizeHandle = card.querySelector('.resize-handle');
@@ -1700,6 +1699,8 @@ function startDrag(e, sectionId, widgetId) {
   dragState.pointerOffsetY = e.clientY - cardRect.top;
 
   card.classList.add('dragging');
+  // Prevent browser scroll/pan gestures from cancelling the drag
+  card.style.touchAction = 'none';
 
   // Ghost: cloned card, positioned at top-left relative to pointer
   const ghost = card.cloneNode(true);
@@ -1735,6 +1736,7 @@ function startDrag(e, sectionId, widgetId) {
 
   window.addEventListener('pointermove', onDragMove);
   window.addEventListener('pointerup', onDragEnd, { once: true });
+  window.addEventListener('pointercancel', onDragEnd, { once: true });
 }
 
 function onDragMove(e) {
@@ -1859,7 +1861,7 @@ function onDragEnd() {
       }
       if (!inserted) ordered.push({ id: widgetId, span });
 
-      // Repack left-to-right, overflowing to new rows
+      // Repack left-to-right, inserting new rows as needed (never overwrite existing rows)
       layout.rows[targetRow] = blankRow();
       let curRow = targetRow;
       let cursor = 0;
@@ -1867,7 +1869,7 @@ function onDragEnd() {
         if (cursor + wspan > 12) {
           curRow++;
           if (curRow >= layout.rows.length) layout.rows.push(blankRow());
-          else layout.rows[curRow] = blankRow();
+          else layout.rows.splice(curRow, 0, blankRow()); // insert, don't overwrite
           cursor = 0;
         }
         for (let c = cursor; c < cursor + wspan; c++) layout.rows[curRow][c] = wid;
@@ -1894,7 +1896,10 @@ function onDragEnd() {
   clearInsertBar();
   if (dragState.placeholder) dragState.placeholder.remove();
   if (dragState.ghost) dragState.ghost.remove();
-  if (dragState.cardEl) dragState.cardEl.classList.remove('dragging');
+  if (dragState.cardEl) {
+    dragState.cardEl.classList.remove('dragging');
+    dragState.cardEl.style.touchAction = '';
+  }
   dragState.active = false;
   dragState.sectionId = null;
   dragState.widgetId = null;
@@ -1909,6 +1914,7 @@ function onDragEnd() {
 
   remountSection(sectionId);
   window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointercancel', onDragEnd);
   DashboardConfig.notifyChanged();
 }
 
