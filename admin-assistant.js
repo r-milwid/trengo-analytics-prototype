@@ -496,9 +496,9 @@ const AdminAssistant = (() => {
       `- ${t.name} (${(t.members || []).length} members${(t.members || []).length ? `: ${(t.members || []).join(', ')}` : ''})`
     ).join('\n');
     const roleScopeText = role === 'admin'
-      ? 'Admin scope: ask and propose across the full company view. Consider all teams, shared structure, and cross-team needs.'
+      ? 'Admin scope: ask and propose across the full company view. Consider all teams, shared structure, and cross-team needs. Improvement and quality insights are a core part of the platform — make sure they are represented in your proposals unless the user\'s goals clearly exclude them.'
       : role === 'supervisor'
-        ? `Supervisor scope: limit questions and proposals to the teams this supervisor oversees. Do not ask about other teams unless the user explicitly broadens the scope. Overseen teams: ${availableTeams.map(team => team.name).join(', ') || 'none configured — fall back carefully'}. Assume some company-wide defaults may already have been set by an admin, so focus on the team-level view unless the user asks for broader structural changes.`
+        ? `Supervisor scope: limit questions and proposals to the teams this supervisor oversees. Do not ask about other teams unless the user explicitly broadens the scope. Overseen teams: ${availableTeams.map(team => team.name).join(', ') || 'none configured — fall back carefully'}. Assume some company-wide defaults may already have been set by an admin, so focus on the team-level view unless the user asks for broader structural changes. Improvement and quality insights are especially relevant at the team level — include them in your proposals unless the user\'s goals clearly exclude them.`
         : `Agent scope: focus on the individual contributor view, not the whole company. First narrow to the agent's own team or operating context if it is not already clear. Assume broader defaults may already exist. Favour a simpler personal navigation and only include sections or widgets that help the agent see what they are working on, what needs attention, and how they are doing. Do not include company-wide or admin-heavy sections by default, and treat Automate as uncommon for agents unless there is a clear personal use case.`;
 
     // Structured context from memory
@@ -725,6 +725,9 @@ ${role === 'agent'
   - Admin: think company-wide, shared, and cross-team by default.
   - Supervisor: stay within the supervised teams and team-level decisions unless the user broadens the scope.
   - Agent: keep the view simpler and personal by default, with only the sections and widgets that materially help day-to-day work.
+- Continuous improvement is central to the platform. Weight your proposals accordingly:
+  - Admin / Supervisor: almost always include a tab (or tab segment) focused on optimisation and actionable improvement — knowledge gaps, opportunity backlogs, and other signals that drive concrete change. Quality and satisfaction metrics (CSAT, reopen rate) support this but are secondary to the optimisation-oriented content. Only omit improvement content when the user's stated goals genuinely have no optimisation dimension.
+  - Agent: even in a simpler view, consider including lightweight quality signals (e.g. reopen rate, CSAT, knowledge gaps) when they are relevant to the agent's day-to-day work. Do not force it, but do not overlook it either.
 - Once you have confirmed teams/scope, understood widget-level needs, and gauged density preference, move to the proposal. Do not continue questioning just because more detail could be gathered.
 - Do not ask the user to invent tab names, tab order, or starter widgets from scratch if you can infer a strong first proposal.
 - When team classification is needed, prefer show_team_assignment_matrix over generic cards.
