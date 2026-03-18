@@ -2881,17 +2881,15 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   border: 1px solid var(--border);
   border-radius: 14px;
   cursor: pointer;
-  transition: border-color 0.15s, border-width 0.15s, border-radius 0.15s, padding 0.15s, background 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   text-align: left;
   font-family: var(--font);
 }
 
 .ai-setup-option-card:hover {
   border-color: var(--gray-300);
-  border-width: 3px;
-  border-radius: 18px;
-  padding: 10px 12px;
   background: var(--gray-50);
+  box-shadow: inset 0 0 0 4px var(--white);
 }
 
 .ai-setup-option-card.selected {
