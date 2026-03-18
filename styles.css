@@ -2607,6 +2607,7 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   min-height: 100%;
   display: flex;
   overflow: hidden;
+  background: var(--gray-100);
 }
 
 .ai-setup-split:not(.preview-ready) .ai-setup-chat {
