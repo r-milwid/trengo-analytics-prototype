@@ -145,11 +145,74 @@ const AdminAssistant = (() => {
     return `AI suggested "${truncateStr(b, 120)}" → user chose "${truncateStr(a, 120)}"`;
   }
 
+  // Severity scores for correction types (0–10 scale)
+  const CORRECTION_SEVERITY = {
+    skip: 3,
+    custom_input: 5,
+    edit: 5,
+    override: 7,
+    reject: 8,
+    quit: 9,
+  };
+
+  // Derive a human-readable "what" label from the step name
+  function correctionWhat(step) {
+    const map = {
+      show_options_other: 'Option selection',
+      show_options_other_multi: 'Multi-select option',
+      team_name_edit: 'Team name',
+      team_focus_change: 'Team focus',
+      team_remove: 'Team removal',
+      team_add: 'Team addition',
+      team_assignment_skip: 'Team assignment',
+      tab_proposal_reset: 'Tab proposal',
+      tab_proposal_refine: 'Tab proposal',
+      tab_editor_label: 'Tab label',
+      tab_editor_reorder: 'Tab order',
+      tab_editor_remove: 'Tab removal',
+      tab_editor_add: 'Tab addition',
+      tab_editor_discard: 'Tab draft',
+      chat_interrupt_ui: 'UI interaction',
+      onboarding_skip: 'Onboarding flow',
+      onboarding_navigate_away: 'Onboarding flow',
+    };
+    return map[step] || step.replace(/_/g, ' ');
+  }
+
+  // Derive a context phrase from the step name
+  function correctionContext(step) {
+    if (step.startsWith('team_')) return 'During team setup';
+    if (step.startsWith('tab_')) return 'During tab configuration';
+    if (step.startsWith('show_options')) return 'During option selection';
+    if (step.startsWith('onboarding_')) return 'During onboarding';
+    return 'During onboarding';
+  }
+
   async function storeCorrection({ correctionType, step, aiSuggested, userChose, description }) {
-    const text = description
-      || `${correctionType}: ${summarizeDelta(aiSuggested, userChose)} (step: ${step})`;
+    // Severity gating: compare correction severity against correctionSensitivity threshold
+    const sensitivity = (window._confidenceThresholds || {}).correctionSensitivity ?? 5;
+    const severity = CORRECTION_SEVERITY[correctionType] ?? 5;
+    if (severity < sensitivity) return null; // below threshold — don't log
+
+    // Produce structured JSON text for consistent organizer dedup
+    const formatVal = (v) => {
+      if (v == null) return null;
+      if (typeof v === 'string') return v;
+      if (Array.isArray(v)) return v.map(x => x?.label || x?.name || x).join(', ');
+      return JSON.stringify(v);
+    };
+
+    const structuredText = JSON.stringify({
+      type: correctionType,
+      step,
+      what: correctionWhat(step),
+      aiSuggested: formatVal(aiSuggested),
+      userChose: formatVal(userChose),
+      context: correctionContext(step),
+    });
+
     const feedbackObj = {
-      text,
+      text: structuredText,
       section: 'AI onboarding assistant',
       type: 'correction',
       metadata: {
