@@ -79,13 +79,9 @@ const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
 const ANCHORS_NAV_USER_KEY = 'trengo_anchors_nav_user';
 const CONFIDENCE_THRESHOLDS_KEY = 'trengo_confidence_thresholds';
 
-// Onboarding confidence thresholds (1-10 scale, stored in localStorage, controllable from SideCar admin)
+// Onboarding confidence thresholds (0-10 scale, stored in localStorage, controllable from SideCar admin)
 window._confidenceThresholds = (function () {
-  try {
-    const stored = JSON.parse(localStorage.getItem(CONFIDENCE_THRESHOLDS_KEY));
-    if (stored) return stored;
-  } catch (_) { /* ignore */ }
-  return {
+  var defaults = {
     confidenceSkipSourceGathering: 5,
     confidenceSkipTeamConfirmation: 5,
     confidenceSkipDecisionGoals: 6,
@@ -94,6 +90,17 @@ window._confidenceThresholds = (function () {
     confidenceSkipDensity: 8,
     correctionSensitivity: 5
   };
+  try {
+    var stored = JSON.parse(localStorage.getItem(CONFIDENCE_THRESHOLDS_KEY));
+    if (stored && typeof stored === 'object') {
+      // Merge stored values over defaults so new keys get their defaults
+      // and old keys (e.g. confidenceSkipComponents) are ignored
+      var merged = {};
+      for (var k in defaults) merged[k] = stored[k] != null ? stored[k] : defaults[k];
+      return merged;
+    }
+  } catch (_) { /* ignore */ }
+  return defaults;
 })();
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
