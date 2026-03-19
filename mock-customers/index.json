@@ -3,19 +3,43 @@
     {
       "id": "northstar-health",
       "company": "Northstar Health",
-      "industry": "Healthcare SaaS",
+      "industry": "Healthcare",
+      "description": "Existing — all features, all data",
       "file": "northstar-health.json"
     },
     {
       "id": "luma-commerce",
       "company": "Luma Commerce",
       "industry": "E-commerce",
+      "description": "Onboarded — broad usage, no voice",
       "file": "luma-commerce.json"
+    },
+    {
+      "id": "clearline-finance",
+      "company": "Clearline Finance",
+      "industry": "Consumer Finance",
+      "description": "Mature — compliance-heavy, voice, guarded AI",
+      "file": "clearline-finance.json"
+    },
+    {
+      "id": "harborstay-hospitality",
+      "company": "HarborStay Hospitality",
+      "industry": "Hotels & Vacation Rentals",
+      "description": "In onboarding — guest channels live, AI rolling out",
+      "file": "harborstay-hospitality.json"
+    },
+    {
+      "id": "drivelane-automotive",
+      "company": "DriveLane Automotive",
+      "industry": "Automotive & Dealers",
+      "description": "Onboarded — lead capture and booking only",
+      "file": "drivelane-automotive.json"
     },
     {
       "id": "orbit-mobility",
       "company": "Orbit Mobility",
       "industry": "Logistics & Mobility",
+      "description": "New — workspace only, no setup yet",
       "file": "orbit-mobility.json"
     }
   ]

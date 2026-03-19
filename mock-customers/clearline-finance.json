@@ -1,0 +1,172 @@
+{
+  "id": "clearline-finance",
+  "company": "Clearline Finance",
+  "industry": "Consumer Finance",
+  "stage": "mature",
+  "workspaceCreatedAt": "2024-06-01T00:00:00Z",
+  "goals": ["Maintain SLA compliance above 95% across all channels", "Reduce call abandonment rate", "Increase AI resolution rate while keeping guardrails tight", "Improve first-call resolution for billing disputes"],
+  "featureStatus": { "voice": true, "aiAgents": true, "csat": true, "journeys": true, "knowledgeBase": true },
+  "productSummary": "Consumer finance company offering personal loans, buy-now-pay-later, and credit products across the Benelux and DACH markets. Regulated environment with strict compliance and data handling requirements.",
+  "website": "https://www.clearline.eu/",
+  "helpCenterUrl": "https://support.clearline.eu/",
+  "knownTeams": [
+    { "name": "Customer Support", "likelyFocus": "resolve", "size": 20, "description": "General account inquiries, payment questions, and product information" },
+    { "name": "Collections", "likelyFocus": "resolve", "size": 8, "description": "Overdue payment follow-up, payment arrangements, and hardship cases" },
+    { "name": "Lending Sales", "likelyFocus": "convert", "size": 10, "description": "Loan applications, credit assessments, and product cross-sell" },
+    { "name": "Compliance Ops", "likelyFocus": "resolve", "size": 4, "description": "Regulatory inquiries, dispute resolution, and complaint escalations" }
+  ],
+  "channels": ["email", "whatsapp", "live-chat", "voice"],
+  "plan": "Enterprise",
+  "estimatedAgents": 42,
+  "terminologyHints": {
+    "customer": "applicant",
+    "ticket": "case",
+    "deal": "application",
+    "agent": "advisor",
+    "resolution": "case closed"
+  },
+  "currentSetup": {
+    "primaryUseCase": "Regulated customer support with strict SLA and compliance requirements",
+    "busiestChannels": ["voice", "email"],
+    "avgMonthlyConversations": 22000,
+    "topPainPoints": ["Call abandonment spikes during billing cycle peaks", "AI guardrails trigger too often on legitimate loan inquiries", "No unified view of compliance case outcomes"]
+  },
+  "analyticsDataInventory": {
+    "coverageSummary": "Clearline has full coverage across support, sales, voice, survey, automation, and knowledge-base sources with event through quarterly rollups.",
+    "sourceSystems": [
+      { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "15-minute", "hourly", "daily"], "retention": "24 months" },
+      { "name": "Voice platform", "entities": ["call", "queue event", "callback request"], "grains": ["event", "hourly", "daily"], "retention": "18 months" },
+      { "name": "CRM", "entities": ["lead", "deal", "account"], "grains": ["event", "daily snapshot", "monthly"], "retention": "36 months" },
+      { "name": "CSAT tooling", "entities": ["survey send", "survey response"], "grains": ["event", "daily", "monthly"], "retention": "24 months" },
+      { "name": "Automation logs", "entities": ["journey run", "handoff", "guardrail stop"], "grains": ["event", "hourly", "daily"], "retention": "18 months" },
+      { "name": "Knowledge base analytics", "entities": ["article", "article view", "AI citation"], "grains": ["daily", "weekly", "monthly"], "retention": "18 months" }
+    ],
+    "historyWindows": {
+      "eventDays": 180,
+      "hourlyDays": 365,
+      "dailyMonths": 36,
+      "monthlyMonths": 48,
+      "quarterlyYears": 4
+    },
+    "granularities": ["event", "15-minute", "hourly", "daily", "weekly", "monthly", "quarterly"],
+    "joinKeys": ["conversation_id", "ticket_id", "contact_id", "account_id", "deal_id", "call_id", "survey_id", "journey_run_id", "article_id", "agent_id"],
+    "timeDimensions": ["15-minute", "hour", "day", "week", "month", "quarter", "fiscal quarter"],
+    "factTables": [
+      { "name": "conversation_events", "grain": "event", "fields": ["conversation_id", "message_id", "ticket_id", "created_at", "first_response_at", "resolved_at", "channel", "team", "agent"] },
+      { "name": "ticket_status_history", "grain": "event", "fields": ["ticket_event_id", "ticket_id", "from_status", "to_status", "queue", "priority", "sla_policy", "changed_at"] },
+      { "name": "deal_stage_history", "grain": "event", "fields": ["stage_event_id", "deal_id", "deal_owner", "stage", "stage_entered_at", "stage_exited_at", "close_reason", "competitor"] },
+      { "name": "call_legs", "grain": "event", "fields": ["call_leg_id", "call_id", "voice_line", "direction", "connection_result", "recording_flag", "hold_seconds", "transfer_count", "queue_entered_at", "answered_at", "ended_at"] },
+      { "name": "survey_responses", "grain": "event", "fields": ["survey_id", "ticket_id", "survey_template", "survey_question", "delivery_channel", "respondent_type", "sentiment_label", "response_at"] },
+      { "name": "agent_presence_intervals", "grain": "interval", "fields": ["agent_id", "schedule_id", "shift_id", "availability_status", "started_at", "ended_at", "online_minutes", "busy_minutes"] },
+      { "name": "journey_step_events", "grain": "event", "fields": ["journey_run_id", "journey_version", "trigger_type", "node_path", "exit_reason", "retry_count", "event_at"] }
+    ],
+    "availableDimensions": {
+      "geography": ["region", "country", "city", "language", "business unit"],
+      "customer": ["account segment", "account tier", "plan", "lifecycle stage", "cohort"],
+      "operations": ["team", "agent", "queue", "priority", "SLA policy", "channel", "hour"],
+      "product": ["product line", "feature area", "issue type", "intent", "intent version"],
+      "goToMarket": ["campaign", "lead source", "partner source", "channel attribution"],
+      "aiAndAutomation": ["AI model", "prompt version", "confidence band", "guardrail type", "journey", "journey version", "trigger type", "exit reason"],
+      "knowledge": ["article", "article category"],
+      "revenueAndSales": ["deal owner", "deal amount", "currency", "close reason", "competitor"],
+      "voice": ["voice line", "connection result", "recording flag", "transfer count", "hold duration"],
+      "feedback": ["survey template", "survey question", "delivery channel", "respondent type", "sentiment label"],
+      "workforce": ["schedule", "shift", "planned capacity", "occupancy band"],
+      "governance": ["source system", "sync timestamp", "quality flag", "fiscal quarter"]
+    },
+    "businessDefinitions": {
+      "openTicket": "Cases not yet resolved, including regulatory review and payment arrangement queues.",
+      "firstResponse": "Time from case creation to first human or approved AI response, excluding automated acknowledgements.",
+      "resolutionTime": "Time from case creation to final resolved state; compliance disputes restart the clock on reopen.",
+      "newContact": "Applicant or borrower with no prior inbound contact in the trailing 180 days.",
+      "aiResolved": "Cases closed without human intervention after an approved AI response path that passed all guardrails.",
+      "attributedChannel": "First meaningful inbound channel unless the case is escalated to voice within 10 minutes."
+    },
+    "dataQuality": {
+      "refreshCadence": "Hourly for operational metrics, nightly for CRM and financial snapshots.",
+      "lateArrivingWindow": "Up to 48 hours for payment and compliance corrections.",
+      "knownBlindSpots": ["External collection agency handoffs are weekly batch imports", "Some legacy loan system notes are not joined automatically"]
+    },
+    "auditability": {
+      "recordFields": ["source_system", "synced_at", "quality_flag", "is_late_arriving"],
+      "changeHistory": ["merge history", "correction log", "backfill window"],
+      "piiHandling": "PII fields are tokenized and access-controlled. Financial data requires additional role-based permissions."
+    }
+  },
+  "analyticsDataModel": {
+    "geographies": [
+      { "region": "Benelux", "country": "Netherlands", "city": "Amsterdam", "language": "nl-NL", "businessUnit": "Consumer Lending", "weight": 4 },
+      { "region": "Benelux", "country": "Belgium", "city": "Brussels", "language": "fr-BE", "businessUnit": "BNPL Operations", "weight": 3 },
+      { "region": "DACH", "country": "Germany", "city": "Frankfurt", "language": "de-DE", "businessUnit": "Credit Products", "weight": 2 }
+    ],
+    "accountSegments": [
+      { "accountSegment": "BNPL users", "accountTier": "Standard", "plan": "Consumer", "lifecycleStage": "Active", "cohort": "2025-Q2", "weight": 5 },
+      { "accountSegment": "Personal loan holders", "accountTier": "Growth", "plan": "Premium", "lifecycleStage": "Expansion", "cohort": "2024-Q4", "weight": 3 },
+      { "accountSegment": "Business credit clients", "accountTier": "Enterprise", "plan": "Business", "lifecycleStage": "Renewal", "cohort": "2024-Q1", "weight": 2 }
+    ],
+    "queues": [
+      { "queue": "Billing Urgent", "priority": "Urgent", "slaPolicy": "P1 10m / 2h", "weight": 4 },
+      { "queue": "Loan Applications", "priority": "High", "slaPolicy": "P2 30m / 4h", "weight": 3 },
+      { "queue": "General Support", "priority": "Standard", "slaPolicy": "P3 2h / 24h", "weight": 3 },
+      { "queue": "Compliance Review", "priority": "High", "slaPolicy": "P2 1h / 8h", "weight": 2 }
+    ],
+    "productAreas": [
+      { "productLine": "BNPL", "featureArea": "Payment plans", "issueType": "Missed payment", "weight": 4 },
+      { "productLine": "Personal Loans", "featureArea": "Application process", "issueType": "Application status", "weight": 3 },
+      { "productLine": "Credit Products", "featureArea": "Credit limits", "issueType": "Limit increase", "weight": 2 },
+      { "productLine": "Account Management", "featureArea": "Account access", "issueType": "Login or verification", "weight": 2 }
+    ],
+    "campaigns": [
+      { "campaign": "BNPL merchant expansion", "source": "Partner", "weight": 3 },
+      { "campaign": "Personal loan SEO", "source": "Website", "weight": 2 },
+      { "campaign": "Retention winback", "source": "Email", "weight": 2 },
+      { "campaign": "Business credit outbound", "source": "Outbound", "weight": 1 }
+    ],
+    "knowledgeArticles": [
+      { "article": "Make a payment arrangement", "articleCategory": "Billing", "weight": 4 },
+      { "article": "Check loan application status", "articleCategory": "Applications", "weight": 3 },
+      { "article": "Request a credit limit increase", "articleCategory": "Credit", "weight": 2 },
+      { "article": "File a complaint", "articleCategory": "Compliance", "weight": 2 }
+    ],
+    "aiModels": [
+      { "aiModel": "billing-triage-gpt-5-mini", "promptVersion": "billing-triage-v4", "guardrailType": "Regulatory", "weight": 4 },
+      { "aiModel": "loan-assist-gpt-5-mini", "promptVersion": "loan-assist-v3", "guardrailType": "PII", "weight": 3 },
+      { "aiModel": "collections-routing-gpt-5-mini", "promptVersion": "collections-v2", "guardrailType": "Escalation", "weight": 2 }
+    ],
+    "automationJourneys": [
+      { "journey": "Payment reminder", "journeyVersion": "v4.1", "triggerType": "Payment due approaching", "exitReason": "Payment confirmed", "weight": 4 },
+      { "journey": "Application status update", "journeyVersion": "v3.0", "triggerType": "Stage changed", "exitReason": "Notification delivered", "weight": 3 },
+      { "journey": "Missed payment escalation", "journeyVersion": "v2.5", "triggerType": "Payment overdue", "exitReason": "Handed to collections", "weight": 2 }
+    ],
+    "dealAttributes": [
+      { "dealOwner": "Daan Bakker", "currency": "EUR", "closeReason": "Loan approved", "competitor": "Klarna", "weight": 3 },
+      { "dealOwner": "Sophie Janssen", "currency": "EUR", "closeReason": "Credit limit approved", "competitor": "Riverty", "weight": 2 },
+      { "dealOwner": "Thomas Weber", "currency": "EUR", "closeReason": "Application withdrawn", "competitor": "PayPal Credit", "weight": 1 }
+    ],
+    "callAttributes": [
+      { "voiceLine": "Billing support line", "connectionResult": "Connected", "recordingFlag": "Recorded", "weight": 4 },
+      { "voiceLine": "Collections callback queue", "connectionResult": "Transferred", "recordingFlag": "Recorded", "weight": 3 },
+      { "voiceLine": "Loan applications line", "connectionResult": "Voicemail", "recordingFlag": "Not recorded", "weight": 2 }
+    ],
+    "surveyDetails": [
+      { "surveyTemplate": "Support follow-up", "surveyQuestion": "How satisfied were you with the support you received?", "deliveryChannel": "Email", "respondentType": "Customer", "sentimentLabel": "Positive", "weight": 3 },
+      { "surveyTemplate": "Collections experience", "surveyQuestion": "Was the payment arrangement process clear and fair?", "deliveryChannel": "SMS", "respondentType": "Borrower", "sentimentLabel": "Neutral", "weight": 2 },
+      { "surveyTemplate": "Application feedback", "surveyQuestion": "How would you rate the loan application experience?", "deliveryChannel": "Email", "respondentType": "Applicant", "sentimentLabel": "Positive", "weight": 2 }
+    ],
+    "workforcePlans": [
+      { "schedule": "Billing peak coverage", "shift": "Morning", "weight": 4 },
+      { "schedule": "Collections follow-up", "shift": "Afternoon", "weight": 3 },
+      { "schedule": "After-hours support", "shift": "Evening", "weight": 2 },
+      { "schedule": "Weekend billing overflow", "shift": "Weekend", "weight": 1 }
+    ],
+    "voiceLines": ["Billing support line", "Collections callback queue", "Loan applications line"],
+    "intentVersions": {
+      "support": "finance-support-2026.1",
+      "sales": "finance-sales-2026.1",
+      "default": "finance-shared-2026.1"
+    },
+    "supportIntents": ["Payment question", "Billing dispute", "Account access", "Payment arrangement", "Statement request", "Hardship case", "Complaint"],
+    "salesIntents": ["Loan inquiry", "Credit limit increase", "Product comparison", "Refinancing", "Business credit application", "Partner integration"]
+  },
+  "suggestedPreviewContext": "Focus on SLA compliance, call abandonment, AI guardrail performance, collections efficiency, and compliance case tracking."
+}

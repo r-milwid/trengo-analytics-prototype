@@ -15,7 +15,7 @@
 
 const AdminAssistant = (() => {
   // ── Constants ──────────────────────────────────────────────
-  const PROXY_URL = 'https://trengo-chatbot-proxy.analytics-chatbot.workers.dev';
+  const PROXY_URL = 'https://trengo-chatbot-proxy.prototype-companion.workers.dev';
   const MAX_LOOP_ITERATIONS = 10;
   const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode'; // 'onboarding' | 'assistant' | null
   const THREAD_REVEAL_DELAY_MS = 1200;
@@ -210,7 +210,7 @@ const AdminAssistant = (() => {
     },
     {
       name: 'configure_tabs',
-      description: 'Apply the visible dashboard tab structure. Labels, order, and custom tabs can change, but the underlying core section identities still stay tied to their existing IDs. Only call this after the user has directly edited tabs or has accepted an AI-originated proposal.',
+      description: 'Apply the visible dashboard tab structure. Labels, order, and custom tabs can change. Include a widgets array per tab for explicit widget placement (preferred over category-based auto-routing).',
       input_schema: {
         type: 'object',
         properties: {
@@ -222,7 +222,8 @@ const AdminAssistant = (() => {
                 id: { type: 'string' },
                 label: { type: 'string' },
                 category: { type: 'string' },
-                categories: { type: 'array', items: { type: 'string' }, description: 'Catalog sections this tab covers. Used for widget routing when a tab spans multiple catalog sections.' }
+                categories: { type: 'array', items: { type: 'string' }, description: 'Catalog sections this tab covers. Fallback for widget routing when explicit widgets array is not provided.' },
+                widgets: { type: 'array', items: { type: 'string' }, description: 'Explicit list of widget IDs to place in this tab. Preferred for precise placement.' }
               },
               required: ['id', 'label']
             }
@@ -233,12 +234,22 @@ const AdminAssistant = (() => {
     },
     {
       name: 'set_widget_visibility',
-      description: 'Show or hide specific widgets by their IDs. Auto-applied unless you have low confidence (then propose first).',
+      description: 'Show or hide specific widgets by their IDs. Auto-applied unless you have low confidence (then propose first). Use targetTab for explicit tab placement.',
       input_schema: {
         type: 'object',
         properties: {
-          show: { type: 'array', items: { type: 'string' }, description: 'Widget IDs to show' },
-          hide: { type: 'array', items: { type: 'string' }, description: 'Widget IDs to hide' }
+          show: {
+            type: 'array',
+            description: 'Widget IDs to show. Can be strings (auto-routed) or objects { id, tab } for explicit per-tab placement.',
+            items: {
+              oneOf: [
+                { type: 'string' },
+                { type: 'object', properties: { id: { type: 'string' }, tab: { type: 'string', description: 'Tab ID to place this widget in' } }, required: ['id'] }
+              ]
+            }
+          },
+          hide: { type: 'array', items: { type: 'string' }, description: 'Widget IDs to hide' },
+          targetTab: { type: 'string', description: 'Default target tab for all shown widgets (overridden by per-widget tab if provided)' }
         }
       }
     },
@@ -672,6 +683,14 @@ ${JSON.stringify(currentConfig, null, 2)}
 <customer_data>
 ${customerInfo}
 </customer_data>
+${_customerData?.stage || _customerData?.featureStatus || _customerData?.goals ? `
+<customer_summary>
+${_customerData.stage ? `- Lifecycle stage: ${_customerData.stage}` : ''}
+${_customerData.goals?.length ? `- Goals: ${_customerData.goals.join('; ')}` : ''}
+${_customerData.featureStatus ? `- Feature status: ${Object.entries(_customerData.featureStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}` : ''}
+${_customerData.workspaceCreatedAt ? `- Workspace created: ${_customerData.workspaceCreatedAt}` : ''}
+Use stage and featureStatus to calibrate onboarding depth. A "mature" customer with all features live needs less discovery than a "new" customer with no setup. Use goals to anchor widget and tab decisions.
+</customer_summary>` : ''}
 
 ${memoryContext ? `<collected_so_far>\n${memoryContext}\n</collected_so_far>` : ''}
 ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
@@ -681,64 +700,108 @@ ${sourceTexts ? `<source_material>\n${sourceTexts}\n</source_material>` : ''}
       prompt += `
 
 <onboarding>
-- At the true start of a new onboarding session, prefer a brief greeting and orientation in chat before the first interactive step. Keep it light and non-scripted. A pattern like "Hi, I'm here to help you get set up. So far I know..." is good when useful, but only as an example rather than fixed wording.
-- If the user is clearly resuming, do not re-greet or re-explain unnecessarily.
-- Open by using known customer context and gathering source context early.
+<greeting>
+- One line max. If the next UI block is self-explanatory, the greeting alone is sufficient — no orientation paragraph needed.
+- If the user is clearly resuming, do not re-greet or re-explain.
+</greeting>
+
+<adaptive_flow>
+The onboarding flow is adaptive, not a fixed sequence. At each step, take the lightest useful next action based on what is already known.
+
+Guiding concepts (qualitative judgment, not hard thresholds):
+- DRAFTABLE: you have enough analyzed context to infer starter tabs and chart choices, even at low confidence. Merely having data fields populated is NOT enough — you must be able to justify tab/widget choices from the context.
+- AUTO-BUILDABLE: drafting now is likely the lightest useful next step and another question is unlikely to materially change the draft.
+
+Adaptive steps (not rigid phases — skip or reorder based on context):
+
+1. Assess context richness immediately.
+   - If auto-buildable: build the draft directly. Skip questions that won't change it.
+   - If draftable but not auto-buildable: offer "Skip to draft" as a clickable option alongside the next step.
+   - If context is thin: proceed with gathering steps below.
+
+2. Source/context gathering — CONDITIONAL.
+   - If the customer profile already has rich context (website, teams with focus, channels, AI/automation data), show the source input as a compact optional add-on alongside the next step — not as a standalone blocking phase. The user can skip it by engaging with the next interactive element.
+   - Only foreground the source step when the customer profile is thin and additional context would meaningfully improve the proposal.
 ${role === 'agent'
-  ? '- Use show_source_input early so the agent can upload a file or add personal notes. Do not ask for website URLs — company context is already shown as read-only reference in the source UI.'
-  : '- If a website, help center, or known source already exists, mention it briefly and use show_source_input early so the user can add URL, file, and pasted context without friction.'}
-- For the first source step, do not dump the full customer profile into chat. Keep the recap very short, usually 1-2 lines or a few very compact bullets covering only the most decision-relevant facts.
-- For the first source step, choose the lightest structure that makes the next action clear. Use a short lead-in only when it materially improves clarity; otherwise let the source block carry the practical instruction.
-- After a source step succeeds, briefly acknowledge which source types were actually used. If a website or help center was successfully analyzed, make that visible in your wording.
-- Do not say or imply that only pasted text was used when website or file source analysis also succeeded.
-- In the opening phase, focus on enough understanding to make a draft, not on collecting every possible preference.
-- Recommended onboarding phases (adapt based on what is already known):
-  1. Brief greeting and context check
-  2. Source/context gathering (show_source_input)
-  3. Structural confirmation: which teams are in scope and their focus, whether the dashboard is shared or team-specific, what decisions or outcomes it should support (use show_team_assignment_matrix for admin/supervisor when 2+ teams exist)
-  4. Content depth and density preference: understand what specific signals and decisions matter, and gauge whether the user prefers a focused dashboard or a broader one — go one level deeper than broad categories before selecting charts, metrics, and other dashboard items
-  5. Proposal: tab structure and dashboard content selection (show_tab_proposal_choice), calibrated to density preference
-  6. Refinement and completion
-- Do not skip phases 3-4 even when customer data is rich. Pre-filled data should make confirmation fast, not make it unnecessary. Phases 3-4 together should typically be 2-3 exchanges total, not 2-3 per phase. Keep it tight but substantive.
-- After the source/context step, do a real gap check before proposing. At minimum, confirm:
-  - For admin/supervisor: which teams are in scope and their focus (use show_team_assignment_matrix when 2+ teams exist)
-  - For all roles: what decisions or outcomes the dashboard should support (not just what data exists, but what people need from it)
-  - Whether pre-filled customer data still reflects reality (a brief confirmation, not a re-interview)
-- This does not mean asking all these as separate questions. A single well-framed question or a pre-filled interactive component can cover multiple gaps efficiently.
-- Before proposing charts and metrics, go one level deeper than broad categories. If the user says they care about "support quality", that is not enough to decide between CSAT, response rate, reopen rate, knowledge gaps, satisfaction trends, and suggested knowledge additions. Ask a targeted follow-up that surfaces which specific signals matter — frame it around the user's workflow and decisions, not as a feature checklist. After this, you should be able to justify each included dashboard item and explain why you excluded the obvious alternatives. If you cannot, you need one more question — not a proposal.
-- Before building the proposal, gauge the user's preference for dashboard density. People differ on whether they prefer a focused dashboard with just the essentials or a broader one with more detail available. Ask this in plain language using familiar terms like "charts and metrics", not "widgets". Use the answer qualitatively to calibrate the density and tab structure. Do not quote estimated counts unless they come from a concrete draft you are actively showing.
-- Your goal is to collect enough context to propose an initial dashboard draft.
-- First decide which starter charts, metrics, and other dashboard items to include based on the user's needs and context. Each item should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic items just because they exist.
-- Do not treat the starter set as high-confidence unless the current context is enough to justify the included items against the other available options.
-- Then group those items into tabs. The number and naming of tabs should follow naturally from how the selected items cluster by decision domain or workflow. Present the tab proposal (with show_tab_proposal_choice) only after you have a clear picture of which items go where.
+  ? '  - For agents: if offered, show source input for file upload or personal notes. Do not ask for website URLs — company context is already shown as read-only reference.'
+  : '  - If a website, help center, or known source already exists, mention it briefly. Keep the recap to 1-2 lines.'}
+   - After a source step succeeds, briefly acknowledge which source types were actually used.
+
+3. Structural confirmation — ADAPTIVE.
+   - Team focus: if customer data includes team focus classifications (knownTeams.likelyFocus), treat those as pre-filled. Only show the team assignment step for teams where focus is missing AND can't be inferred from the team name. If all teams are already classified, skip team assignment entirely. When you do show the matrix, include only the unclassified teams.
+   - Lens: the lens has been auto-determined from team data. If lens is null (mixed teams), charts and metrics from both support and sales are visible. You can narrow the lens with set_lens if the user's goals clearly favor one side. Do not ask the user to choose a lens when it's already set or when mixed is appropriate.
+   - Decision goals: always worth asking — "what decisions should this dashboard support?" is high-value even with rich data.
+
+4. Content depth — ADAPTIVE.
+   - If you have enough context to infer density preference (role, team count, goals, available data), present it as a pre-selected option with a one-line rationale, using show_options with the inferred choice highlighted. The user can still change it.
+   - If context is insufficient to infer, show the density question with no pre-selection. Ask in plain language using familiar terms like "charts and metrics".
+   - Before proposing charts and metrics, go one level deeper than broad categories. If the user says they care about "support quality", that is not enough — ask which specific signals matter (CSAT, reopen rate, knowledge gaps, etc.). Frame it around the user's workflow and decisions, not as a feature checklist.
+
+5. Build draft (tab structure + widget selection).
+   - Use configure_tabs with explicit per-tab widget membership (widgets array per tab) for precise placement.
+   - Present the tab proposal with show_tab_proposal_choice only after you have a clear picture of which items go where.
+
+6. Refinement mode — after a draft exists, switch to optional refinement.
+   - Stop driving the old question sequence. Instead offer compact next-step choices: "Refine tabs", "Refine charts and metrics", "Add more context", "Looks good / finish", "Skip the rest".
+   - The user decides how deep to go.
+</adaptive_flow>
+
+<draft_staging>
+- During onboarding, all configuration changes are staged as a draft. The saved dashboard config is not updated until the user finishes or accepts.
+- "Skip all" discards the draft and keeps defaults.
+- "Skip to draft" builds and stages a draft from current context.
+- "Skip the rest" commits the current draft as-is.
+- "Looks good / finish" commits the draft and ends onboarding.
+</draft_staging>
+
+<tab_guidance>
+- Each tab should represent a distinct decision domain or workflow. If two tabs would largely overlap in purpose, merge them.
+- A tab with very few items may not justify its own view — consider folding it into a related tab. Conversely, a single tab with many items across distinct themes might benefit from splitting.
+- Examples (illustrations, not targets): An agent with a focused personal view might need just 1-2 tabs. A supervisor managing a support team might find 3 tabs useful — one for daily operations, one for trends, one for quality. An admin setting up cross-team analytics might use 4-5 tabs to separate distinct decision areas.
+- Do not anchor to a fixed number of tabs. Let the tab count emerge from the content and decision structure.
+- Do not anchor to the default 5-tab structure. Propose the fewest tabs that create meaningful navigation boundaries.
 - When a tab spans multiple catalog sections, use the categories array (e.g. categories: ["understand", "improve"]) so widgets route correctly.
-- Tab count guidance:
-  - 1-5 tabs are all normal outcomes. 6+ requires strong justification.
-  - Do not anchor to the default 5-tab structure. Propose the fewest tabs that create meaningful navigation boundaries.
-  - 1 tab is valid when total starter widgets are roughly 5-8 and form a single coherent view. Do not split just because you can.
-  - 2-4 tabs should be the most common proposal range for most setups.
-  - Each proposed tab should have enough substance (~3+ widgets) to justify being a separate view. If a tab would only have 1-2 widgets, merge it into a neighboring tab.
-  - For agents: 1-3 tabs is typical. Agents rarely need 5 separate views.
-  - For supervisors: 2-4 tabs is typical. Only use 5 when there are genuinely distinct decision domains.
-  - For admins: 3-5 tabs is typical, but 2 is valid for focused setups.
+</tab_guidance>
+
+<widget_placement>
+- When calling configure_tabs, include a widgets array on each tab for explicit per-tab widget placement. This is more reliable than category-based auto-routing.
+- When calling set_widget_visibility to show widgets, you can include a targetTab parameter to place the widget in a specific tab. You can also pass objects like { id: "widget-id", tab: "tab-id" } in the show array.
+- The same chart or metric may appear in multiple tabs when it serves a different decision context in each — e.g. "First response time" might appear in both an Operations tab (for monitoring) and a Quality tab (as a quality signal). Each placement should be justified by the tab's focus.
+</widget_placement>
+
+<role_guidance>
 - Let the chosen role materially change the scope and ambition of the draft:
   - Admin: think company-wide, shared, and cross-team by default.
   - Supervisor: stay within the supervised teams and team-level decisions unless the user broadens the scope.
-  - Agent: keep the view simpler and personal by default, with only the sections and widgets that materially help day-to-day work.
+  - Agent: keep the view simpler and personal by default, with only the sections and items that materially help day-to-day work.
+</role_guidance>
+
+<improvement_bias>
 - Continuous improvement is central to the platform. Weight your proposals accordingly:
   - Admin / Supervisor: almost always include a tab (or tab segment) focused on optimisation and actionable improvement — knowledge gaps, opportunity backlogs, and other signals that drive concrete change. Quality and satisfaction metrics (CSAT, reopen rate) support this but are secondary to the optimisation-oriented content. Only omit improvement content when the user's stated goals genuinely have no optimisation dimension.
-  - Agent: even in a simpler view, consider including lightweight quality signals (e.g. reopen rate, CSAT, knowledge gaps) when they are relevant to the agent's day-to-day work. Do not force it, but do not overlook it either.
-- Once you have confirmed teams/scope, understood widget-level needs, and gauged density preference, move to the proposal. Do not continue questioning just because more detail could be gathered.
-- Do not ask the user to invent tab names, tab order, or starter widgets from scratch if you can infer a strong first proposal.
-- When team classification is needed, prefer show_team_assignment_matrix over generic cards.
+  - Agent: even in a simpler view, consider including lightweight quality signals (e.g. reopen rate, CSAT, knowledge gaps) when relevant to the agent's day-to-day work. Do not force it, but do not overlook it either.
+</improvement_bias>
+
+<widget_selection>
+- Each included item should be defensible in terms of user needs, team goals, workflows, or decisions the dashboard should support. Do not fill the draft with generic items just because they exist.
+- Do not treat the starter set as high-confidence unless the current context is enough to justify the included items against the other available options.
+- If the user skips something, preserve progress and continue with defaults or the best available assumption.
+- Do not ask the user to invent tab names, tab order, or starter items from scratch if you can infer a strong first proposal.
+</widget_selection>
+
+<proposal_interaction>
 - When you have a concrete tab proposal, present it with show_tab_proposal_choice.
 - If the user accepts a tab proposal, apply it and do not open the editor.
 - If the user wants to refine a tab proposal, refine it through show_tab_editor with the proposal already filled in.
 - If the user keeps the defaults, respect that and move on.
 - No minimum completion is required. Defaults are valid. Preserve partial progress on skip.
 - Call complete_onboarding when the user is satisfied, wants to stop, or has enough configured for now.
-- MANDATORY: Every final review, confirmation, or "are you happy with this?" step MUST use show_options (never plain text). Include a "done" / "looks good" option with completesOnboarding: true. Do not ask the user to type a response when clickable choices would work — this is the single most important UX rule for the final step.
-- More broadly: any onboarding step where the likely answers form a small set (2-4 options) MUST use show_options or show_boolean_choice. Plain-text prompts are acceptable only when the answer space is genuinely open-ended (e.g. "describe your team's workflow").
+</proposal_interaction>
+
+<mandatory_ux_rules>
+- MANDATORY: Every final review, confirmation, or "are you happy with this?" step MUST use show_options (never plain text). Include a "done" / "looks good" option with completesOnboarding: true.
+- Any onboarding step where the likely answers form a small set (2-4 options) MUST use show_options or show_boolean_choice. Plain-text prompts are acceptable only when the answer space is genuinely open-ended (e.g. "describe your team's workflow").
+</mandatory_ux_rules>
 </onboarding>`;
     } else {
       prompt += `
@@ -990,7 +1053,6 @@ ${role === 'agent'
         .map(id => WIDGET_BY_ID[id])
         .filter(Boolean)
         .filter(widget => getEffectiveVisibilityForPreview(widget) === 'show')
-        .slice(0, 3)
         .map(widget => widget.id);
       if (visibleIds.length > 0) {
         map[tab.id] = visibleIds;
@@ -1167,6 +1229,63 @@ ${role === 'agent'
     return null;
   }
 
+  // ── Onboarding Draft: snapshot / commit / discard ──────────
+  // During onboarding, state mutations are live (for preview rendering) but
+  // DashboardConfig saves are suppressed. On commit we save; on discard we
+  // restore from the snapshot taken before onboarding began.
+
+  function snapshotOnboardingState() {
+    state._onboardingDraftActive = true;
+    state._preOnboardingSnapshot = {
+      lens: state.lens,
+      role: state.role,
+      personaRole: state.personaRole,
+      tabs: JSON.parse(JSON.stringify(state.tabs)),
+      tabWidgets: Object.fromEntries(
+        Object.entries(state.tabWidgets).map(([k, v]) =>
+          [k, v instanceof Set ? new Set(v) : new Set(Array.isArray(v) ? v : [])]
+        )
+      ),
+      hiddenWidgets: new Set(state.hiddenWidgets),
+      addedWidgets: new Set(state.addedWidgets),
+      teamUsecases: state.teamUsecases ? { ...state.teamUsecases } : {},
+      sectionOrder: JSON.parse(JSON.stringify(state.sectionOrder || {})),
+      sectionLayout: JSON.parse(JSON.stringify(state.sectionLayout || {})),
+      teams: JSON.parse(JSON.stringify(state.teams || [])),
+    };
+  }
+
+  function commitOnboardingDraft() {
+    state._onboardingDraftActive = false;
+    state._preOnboardingSnapshot = null;
+    // Now save the final state
+    DashboardConfig.notifyChanged();
+  }
+
+  function discardOnboardingDraft() {
+    const snap = state._preOnboardingSnapshot;
+    if (snap) {
+      state.lens = snap.lens;
+      state.role = snap.role;
+      state.personaRole = snap.personaRole;
+      state.tabs = snap.tabs;
+      state.tabWidgets = snap.tabWidgets;
+      state.hiddenWidgets = snap.hiddenWidgets;
+      state.addedWidgets = snap.addedWidgets;
+      state.teamUsecases = snap.teamUsecases;
+      state.sectionOrder = snap.sectionOrder;
+      state.sectionLayout = snap.sectionLayout;
+      state.teams = snap.teams;
+    }
+    state._onboardingDraftActive = false;
+    state._preOnboardingSnapshot = null;
+    // Re-render to show restored state
+    if (typeof refreshDashboardAfterAssistantChange === 'function') {
+      refreshDashboardAfterAssistantChange({ rerenderStructure: true });
+    }
+    if (typeof syncLensButtons === 'function') syncLensButtons();
+  }
+
   function looksLikeTypo(label) {
     const trimmed = (label || '').trim();
     if (!trimmed) return false;
@@ -1243,33 +1362,61 @@ ${role === 'agent'
   }
 
   function handleConfigureTabs({ tabs }) {
+    // Extract explicit per-tab widget membership before committing tab structure
+    const explicitWidgets = {};
+    if (Array.isArray(tabs)) {
+      tabs.forEach(t => {
+        if (Array.isArray(t.widgets) && t.widgets.length > 0) {
+          explicitWidgets[t.id] = t.widgets;
+        }
+      });
+    }
+
     const draft = commitTabDraft(tabs, { source: 'ai', message: 'Tabs updated' });
+
+    // Apply explicit widget membership if provided
+    if (Object.keys(explicitWidgets).length > 0) {
+      for (const [tabId, widgetIds] of Object.entries(explicitWidgets)) {
+        // Match by tab id — the draft may have normalized the id
+        const matchingTab = state.tabs.find(t => t.id === tabId);
+        if (matchingTab) {
+          state.tabWidgets[matchingTab.id] = new Set(widgetIds);
+        }
+      }
+      refreshDashboardAfterAssistantChange({ rerenderStructure: true });
+    }
+
     return { success: true, tabs: draft.map(t => ({ id: t.id, label: t.label })) };
   }
 
-  function handleSetWidgetVisibility({ show, hide }) {
+  function handleSetWidgetVisibility({ show, hide, targetTab }) {
     const affectedTabs = new Set();
 
-    // Helper: find the right tab for a widget (by catalog category → tab category/categories match)
+    // Helper: find the best tab for a widget (by catalog category → tab category/categories match)
     function findTabForWidget(widgetId) {
       const section = getSectionForWidget(widgetId);
       if (section) {
-        const tab = state.tabs.find(t =>
-          t.category === section ||
-          (Array.isArray(t.categories) && t.categories.includes(section))
+        // Find best match — prefer exact category match, then categories array match
+        const exactMatch = state.tabs.find(t => t.category === section);
+        if (exactMatch) return exactMatch.id;
+        const arrayMatch = state.tabs.find(t =>
+          Array.isArray(t.categories) && t.categories.includes(section)
         );
-        if (tab) return tab.id;
+        if (arrayMatch) return arrayMatch.id;
       }
       // Fallback: active tab
       return state.activeSection || state.tabs[0]?.id;
     }
 
     if (show) {
-      show.forEach(id => {
+      // show can be array of IDs or array of { id, tab? } objects
+      show.forEach(entry => {
+        const id = typeof entry === 'string' ? entry : entry.id;
+        const entryTab = typeof entry === 'object' ? entry.tab : null;
         state.hiddenWidgets.delete(id);
         state.addedWidgets.add(id);
-        // Add to the appropriate tab's widget set so the dashboard actually renders it
-        const tabId = findTabForWidget(id);
+        // Determine target tab: explicit entry.tab > targetTab param > auto-detect
+        const tabId = entryTab || targetTab || findTabForWidget(id);
         if (tabId) {
           if (!state.tabWidgets[tabId]) state.tabWidgets[tabId] = new Set();
           state.tabWidgets[tabId].add(id);
@@ -1885,6 +2032,9 @@ ${role === 'agent'
   }
 
   async function doCompleteOnboarding(summary) {
+    // Commit the onboarding draft — saves state to localStorage and KV
+    commitOnboardingDraft();
+
     AssistantStorage.setMode(_session, 'assistant');
     AssistantStorage.setAssistantThreadInitialized(_session, false);
     AssistantStorage.setAssistantDisplayStartIndex(_session, null);
@@ -4447,7 +4597,8 @@ ${role === 'agent'
 
   function getEffectiveVisibilityForPreview(w) {
     if (state.hiddenWidgets.has(w.id)) return 'hide';
-    const key = `${state.lens}_${state.role}`;
+    const lens = typeof getEffectiveLens === 'function' ? getEffectiveLens() : state.lens;
+    const key = `${lens}_${state.role}`;
     if (w.states && w.states[key] === 'hide') return 'hide';
     if (w.vis === 'hidden' && !state.addedWidgets.has(w.id)) return 'hide';
     return 'show';
@@ -4456,7 +4607,8 @@ ${role === 'agent'
   function updatePreviewRoleBadge() {
     const badge = document.getElementById('ai-setup-preview-role');
     if (badge) {
-      badge.textContent = `${state.lens} / ${state.role}`;
+      const lensLabel = state.lens === 'support' ? 'Resolve' : state.lens === 'sales' ? 'Convert' : 'All';
+      badge.textContent = `${lensLabel} / ${state.role}`;
     }
   }
 
@@ -4784,6 +4936,7 @@ ${role === 'agent'
       card.innerHTML = `
         <span class="ai-setup-customer-name">${escapeHtml(c.company)}</span>
         <span class="ai-setup-customer-industry">${escapeHtml(c.industry)}</span>
+        ${c.description ? `<span class="ai-setup-customer-description">${escapeHtml(c.description)}</span>` : ''}
         <button class="ai-setup-customer-edit" type="button" title="Edit customer" aria-label="Edit ${escapeHtml(c.company)}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -4888,6 +5041,23 @@ ${role === 'agent'
         state.role = _role;
       }
       document.body.dataset.role = state.role;
+
+      // Auto-determine lens from customer team data
+      if (_customerData?.knownTeams?.length) {
+        const focuses = _customerData.knownTeams
+          .map(t => t.likelyFocus)
+          .filter(Boolean);
+        if (focuses.length > 0) {
+          const allResolve = focuses.every(f => f === 'resolve');
+          const allConvert = focuses.every(f => f === 'convert');
+          state.lens = allResolve ? 'support' : allConvert ? 'sales' : null;
+        } else {
+          state.lens = null;
+        }
+      } else {
+        state.lens = null;
+      }
+      if (typeof syncLensButtons === 'function') syncLensButtons();
       if (typeof window.updateTeamFilterOptions === 'function') {
         window.updateTeamFilterOptions();
       }
@@ -4932,6 +5102,9 @@ ${role === 'agent'
   function startOnboardingChat() {
     if (_startingOnboarding) return;
     _startingOnboarding = true;
+
+    // Snapshot state before onboarding begins — saves are suppressed until commit
+    snapshotOnboardingState();
 
     // Initialize session
     _session = AssistantStorage.loadOrCreate(_customerId, _role);
@@ -5026,11 +5199,19 @@ ${role === 'agent'
 
       if (data.error) {
         endThreadRevealSequence(threadSequenceToken);
+        // Clean up the seed message so retry can start fresh
+        if (seedInitialMessage && _session) {
+          const msgs = AssistantStorage.getMessages(_session);
+          if (msgs.length > 0 && msgs[msgs.length - 1].role === 'user') {
+            msgs.pop();
+            AssistantStorage.save(_session);
+          }
+        }
         renderErrorBubble({
           userMessage: 'Something went wrong while starting the onboarding assistant.',
           technicalMessage: data?.error?.message || data?.message || data?.error || 'Welcome API error',
           source: 'triggerWelcome.api',
-          onRetry: () => triggerWelcome({ seedInitialMessage: false }),
+          onRetry: () => triggerWelcome({ seedInitialMessage: true }),
         });
         _loopRunning = false;
         return;
@@ -5081,11 +5262,20 @@ ${role === 'agent'
       hideTypingIndicator();
       endThreadRevealSequence(threadSequenceToken);
       console.error('[AdminAssistant] Welcome error:', e);
+      // Clean up the seed message that was appended before the failed fetch
+      // so the session doesn't end up in a broken state (user msg with no response)
+      if (seedInitialMessage && _session) {
+        const msgs = AssistantStorage.getMessages(_session);
+        if (msgs.length > 0 && msgs[msgs.length - 1].role === 'user') {
+          msgs.pop();
+          AssistantStorage.save(_session);
+        }
+      }
       renderErrorBubble({
         userMessage: 'Something went wrong while starting the onboarding assistant.',
         technicalMessage: e,
         source: 'triggerWelcome.catch',
-        onRetry: () => triggerWelcome({ seedInitialMessage: false }),
+        onRetry: () => triggerWelcome({ seedInitialMessage: true }),
       });
     } finally {
       _loopRunning = false;
@@ -5432,9 +5622,13 @@ ${role === 'agent'
 
     repairOrphanedToolUseHistory('User skipped onboarding.');
 
-    // Preserve partial progress, switch to assistant mode
+    // Discard onboarding draft — restore pre-onboarding state
+    discardOnboardingDraft();
+
+    // Switch to assistant mode without committing draft changes
+    // (doCompleteOnboarding would commit — we bypass its commit by discarding first)
     doCompleteOnboarding('User skipped setup — defaults applied.').then(() => {
-      // Re-render the main dashboard so any partial changes from onboarding are visible
+      // Re-render the main dashboard with restored defaults
       if (typeof renderTabs === 'function')     renderTabs();
       if (typeof renderSections === 'function') renderSections();
     });
@@ -6351,6 +6545,11 @@ ${role === 'agent'
     _selectedCustomerId = null;
     _selectedRole = null;
     _startingOnboarding = false;
+
+    // Clear onboarding draft if active — discard without committing
+    if (state._onboardingDraftActive) {
+      discardOnboardingDraft();
+    }
 
     resetOnboardingUIToStart();
     hideOnboarding();

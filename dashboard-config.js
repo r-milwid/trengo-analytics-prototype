@@ -7,7 +7,7 @@
    ============================================================ */
 
 const DashboardConfig = (() => {
-  const PROXY_URL = 'https://trengo-chatbot-proxy.analytics-chatbot.workers.dev';
+  const PROXY_URL = 'https://trengo-chatbot-proxy.prototype-companion.workers.dev';
   const LOCAL_STORAGE_KEY = 'trengo_dashboard_config';
   let _currentRevision = 0;
   let _saveTimer = null;
@@ -61,7 +61,7 @@ const DashboardConfig = (() => {
       revision: _currentRevision,
       updatedAt: new Date().toISOString(),
       updatedBy: actor,
-      lens: state.lens || 'support',
+      lens: state.lens !== undefined ? state.lens : null,
       role: state.role || 'supervisor',
       personaRole: state.personaRole || state.role || 'supervisor',
       teams,
@@ -91,7 +91,7 @@ const DashboardConfig = (() => {
     }
 
     // Lens & role
-    if (config.lens) state.lens = config.lens;
+    if (config.lens !== undefined) state.lens = config.lens;
     if (config.role) state.role = config.role;
     if (config.personaRole) state.personaRole = config.personaRole;
 
@@ -257,6 +257,9 @@ const DashboardConfig = (() => {
 
   // ── Notify Changed: debounced auto-save ────────────────────
   function notifyChanged() {
+    // During onboarding drafts, suppress all saves — state is staged until commit
+    if (typeof state !== 'undefined' && state._onboardingDraftActive) return;
+
     // Always save to localStorage immediately for persistence across refreshes
     if (typeof state !== 'undefined') {
       const config = serialize(state, 'ui');

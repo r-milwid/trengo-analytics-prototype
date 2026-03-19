@@ -1,0 +1,119 @@
+{
+  "id": "harborstay-hospitality",
+  "company": "HarborStay Hospitality",
+  "industry": "Hotels & Vacation Rentals",
+  "stage": "onboarding",
+  "workspaceCreatedAt": "2026-01-08T00:00:00Z",
+  "goals": ["Reduce guest response time during check-in hours", "Automate booking confirmation and pre-arrival messaging", "Track guest satisfaction across properties"],
+  "featureStatus": { "voice": false, "aiAgents": "rolling_out", "csat": "planned", "journeys": true, "knowledgeBase": true },
+  "productSummary": "Boutique hotel group and vacation rental operator with 14 properties across Southern Europe. Handles guest communication, booking support, and property-level operations.",
+  "website": "https://www.harborstay.eu/",
+  "helpCenterUrl": "https://help.harborstay.eu/",
+  "knownTeams": [
+    { "name": "Guest Services", "likelyFocus": "resolve", "size": 15, "description": "Check-in/out issues, room requests, complaints, and general guest inquiries" },
+    { "name": "Reservations", "likelyFocus": "convert", "size": 6, "description": "Booking inquiries, availability, modifications, and cancellations" },
+    { "name": "Property Ops", "likelyFocus": "resolve", "size": 4, "description": "Maintenance requests, housekeeping coordination, and property-level issues" },
+    { "name": "Partnerships", "likelyFocus": "convert", "size": 3, "description": "Travel agency relationships, OTA management, and corporate travel deals" }
+  ],
+  "channels": ["email", "whatsapp", "live-chat", "instagram"],
+  "plan": "Scale",
+  "estimatedAgents": 28,
+  "terminologyHints": {
+    "customer": "guest",
+    "ticket": "request",
+    "deal": "booking",
+    "agent": "host",
+    "resolution": "resolved"
+  },
+  "currentSetup": {
+    "primaryUseCase": "Guest communication and booking support across properties",
+    "busiestChannels": ["whatsapp", "email"],
+    "avgMonthlyConversations": 9500,
+    "topPainPoints": ["Slow response times during weekend check-in peaks", "No visibility into which properties generate the most repeat booking inquiries"]
+  },
+  "analyticsDataInventory": {
+    "coverageSummary": "HarborStay has messaging, CRM, automation, and knowledge-base data connected. Voice and CSAT survey integrations are not yet live.",
+    "sourceSystems": [
+      { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "hourly", "daily"], "retention": "18 months" },
+      { "name": "CRM", "entities": ["lead", "deal", "account"], "grains": ["event", "daily snapshot", "monthly"], "retention": "24 months" },
+      { "name": "Automation logs", "entities": ["journey run", "handoff", "guardrail stop"], "grains": ["event", "hourly", "daily"], "retention": "12 months" },
+      { "name": "Knowledge base analytics", "entities": ["article", "article view", "AI citation"], "grains": ["daily", "weekly", "monthly"], "retention": "18 months" }
+    ],
+    "historyWindows": {
+      "eventDays": 90,
+      "hourlyDays": 180,
+      "dailyMonths": 12,
+      "monthlyMonths": 12,
+      "quarterlyYears": 1
+    },
+    "granularities": ["event", "hourly", "daily", "weekly", "monthly"],
+    "joinKeys": ["conversation_id", "ticket_id", "guest_id", "account_id", "deal_id", "journey_run_id", "article_id", "agent_id"],
+    "timeDimensions": ["hour", "day", "week", "month", "quarter"],
+    "factTables": [
+      { "name": "conversation_events", "grain": "event", "fields": ["conversation_id", "message_id", "ticket_id", "created_at", "first_response_at", "resolved_at", "channel", "team", "agent"] },
+      { "name": "ticket_status_history", "grain": "event", "fields": ["ticket_event_id", "ticket_id", "from_status", "to_status", "queue", "priority", "sla_policy", "changed_at"] },
+      { "name": "deal_stage_history", "grain": "event", "fields": ["stage_event_id", "deal_id", "deal_owner", "stage", "stage_entered_at", "stage_exited_at", "close_reason"] },
+      { "name": "journey_step_events", "grain": "event", "fields": ["journey_run_id", "journey_version", "trigger_type", "node_path", "exit_reason", "retry_count", "event_at"] }
+    ],
+    "availableDimensions": {
+      "geography": ["region", "country", "city", "language", "property"],
+      "customer": ["account segment", "account tier", "plan", "lifecycle stage"],
+      "operations": ["team", "agent", "queue", "priority", "SLA policy", "channel", "hour"],
+      "product": ["property", "room type", "issue type", "intent"],
+      "goToMarket": ["campaign", "lead source", "partner source", "channel attribution"],
+      "aiAndAutomation": ["AI model", "prompt version", "confidence band", "guardrail type", "journey", "journey version", "trigger type", "exit reason"],
+      "knowledge": ["article", "article category"]
+    },
+    "businessDefinitions": {
+      "openTicket": "Guest requests not yet resolved, including maintenance and housekeeping queues.",
+      "firstResponse": "Time from request creation to first human or approved AI response.",
+      "resolutionTime": "Time from request creation to final resolved state.",
+      "newContact": "Guest or partner with no prior inbound contact in the trailing 180 days.",
+      "aiResolved": "Requests closed without human intervention after an approved AI response path."
+    }
+  },
+  "analyticsDataModel": {
+    "geographies": [
+      { "region": "Southern Europe", "country": "Spain", "city": "Barcelona", "language": "es-ES", "businessUnit": "Costa Properties", "weight": 4 },
+      { "region": "Southern Europe", "country": "Portugal", "city": "Lisbon", "language": "pt-PT", "businessUnit": "Atlantic Properties", "weight": 3 },
+      { "region": "Southern Europe", "country": "Italy", "city": "Amalfi", "language": "it-IT", "businessUnit": "Mediterranean Villas", "weight": 2 }
+    ],
+    "queues": [
+      { "queue": "Guest Urgent", "priority": "Urgent", "slaPolicy": "P1 15m / 2h", "weight": 3 },
+      { "queue": "Booking Support", "priority": "High", "slaPolicy": "P2 30m / 8h", "weight": 4 },
+      { "queue": "General Inquiries", "priority": "Standard", "slaPolicy": "P3 4h / 24h", "weight": 3 }
+    ],
+    "productAreas": [
+      { "productLine": "Guest Services", "featureArea": "Check-in/out", "issueType": "Arrival issue", "weight": 4 },
+      { "productLine": "Reservations", "featureArea": "Booking changes", "issueType": "Date change", "weight": 3 },
+      { "productLine": "Property Ops", "featureArea": "Maintenance", "issueType": "Room issue", "weight": 2 }
+    ],
+    "knowledgeArticles": [
+      { "article": "Early check-in request", "articleCategory": "Guest services", "weight": 4 },
+      { "article": "Cancel or modify booking", "articleCategory": "Reservations", "weight": 3 },
+      { "article": "Pool and amenities hours", "articleCategory": "Property info", "weight": 2 },
+      { "article": "Airport transfer booking", "articleCategory": "Concierge", "weight": 2 }
+    ],
+    "aiModels": [
+      { "aiModel": "guest-triage-gpt-5-mini", "promptVersion": "guest-triage-v2", "guardrailType": "Escalation", "weight": 4 },
+      { "aiModel": "booking-assist-gpt-5-mini", "promptVersion": "booking-assist-v1", "guardrailType": "Policy", "weight": 3 }
+    ],
+    "automationJourneys": [
+      { "journey": "Booking confirmation", "journeyVersion": "v2.4", "triggerType": "Booking created", "exitReason": "Confirmed automatically", "weight": 4 },
+      { "journey": "Pre-arrival info", "journeyVersion": "v1.8", "triggerType": "Check-in approaching", "exitReason": "Info delivered", "weight": 3 },
+      { "journey": "Post-stay follow-up", "journeyVersion": "v1.2", "triggerType": "Checkout completed", "exitReason": "Survey sent", "weight": 2 }
+    ],
+    "dealAttributes": [
+      { "dealOwner": "Maria Santos", "currency": "EUR", "closeReason": "Direct booking confirmed", "competitor": "Booking.com", "weight": 3 },
+      { "dealOwner": "Luca Rossi", "currency": "EUR", "closeReason": "Group booking approved", "competitor": "Airbnb", "weight": 2 }
+    ],
+    "intentVersions": {
+      "support": "hospitality-support-2026.1",
+      "sales": "hospitality-sales-2026.1",
+      "default": "hospitality-shared-2026.1"
+    },
+    "supportIntents": ["Check-in issue", "Room complaint", "Maintenance request", "Wi-Fi problem", "Housekeeping request", "Lost item", "Billing dispute"],
+    "salesIntents": ["Availability check", "Group booking", "Corporate rate", "Event space", "Long-stay inquiry", "Partner listing"]
+  },
+  "suggestedPreviewContext": "Focus on guest response times, booking conversion, property-level performance, and pre-arrival automation effectiveness."
+}

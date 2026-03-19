@@ -2456,6 +2456,12 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   color: var(--gray-500);
 }
 
+.ai-setup-customer-card .ai-setup-customer-description {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
 /* ── Selected states ──────────────────────────────────────── */
 .ai-setup-customer-card.selected {
   border-color: var(--gray-900);

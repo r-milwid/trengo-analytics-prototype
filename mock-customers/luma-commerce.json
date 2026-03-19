@@ -2,6 +2,10 @@
   "id": "luma-commerce",
   "company": "Luma Commerce",
   "industry": "E-commerce",
+  "stage": "onboarded",
+  "workspaceCreatedAt": "2025-01-20T00:00:00Z",
+  "goals": ["Identify which channels drive merchant conversion", "Separate partner-growth work from operational support metrics", "Reduce merchant onboarding time", "Improve campaign attribution accuracy"],
+  "featureStatus": { "voice": false, "aiAgents": true, "csat": true, "journeys": true, "knowledgeBase": true },
   "productSummary": "Commerce enablement company supporting design-led and specialty retailers across Europe, with merchant operations, partner onboarding, and a growing B2B commerce service.",
   "website": "https://prestashop.com/",
   "helpCenterUrl": "https://help-center.prestashop.com/",
@@ -28,7 +32,7 @@
     "topPainPoints": ["Low visibility into which channels drive merchant conversion", "Partner and support conversations are mixed in the same queues"]
   },
   "analyticsDataInventory": {
-    "coverageSummary": "Luma has joined support, commerce, CRM, campaign, automation, knowledge-base, and CSAT data with hourly through quarterly rollups.",
+    "coverageSummary": "Luma has joined support, commerce, CRM, campaign, automation, knowledge-base, and CSAT data with hourly through quarterly rollups. No voice platform connected.",
     "sourceSystems": [
       { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "hourly", "daily"], "retention": "18 months" },
       { "name": "Commerce platform", "entities": ["merchant", "order", "refund", "checkout event"], "grains": ["event", "daily", "monthly"], "retention": "24 months" },
@@ -51,7 +55,6 @@
       { "name": "conversation_events", "grain": "event", "fields": ["conversation_id", "message_id", "ticket_id", "created_at", "first_response_at", "resolved_at", "channel", "team", "agent"] },
       { "name": "ticket_status_history", "grain": "event", "fields": ["ticket_event_id", "ticket_id", "from_status", "to_status", "queue", "priority", "sla_policy", "changed_at"] },
       { "name": "deal_stage_history", "grain": "event", "fields": ["stage_event_id", "deal_id", "deal_owner", "stage", "stage_entered_at", "stage_exited_at", "close_reason", "competitor"] },
-      { "name": "call_legs", "grain": "event", "fields": ["call_leg_id", "call_id", "voice_line", "direction", "connection_result", "recording_flag", "hold_seconds", "transfer_count", "queue_entered_at", "answered_at", "ended_at"] },
       { "name": "survey_responses", "grain": "event", "fields": ["survey_id", "ticket_id", "survey_template", "survey_question", "delivery_channel", "respondent_type", "sentiment_label", "response_at"] },
       { "name": "agent_presence_intervals", "grain": "interval", "fields": ["agent_id", "schedule_id", "shift_id", "availability_status", "started_at", "ended_at", "online_minutes", "busy_minutes"] },
       { "name": "journey_step_events", "grain": "event", "fields": ["journey_run_id", "journey_version", "trigger_type", "node_path", "exit_reason", "retry_count", "event_at"] }
@@ -65,7 +68,6 @@
       "aiAndAutomation": ["AI model", "prompt version", "confidence band", "guardrail type", "journey", "journey version", "trigger type", "exit reason"],
       "knowledge": ["article", "article category"],
       "revenueAndSales": ["deal owner", "deal amount", "currency", "close reason", "competitor"],
-      "voice": ["voice line", "connection result", "recording flag", "transfer count", "hold duration"],
       "feedback": ["survey template", "survey question", "delivery channel", "respondent type", "sentiment label"],
       "workforce": ["schedule", "shift", "planned capacity", "occupancy band"],
       "governance": ["source system", "sync timestamp", "quality flag", "fiscal quarter"]
@@ -143,11 +145,6 @@
       { "dealOwner": "Youssef El Idrissi", "currency": "GBP", "closeReason": "Agency bundle accepted", "competitor": "BigCommerce", "weight": 2 },
       { "dealOwner": "Sofia Ivanova", "currency": "USD", "closeReason": "Lost to incumbent", "competitor": "Salesforce Commerce Cloud", "weight": 1 }
     ],
-    "callAttributes": [
-      { "voiceLine": "Merchant hotline", "connectionResult": "Connected", "recordingFlag": "Recorded", "weight": 4 },
-      { "voiceLine": "VIP merchant line", "connectionResult": "Transferred", "recordingFlag": "Recorded", "weight": 2 },
-      { "voiceLine": "Partner callback queue", "connectionResult": "Voicemail", "recordingFlag": "Not recorded", "weight": 1 }
-    ],
     "surveyDetails": [
       { "surveyTemplate": "Merchant support follow-up", "surveyQuestion": "How satisfied were you with the merchant support experience?", "deliveryChannel": "Email", "respondentType": "Merchant", "sentimentLabel": "Positive", "weight": 3 },
       { "surveyTemplate": "Partner onboarding survey", "surveyQuestion": "Was partner onboarding clear and timely?", "deliveryChannel": "Email", "respondentType": "Partner", "sentimentLabel": "Neutral", "weight": 2 },
@@ -164,7 +161,6 @@
       "sales": "commerce-sales-2026.1",
       "default": "commerce-shared-2026.1"
     },
-    "voiceLines": ["Merchant hotline", "VIP merchant line", "Partner callback queue"],
     "supportIntents": ["Catalog sync issue", "Payment failure", "Refund request", "Order status", "Storefront setup", "Instagram storefront", "Login issue"],
     "salesIntents": ["Demo request", "Agency partnership", "Pricing request", "Plan upgrade", "Enterprise rollout", "Renewal expansion", "Partner contract review"]
   },

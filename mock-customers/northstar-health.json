@@ -1,7 +1,11 @@
 {
   "id": "northstar-health",
   "company": "Northstar Health",
-  "industry": "Healthcare SaaS",
+  "industry": "Healthcare",
+  "stage": "mature",
+  "workspaceCreatedAt": "2024-09-15T00:00:00Z",
+  "goals": ["Reduce first response time during peak hours", "Improve cross-team escalation tracking", "Increase AI resolution rate for routine patient inquiries", "Maintain CSAT above 90%"],
+  "featureStatus": { "voice": true, "aiAgents": true, "csat": true, "journeys": true, "knowledgeBase": true },
   "productSummary": "Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.",
   "website": "https://connect.doctolib.com/",
   "helpCenterUrl": "https://connect.doctolib.com/nl/helpcentrum",

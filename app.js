@@ -8,7 +8,7 @@
 // ── STATE ──────────────────────────────────────────────────────
 const state = {
   currentView: 'landing', // 'landing' | 'analytics'
-  lens: 'support',        // 'support' | 'sales'
+  lens: null,              // null | 'support' | 'sales' — null means no filter (both visible)
   role: 'supervisor',     // preview role: 'supervisor' | 'agent'
   personaRole: 'supervisor', // selected persona: 'admin' | 'supervisor' | 'agent'
   navMode: 'tabs',     // 'anchors' | 'tabs'
@@ -32,6 +32,8 @@ const state = {
   tabs: JSON.parse(JSON.stringify(DEFAULT_TABS)),
   tabWidgets: {}, // tabId -> Set of widget IDs assigned to this tab
   teams: [],
+  _onboardingDraftActive: false, // when true, DashboardConfig saves are suppressed
+  _preOnboardingSnapshot: null,  // snapshot of config state before onboarding began
 };
 
 // Channel values that are considered "voice" — voice widgets hide when any other channel is active
@@ -521,7 +523,12 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
   {
     id: 'northstar-health',
     company: 'Northstar Health',
-    industry: 'Healthcare SaaS',
+    industry: 'Healthcare',
+    description: 'Existing — all features, all data',
+    stage: 'mature',
+    workspaceCreatedAt: '2024-09-15T00:00:00Z',
+    goals: ['Reduce first response time during peak hours', 'Improve cross-team escalation tracking', 'Increase AI resolution rate for routine patient inquiries', 'Maintain CSAT above 90%'],
+    featureStatus: { voice: true, aiAgents: true, csat: true, journeys: true, knowledgeBase: true },
     productSummary: 'Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.',
     website: 'https://connect.doctolib.com/',
     helpCenterUrl: 'https://connect.doctolib.com/nl/helpcentrum',
@@ -534,13 +541,7 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
     channels: ['email', 'whatsapp', 'live-chat', 'voice', 'sms'],
     plan: 'Scale',
     estimatedAgents: 25,
-    terminologyHints: {
-      customer: 'patient',
-      ticket: 'case',
-      deal: 'partnership',
-      agent: 'care coordinator',
-      resolution: 'case closure'
-    },
+    terminologyHints: { customer: 'patient', ticket: 'case', deal: 'partnership', agent: 'care coordinator', resolution: 'case closure' },
     currentSetup: {
       primaryUseCase: 'Care-team communication and patient coordination',
       busiestChannels: ['whatsapp', 'voice'],
@@ -553,6 +554,11 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
     id: 'luma-commerce',
     company: 'Luma Commerce',
     industry: 'E-commerce',
+    description: 'Onboarded — broad usage, no voice',
+    stage: 'onboarded',
+    workspaceCreatedAt: '2025-01-20T00:00:00Z',
+    goals: ['Identify which channels drive merchant conversion', 'Separate partner-growth work from operational support metrics', 'Reduce merchant onboarding time', 'Improve campaign attribution accuracy'],
+    featureStatus: { voice: false, aiAgents: true, csat: true, journeys: true, knowledgeBase: true },
     productSummary: 'Commerce enablement company supporting design-led and specialty retailers across Europe, with merchant operations, partner onboarding, and a growing B2B commerce service.',
     website: 'https://prestashop.com/',
     helpCenterUrl: 'https://help-center.prestashop.com/',
@@ -565,13 +571,7 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
     channels: ['email', 'whatsapp', 'instagram', 'facebook-messenger', 'live-chat'],
     plan: 'Enterprise',
     estimatedAgents: 34,
-    terminologyHints: {
-      customer: 'customer',
-      ticket: 'inquiry',
-      deal: 'order',
-      agent: 'advisor',
-      resolution: 'resolution'
-    },
+    terminologyHints: { customer: 'customer', ticket: 'inquiry', deal: 'order', agent: 'advisor', resolution: 'resolution' },
     currentSetup: {
       primaryUseCase: 'Merchant support and partner-led commerce conversion',
       busiestChannels: ['email', 'whatsapp', 'instagram'],
@@ -581,35 +581,102 @@ const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
     suggestedPreviewContext: 'Focus on channel-level performance, merchant support health, and separating partner-growth work from operational support metrics.'
   },
   {
+    id: 'clearline-finance',
+    company: 'Clearline Finance',
+    industry: 'Consumer Finance',
+    description: 'Mature — compliance-heavy, voice, guarded AI',
+    stage: 'mature',
+    workspaceCreatedAt: '2024-06-01T00:00:00Z',
+    goals: ['Maintain SLA compliance above 95% across all channels', 'Reduce call abandonment rate', 'Increase AI resolution rate while keeping guardrails tight', 'Improve first-call resolution for billing disputes'],
+    featureStatus: { voice: true, aiAgents: true, csat: true, journeys: true, knowledgeBase: true },
+    productSummary: 'Consumer finance company offering personal loans, buy-now-pay-later, and credit products across the Benelux and DACH markets.',
+    website: 'https://www.clearline.eu/',
+    helpCenterUrl: 'https://support.clearline.eu/',
+    knownTeams: [
+      { name: 'Customer Support', likelyFocus: 'resolve', size: 20, description: 'General account inquiries, payment questions, and product information' },
+      { name: 'Collections', likelyFocus: 'resolve', size: 8, description: 'Overdue payment follow-up, payment arrangements, and hardship cases' },
+      { name: 'Lending Sales', likelyFocus: 'convert', size: 10, description: 'Loan applications, credit assessments, and product cross-sell' },
+      { name: 'Compliance Ops', likelyFocus: 'resolve', size: 4, description: 'Regulatory inquiries, dispute resolution, and complaint escalations' }
+    ],
+    channels: ['email', 'whatsapp', 'live-chat', 'voice'],
+    plan: 'Enterprise',
+    estimatedAgents: 42,
+    terminologyHints: { customer: 'applicant', ticket: 'case', deal: 'application', agent: 'advisor', resolution: 'case closed' },
+    currentSetup: {
+      primaryUseCase: 'Regulated customer support with strict SLA and compliance requirements',
+      busiestChannels: ['voice', 'email'],
+      avgMonthlyConversations: 22000,
+      topPainPoints: ['Call abandonment spikes during billing cycle peaks', 'AI guardrails trigger too often on legitimate loan inquiries', 'No unified view of compliance case outcomes']
+    },
+    suggestedPreviewContext: 'Focus on SLA compliance, call abandonment, AI guardrail performance, collections efficiency, and compliance case tracking.'
+  },
+  {
+    id: 'harborstay-hospitality',
+    company: 'HarborStay Hospitality',
+    industry: 'Hotels & Vacation Rentals',
+    description: 'In onboarding — guest channels live, AI rolling out',
+    stage: 'onboarding',
+    workspaceCreatedAt: '2026-01-08T00:00:00Z',
+    goals: ['Reduce guest response time during check-in hours', 'Automate booking confirmation and pre-arrival messaging', 'Track guest satisfaction across properties'],
+    featureStatus: { voice: false, aiAgents: 'rolling_out', csat: 'planned', journeys: true, knowledgeBase: true },
+    productSummary: 'Boutique hotel group and vacation rental operator with 14 properties across Southern Europe.',
+    website: 'https://www.harborstay.eu/',
+    helpCenterUrl: 'https://help.harborstay.eu/',
+    knownTeams: [
+      { name: 'Guest Services', likelyFocus: 'resolve', size: 15, description: 'Check-in/out issues, room requests, complaints, and general guest inquiries' },
+      { name: 'Reservations', likelyFocus: 'convert', size: 6, description: 'Booking inquiries, availability, modifications, and cancellations' },
+      { name: 'Property Ops', likelyFocus: 'resolve', size: 4, description: 'Maintenance requests, housekeeping coordination, and property-level issues' },
+      { name: 'Partnerships', likelyFocus: 'convert', size: 3, description: 'Travel agency relationships, OTA management, and corporate travel deals' }
+    ],
+    channels: ['email', 'whatsapp', 'live-chat', 'instagram'],
+    plan: 'Scale',
+    estimatedAgents: 28,
+    terminologyHints: { customer: 'guest', ticket: 'request', deal: 'booking', agent: 'host', resolution: 'resolved' },
+    currentSetup: {
+      primaryUseCase: 'Guest communication and booking support across properties',
+      busiestChannels: ['whatsapp', 'email'],
+      avgMonthlyConversations: 9500,
+      topPainPoints: ['Slow response times during weekend check-in peaks', 'No visibility into which properties generate the most repeat booking inquiries']
+    },
+    suggestedPreviewContext: 'Focus on guest response times, booking conversion, property-level performance, and pre-arrival automation effectiveness.'
+  },
+  {
+    id: 'drivelane-automotive',
+    company: 'DriveLane Automotive',
+    industry: 'Automotive & Dealers',
+    description: 'Onboarded — lead capture and booking only',
+    stage: 'onboarded',
+    workspaceCreatedAt: '2025-11-05T00:00:00Z',
+    goals: ['Capture and qualify inbound leads faster', 'Reduce no-show rate for service appointments', 'Track sales pipeline by dealership'],
+    featureStatus: { voice: false, aiAgents: false, csat: false, journeys: false, knowledgeBase: false },
+    productSummary: 'Multi-brand dealer group with 8 showrooms and 5 service centers across the Netherlands and Belgium.',
+    website: 'https://www.drivelane.nl/',
+    knownTeams: [
+      { name: 'Sales', likelyFocus: 'convert', size: 14, description: 'Inbound lead handling, test drive bookings, and deal follow-up' },
+      { name: 'Service Desk', likelyFocus: 'resolve', size: 8, description: 'Appointment scheduling, service status updates, and warranty claims' },
+      { name: 'Customer Relations', likelyFocus: 'resolve', size: 3, description: 'Complaints, escalations, and post-purchase follow-up' }
+    ],
+    channels: ['email', 'whatsapp', 'live-chat'],
+    plan: 'Grow',
+    estimatedAgents: 25,
+    terminologyHints: { customer: 'lead', ticket: 'inquiry', deal: 'opportunity', agent: 'advisor', resolution: 'closed' },
+    currentSetup: {
+      primaryUseCase: 'Lead qualification and service appointment management',
+      busiestChannels: ['whatsapp', 'email'],
+      avgMonthlyConversations: 4200
+    },
+    suggestedPreviewContext: 'Focus on lead response time, pipeline conversion by dealership, and service appointment scheduling efficiency.'
+  },
+  {
     id: 'orbit-mobility',
     company: 'Orbit Mobility',
     industry: 'Logistics & Mobility',
+    description: 'New — workspace only, no setup yet',
+    stage: 'new',
+    workspaceCreatedAt: '2026-03-10T00:00:00Z',
     productSummary: 'Urban mobility platform offering shared e-bikes, e-scooters, and last-mile delivery services across 12 European cities. Both consumer app and B2B fleet management.',
-    website: 'https://www.voi.com/',
-    helpCenterUrl: '',
-    knownTeams: [
-      { name: 'Rider Support', likelyFocus: 'resolve', size: 22, description: 'App issues, payment disputes, damaged vehicles, safety incidents' },
-      { name: 'Fleet Operations', likelyFocus: 'resolve', size: 6, description: 'Coordinates with maintenance, city ops, and reports on vehicle availability' },
-      { name: 'B2B Sales', likelyFocus: 'convert', size: 5, description: 'Corporate fleet deals, city partnerships, and delivery service contracts' },
-      { name: 'City Expansion', likelyFocus: 'convert', size: 3, description: 'New market launches, regulatory applications, and local partner outreach' }
-    ],
-    channels: ['email', 'whatsapp', 'live-chat', 'voice'],
     plan: 'Scale',
-    estimatedAgents: 36,
-    terminologyHints: {
-      customer: 'rider',
-      ticket: 'issue',
-      deal: 'contract',
-      agent: 'support specialist',
-      resolution: 'issue resolved'
-    },
-    currentSetup: {
-      primaryUseCase: 'High-volume rider support with fast resolution SLAs',
-      busiestChannels: ['live-chat', 'whatsapp'],
-      avgMonthlyConversations: 28000,
-      topPainPoints: ['SLA compliance drops during peak hours', 'No visibility into which cities need more support capacity']
-    },
-    suggestedPreviewContext: 'Focus on SLA compliance, capacity planning by city/team, first-response time during peak hours, and B2B pipeline tracking.'
+    estimatedAgents: 36
   }
 ]);
 
@@ -795,7 +862,7 @@ function resetPrototypeStateToDefaults() {
   localStorage.removeItem(USER_TEAMS_KEY);
   state.tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
   state.tabWidgets = buildDefaultTabWidgets();
-  state.lens = 'support';
+  state.lens = null;
   state.role = 'supervisor';
   state.personaRole = 'supervisor';
   state.navMode = 'tabs';
@@ -1094,9 +1161,10 @@ function syncLensButtons() {
   const overridden = state.teamFilter
     && state.teamFilter !== 'All teams'
     && normalizeTeamUsecase(state.teamUsecases?.[state.teamFilter]) !== 'both';
+  const noLens = effectiveLens === null;
   document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.lens === effectiveLens);
-    b.style.opacity = overridden ? '0.45' : '';
+    b.classList.toggle('active', noLens ? false : b.dataset.lens === effectiveLens);
+    b.style.opacity = (overridden || noLens) ? '0.45' : '';
     b.style.pointerEvents = overridden ? 'none' : '';
   });
 }

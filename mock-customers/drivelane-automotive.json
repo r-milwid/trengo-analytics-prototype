@@ -1,0 +1,58 @@
+{
+  "id": "drivelane-automotive",
+  "company": "DriveLane Automotive",
+  "industry": "Automotive & Dealers",
+  "stage": "onboarded",
+  "workspaceCreatedAt": "2025-11-05T00:00:00Z",
+  "goals": ["Capture and qualify inbound leads faster", "Reduce no-show rate for service appointments", "Track sales pipeline by dealership"],
+  "featureStatus": { "voice": false, "aiAgents": false, "csat": false, "journeys": false, "knowledgeBase": false },
+  "productSummary": "Multi-brand dealer group with 8 showrooms and 5 service centers across the Netherlands and Belgium. Handles new and used vehicle sales, financing, and after-sales service.",
+  "website": "https://www.drivelane.nl/",
+  "helpCenterUrl": "",
+  "knownTeams": [
+    { "name": "Sales", "likelyFocus": "convert", "size": 14, "description": "Inbound lead handling, test drive bookings, and deal follow-up" },
+    { "name": "Service Desk", "likelyFocus": "resolve", "size": 8, "description": "Appointment scheduling, service status updates, and warranty claims" },
+    { "name": "Customer Relations", "likelyFocus": "resolve", "size": 3, "description": "Complaints, escalations, and post-purchase follow-up" }
+  ],
+  "channels": ["email", "whatsapp", "live-chat"],
+  "plan": "Grow",
+  "estimatedAgents": 25,
+  "terminologyHints": {
+    "customer": "lead",
+    "ticket": "inquiry",
+    "deal": "opportunity",
+    "agent": "advisor",
+    "resolution": "closed"
+  },
+  "currentSetup": {
+    "primaryUseCase": "Lead qualification and service appointment management",
+    "busiestChannels": ["whatsapp", "email"],
+    "avgMonthlyConversations": 4200
+  },
+  "analyticsDataInventory": {
+    "coverageSummary": "DriveLane has basic messaging and CRM data connected. No voice, AI, automation, survey, or knowledge-base integrations are set up yet.",
+    "sourceSystems": [
+      { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "hourly", "daily"], "retention": "18 months" },
+      { "name": "CRM", "entities": ["lead", "deal", "account"], "grains": ["event", "daily snapshot"], "retention": "18 months" }
+    ],
+    "historyWindows": {
+      "eventDays": 120,
+      "hourlyDays": 180,
+      "dailyMonths": 12,
+      "monthlyMonths": 12
+    },
+    "granularities": ["event", "hourly", "daily", "weekly", "monthly"],
+    "joinKeys": ["conversation_id", "ticket_id", "contact_id", "account_id", "deal_id", "agent_id"],
+    "timeDimensions": ["hour", "day", "week", "month"],
+    "factTables": [
+      { "name": "conversation_events", "grain": "event", "fields": ["conversation_id", "message_id", "ticket_id", "created_at", "first_response_at", "resolved_at", "channel", "team", "agent"] },
+      { "name": "deal_stage_history", "grain": "event", "fields": ["stage_event_id", "deal_id", "deal_owner", "stage", "stage_entered_at", "stage_exited_at", "close_reason"] }
+    ],
+    "businessDefinitions": {
+      "openTicket": "Inquiries not yet resolved, including pending test drives and service follow-ups.",
+      "firstResponse": "Time from inquiry creation to first advisor reply.",
+      "newContact": "Lead or customer with no prior contact in the trailing 180 days."
+    }
+  },
+  "suggestedPreviewContext": "Focus on lead response time, pipeline conversion by dealership, and service appointment scheduling efficiency."
+}
