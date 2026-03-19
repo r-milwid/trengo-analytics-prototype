@@ -554,14 +554,15 @@ const AdminAssistant = (() => {
       correctionSensitivity: thresholds.correctionSensitivity ?? 5,
     };
 
-    // Build widget catalog summary
+    // Build widget catalog summary with semantic tags
     const widgetSummary = Object.entries(WIDGETS).map(([section, widgets]) => {
       const list = widgets.map(w => {
         const purpose = String(w.tooltip || '')
           .split('. ')
           .find(Boolean)
           ?.trim();
-        return `  - ${w.id}: "${w.title}" (${w.type})${purpose ? ` — ${purpose.replace(/\.$/, '')}.` : ''}`;
+        const tagStr = w.tags ? ` [${w.tags.join(', ')}]` : '';
+        return `  - ${w.id}: "${w.title}" (${w.type})${tagStr}${purpose ? ` — ${purpose.replace(/\.$/, '')}.` : ''}`;
       }).join('\n');
       return `### ${section}\n${list}`;
     }).join('\n\n');
@@ -841,7 +842,9 @@ ${role === 'agent'
 - Examples (illustrations, not targets): An agent with a focused personal view might need just 1-2 tabs. A supervisor managing a support team might find 3 tabs useful — one for daily operations, one for trends, one for quality. An admin setting up cross-team analytics might use 4-5 tabs to separate distinct decision areas.
 - Do not anchor to a fixed number of tabs. Let the tab count emerge from the content and decision structure.
 - Do not anchor to the default 5-tab structure. Propose the fewest tabs that create meaningful navigation boundaries.
-- When a tab spans multiple catalog sections, use the categories array (e.g. categories: ["understand", "improve"]) so widgets route correctly.
+- Each widget has semantic tags describing its purpose, domain, and decision area. Use these tags to select widgets for each tab via the widgets array.
+- Prefer explicit widgets arrays per tab for precise placement. Use tags to identify which widgets match a tab's purpose.
+- The categories array is a fallback for catalog-section-level routing — prefer explicit widget IDs when you have enough context.
 </tab_guidance>
 
 <widget_placement>
@@ -1129,7 +1132,7 @@ ${role === 'agent'
         : null;
       const ids = explicitIds && explicitIds.length > 0
         ? explicitIds
-        : (WIDGETS[tab.id] || []).map(widget => widget.id);
+        : getCatalogWidgetIdsForTab(tab);
       const visibleIds = ids
         .map(id => WIDGET_BY_ID[id])
         .filter(Boolean)
@@ -1469,6 +1472,9 @@ ${role === 'agent'
         }
       }
       refreshDashboardAfterAssistantChange({ rerenderStructure: true });
+      // Rebuild preview widget map now that explicit widgets are set, then re-render
+      updateSuggestedWidgetPreview(draft);
+      renderPreview();
     }
 
     return { success: true, tabs: draft.map(t => ({ id: t.id, label: t.label })) };
@@ -1627,11 +1633,29 @@ ${role === 'agent'
     });
   }
 
+  function getCatalogWidgetIdsForTab(tab) {
+    // Direct match by tab.id (works for default tabs like 'overview')
+    if (WIDGETS[tab.id]) return WIDGETS[tab.id].map(w => w.id);
+    // Fall back to tab.categories (maps to catalog section keys)
+    if (Array.isArray(tab.categories) && tab.categories.length > 0) {
+      const ids = [];
+      tab.categories.forEach(cat => {
+        if (WIDGETS[cat]) WIDGETS[cat].forEach(w => { if (!ids.includes(w.id)) ids.push(w.id); });
+      });
+      if (ids.length > 0) return ids;
+    }
+    // Fall back to tab.category (singular)
+    if (tab.category && WIDGETS[tab.category]) return WIDGETS[tab.category].map(w => w.id);
+    // No pre-determined fallback — the model should provide explicit widget placement via configure_tabs.
+    // Tags in the prompt inform the model's decisions but don't drive automatic mapping.
+    return [];
+  }
+
   function getVisibleWidgets() {
     return state.tabs.flatMap((tab) => {
       const ids = state.tabWidgets && state.tabWidgets[tab.id]
         ? [...state.tabWidgets[tab.id]]
-        : (WIDGETS[tab.id] || []).map(widget => widget.id);
+        : getCatalogWidgetIdsForTab(tab);
       return ids
         .map(id => WIDGET_BY_ID[id])
         .filter(Boolean)
