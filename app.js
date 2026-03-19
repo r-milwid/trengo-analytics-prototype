@@ -5791,26 +5791,42 @@ if (typeof AdminAssistant !== 'undefined') {
   let onboardingStep = 0;
   const overlay       = document.getElementById('onboarding-overlay');
   const stepsContainer = document.getElementById('onboarding-steps');
-  function getStepCards() {
-    return stepsContainer.querySelectorAll('.onboarding-step-card');
+  let onboardingBodyText = null;
+  let onboardingSkipBtn = null;
+  let onboardingNextBtn = null;
+  let onboardingDots = [];
+
+  function animateStepText() {
+    if (!onboardingBodyText) return;
+    onboardingBodyText.classList.remove('onboarding-step-text-enter');
+    // Restart the text-only transition for each new message.
+    void onboardingBodyText.offsetWidth;
+    onboardingBodyText.classList.add('onboarding-step-text-enter');
   }
 
-  function getStepsTrack() {
-    return stepsContainer.querySelector('.onboarding-steps-track');
+  function updateControls() {
+    if (!onboardingSkipBtn || !onboardingNextBtn) return;
+    const isLastStep = onboardingStep === ONBOARDING_STEPS.length - 1;
+    onboardingSkipBtn.classList.toggle('hidden', isLastStep);
+    onboardingSkipBtn.disabled = isLastStep;
+    onboardingNextBtn.innerHTML = isLastStep
+      ? '<span class="onboarding-next-text">Done</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      : '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
   }
 
   function updateDots() {
-    getStepCards().forEach((card) => {
-      card.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === onboardingStep);
-      });
+    onboardingDots.forEach((dot, i) => {
+      dot.classList.toggle('active', i === onboardingStep);
     });
   }
 
   function showStep(index) {
     onboardingStep = index;
-    const track = getStepsTrack();
-    if (track) track.style.transform = `translateX(-${index * 100}%)`;
+    if (onboardingBodyText) {
+      onboardingBodyText.textContent = ONBOARDING_STEPS[index].text;
+      animateStepText();
+    }
+    updateControls();
     updateDots();
   }
 
@@ -5829,85 +5845,77 @@ if (typeof AdminAssistant !== 'undefined') {
     setTimeout(() => {
       overlay.style.display = 'none';
       overlay.classList.remove('closing');
-      const track = getStepsTrack();
-      if (track) track.style.transform = 'translateX(0)';
+      stepsContainer.innerHTML = '';
+      onboardingBodyText = null;
+      onboardingSkipBtn = null;
+      onboardingNextBtn = null;
+      onboardingDots = [];
     }, 350);
   }
 
   function showOnboarding() {
     stepsContainer.innerHTML = '';
-    const track = document.createElement('div');
-    track.className = 'onboarding-steps-track';
+    const card = document.createElement('div');
+    card.className = 'onboarding-step-card';
 
-    ONBOARDING_STEPS.forEach((step, i) => {
-      const slide = document.createElement('div');
-      slide.className = 'onboarding-step';
+    const header = document.createElement('div');
+    header.className = 'onboarding-card-header';
 
-      const card = document.createElement('div');
-      card.className = 'onboarding-step-card';
+    const title = document.createElement('h2');
+    title.className = 'onboarding-title';
+    title.textContent = WALKTHROUGH_TITLE;
 
-      const header = document.createElement('div');
-      header.className = 'onboarding-card-header';
+    const subtitle = document.createElement('p');
+    subtitle.className = 'onboarding-subtitle';
+    subtitle.textContent = WALKTHROUGH_SUBTITLE;
 
-      const title = document.createElement('h2');
-      title.className = 'onboarding-title';
-      title.textContent = WALKTHROUGH_TITLE;
+    header.appendChild(title);
+    header.appendChild(subtitle);
+    card.appendChild(header);
 
-      const subtitle = document.createElement('p');
-      subtitle.className = 'onboarding-subtitle';
-      subtitle.textContent = WALKTHROUGH_SUBTITLE;
+    const bodyWrap = document.createElement('div');
+    bodyWrap.className = 'onboarding-step-body';
 
-      header.appendChild(title);
-      header.appendChild(subtitle);
-      card.appendChild(header);
+    const bodyTextWrap = document.createElement('div');
+    bodyTextWrap.className = 'onboarding-step-text-wrap';
 
-      const bodyWrap = document.createElement('div');
-      bodyWrap.className = 'onboarding-step-body';
+    const body = document.createElement('p');
+    body.className = 'onboarding-step-text';
+    body.setAttribute('aria-live', 'polite');
+    bodyTextWrap.appendChild(body);
+    bodyWrap.appendChild(bodyTextWrap);
+    card.appendChild(bodyWrap);
 
-      const body = document.createElement('p');
-      body.className = 'onboarding-step-text';
-      body.textContent = step.text;
-      bodyWrap.appendChild(body);
-      card.appendChild(bodyWrap);
+    const footer = document.createElement('div');
+    footer.className = 'onboarding-card-footer';
 
-      // Footer: dots · skip · next
-      const footer = document.createElement('div');
-      footer.className = 'onboarding-card-footer';
-
-      // Dots (same set in every card, active one updated per step)
-      const dotsWrap = document.createElement('div');
-      dotsWrap.className = 'onboarding-dots';
-      ONBOARDING_STEPS.forEach((_, di) => {
-        const dot = document.createElement('div');
-        dot.className = 'onboarding-dot' + (di === i ? ' active' : '');
-        dotsWrap.appendChild(dot);
-      });
-
-      // Skip button
-      const skipBtn = document.createElement('button');
-      skipBtn.className = 'onboarding-skip';
-      skipBtn.innerHTML = 'Skip intro <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-      if (i === ONBOARDING_STEPS.length - 1) skipBtn.classList.add('hidden');
-      skipBtn.addEventListener('click', closeOnboarding);
-
-      // Next/Done button
-      const nextBtn = document.createElement('button');
-      nextBtn.className = 'onboarding-next';
-      nextBtn.innerHTML = i === ONBOARDING_STEPS.length - 1
-        ? '<span class="onboarding-next-text">Done</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
-        : '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
-      nextBtn.addEventListener('click', nextOnboardingStep);
-
-      footer.appendChild(dotsWrap);
-      footer.appendChild(skipBtn);
-      footer.appendChild(nextBtn);
-      card.appendChild(footer);
-
-      slide.appendChild(card);
-      track.appendChild(slide);
+    const dotsWrap = document.createElement('div');
+    dotsWrap.className = 'onboarding-dots';
+    onboardingDots = ONBOARDING_STEPS.map(() => {
+      const dot = document.createElement('div');
+      dot.className = 'onboarding-dot';
+      dotsWrap.appendChild(dot);
+      return dot;
     });
 
-    stepsContainer.appendChild(track);
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'onboarding-skip';
+    skipBtn.innerHTML = 'Skip intro <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    skipBtn.addEventListener('click', closeOnboarding);
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'onboarding-next';
+    nextBtn.addEventListener('click', nextOnboardingStep);
+
+    footer.appendChild(dotsWrap);
+    footer.appendChild(skipBtn);
+    footer.appendChild(nextBtn);
+    card.appendChild(footer);
+
+    stepsContainer.appendChild(card);
+    onboardingBodyText = body;
+    onboardingSkipBtn = skipBtn;
+    onboardingNextBtn = nextBtn;
     onboardingStep = 0;
     overlay.classList.remove('closing');
     overlay.style.display = 'block';

@@ -2404,6 +2404,11 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   z-index: 2;
   overflow: hidden;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 40px;
+  box-sizing: border-box;
 }
 .onboarding-steps-track {
   display: flex;
@@ -2436,7 +2441,7 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   display: flex;
   flex-direction: column;
   gap: 24px;
-  overflow: auto;
+  overflow: hidden;
 }
 .onboarding-card-header {
   padding-bottom: 18px;
@@ -2446,12 +2451,34 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   flex: 1;
   display: flex;
   align-items: flex-start;
+  overflow: hidden;
+}
+.onboarding-step-text-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
 }
 .onboarding-step-text {
   margin: 0;
   flex: 1;
+  display: block;
   font-size: 14px;
   line-height: 1.7;
+}
+.onboarding-step-text.onboarding-step-text-enter {
+  animation: onboardingStepTextSlide 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes onboardingStepTextSlide {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Card footer: dots · skip · next */
@@ -2483,7 +2510,9 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
 .onboarding-skip {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
+  min-width: 98px;
   padding: 7px 12px;
   background: none;
   border: 1px solid var(--border);
@@ -2503,18 +2532,17 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
 }
 .onboarding-skip.hidden {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  width: 0;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
 }
 
 /* Next / Done button */
 .onboarding-next {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-width: 76px;
   padding: 7px 16px;
   background: var(--gray-900);
   border: none;
