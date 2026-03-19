@@ -2047,6 +2047,7 @@ ${role === 'agent'
     // Open assistant panel directly at compact height
     localStorage.setItem(COMPACT_PREF_KEY, '1');
     openAssistantPanel();
+    maybeStartWalkthrough();
 
     // Animate the assistant panel sliding in from right (where the chat was)
     const panel = document.getElementById('assistant-panel');
@@ -2066,6 +2067,14 @@ ${role === 'agent'
     }
 
     return { success: true, summary };
+  }
+
+  function maybeStartWalkthrough() {
+    if (localStorage.getItem('trengo_onboarding_done')) return;
+    if (typeof window.triggerWalkthrough !== 'function') return;
+    setTimeout(() => {
+      window.triggerWalkthrough();
+    }, 150);
   }
 
   function buildAssistantOpeningMessage() {
@@ -4962,7 +4971,7 @@ ${role === 'agent'
       card.querySelector('.ai-setup-customer-edit').addEventListener('click', (e) => {
         e.stopPropagation();
         if (typeof window.openCustomerSettingsModal === 'function') {
-          window.openCustomerSettingsModal('admin');
+          window.openCustomerSettingsModal();
         }
       });
       grid.appendChild(card);
@@ -4973,7 +4982,7 @@ ${role === 'agent'
     if (addBtn) {
       addBtn.onclick = () => {
         if (typeof window.openCustomerSettingsModal === 'function') {
-          window.openCustomerSettingsModal('admin');
+          window.openCustomerSettingsModal();
         }
       };
     }
@@ -6415,15 +6424,11 @@ ${role === 'agent'
     }
 
     // No mode set — first visit, initialize meta-start
+    resetOnboardingUIToStart();
     initMetaStart();
     initRoleSelection();
     wireContinueButton();
-
-    // Show overlay if walkthrough is already done
-    if (localStorage.getItem('trengo_onboarding_done')) {
-      resetOnboardingUIToStart();
-      showOnboarding();
-    }
+    showOnboarding();
   }
 
   function showOnboarding() {
@@ -6450,8 +6455,7 @@ ${role === 'agent'
   }
 
   /**
-   * Called from app.js after walkthrough completes.
-   * Checks if onboarding should start.
+   * External entry point to surface the onboarding UI.
    */
   function tryStartOnboarding() {
     // If init() never ran (flag disabled), try now

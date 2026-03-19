@@ -5219,31 +5219,13 @@ function closeTeamSettingsModal() {
   document.getElementById('team-settings-modal-overlay').style.display = 'none';
 }
 
-let _customerSettingsDraft = [];
-let _customerSettingsMode = 'admin';   // 'admin' (full edit) | 'settings' (add-only)
-let _protectedCustomerIds = new Set(); // IDs that can't be edited/deleted in settings mode
-
-function buildCustomerSettingsDraft(profiles = []) {
-  return profiles.map((profile, index) => {
-    const normalized = normalizeCustomerProfile(profile, index);
-    return {
-      ...cloneJson(normalized),
-      knownTeamsText: (normalized.knownTeams || []).map(team => team.name).join('\n'),
-      extraSourceUrlsText: Array.isArray(normalized.extraSourceUrls) ? normalized.extraSourceUrls.join('\n') : '',
-    };
-  });
-}
-
-function isBlankCustomerDraft(profile) {
-  return !String(profile.company || '').trim()
-    && !String(profile.industry || '').trim()
-    && !String(profile.website || '').trim()
-    && !String(profile.helpCenterUrl || '').trim()
-    && !String(profile.productSummary || '').trim()
-    && !String(profile.generalNotes || '').trim()
-    && !String(profile.knownTeamsText || '').trim()
-    && !String(profile.extraSourceUrlsText || '').trim();
-}
+let _defaultCustomerProfiles = [];
+let _userCustomerProfiles = [];
+let _addCustomerDraft = null;
+let _editingUserCustomerIndex = null;
+let _editingUserCustomerDraft = null;
+let _addSectionCollapsed = false;
+const _builtInCustomerIds = new Set(BUILT_IN_CUSTOMER_PROFILES.map(p => p.id));
 
 function buildKnownTeamsFromText(value) {
   return uniqueNonEmptyLines(value).map(name => {
@@ -5252,142 +5234,232 @@ function buildKnownTeamsFromText(value) {
   });
 }
 
+function _draftFromProfile(profile, index) {
+  const normalized = normalizeCustomerProfile(profile, index);
+  return {
+    ...cloneJson(normalized),
+    knownTeamsText: (normalized.knownTeams || []).map(t => t.name).join('\n'),
+    extraSourceUrlsText: Array.isArray(normalized.extraSourceUrls) ? normalized.extraSourceUrls.join('\n') : '',
+  };
+}
+
+function _profileFromDraft(draft, index) {
+  return normalizeCustomerProfile({
+    ...draft,
+    company: String(draft.company || '').trim(),
+    industry: String(draft.industry || '').trim(),
+    website: String(draft.website || '').trim(),
+    helpCenterUrl: String(draft.helpCenterUrl || '').trim(),
+    productSummary: String(draft.productSummary || '').trim(),
+    generalNotes: String(draft.generalNotes || '').trim(),
+    extraSourceUrls: uniqueNonEmptyLines(draft.extraSourceUrlsText),
+    knownTeams: buildKnownTeamsFromText(draft.knownTeamsText),
+  }, index);
+}
+
+function _allProfilesList() {
+  return [..._defaultCustomerProfiles, ..._userCustomerProfiles];
+}
+
+function _persistAndRefresh() {
+  saveCustomerProfiles(_allProfilesList());
+  if (window.AdminAssistant?.refreshMetaStart) window.AdminAssistant.refreshMetaStart();
+}
+
+function _validateDraft(draft, existingProfiles, excludeId) {
+  const company = String(draft.company || '').trim();
+  if (!company) return { error: 'Company name is required.' };
+  const dup = existingProfiles.find(p =>
+    p.id !== excludeId && p.company.toLowerCase() === company.toLowerCase()
+  );
+  if (dup) return { error: `"${company}" already exists.` };
+  return { ok: true };
+}
+
+// ── Customer form field template (reused by add + edit) ──
+function _renderCustomerFormFields(draft, prefix) {
+  return `
+    <div class="customer-settings-grid">
+      <div class="customer-settings-field">
+        <label class="team-settings-field-label">Company name</label>
+        <input class="customer-settings-input" data-${prefix}-field="company" type="text" value="${escapeHtml(draft.company || '')}" placeholder="Company name" />
+      </div>
+      <div class="customer-settings-field">
+        <label class="team-settings-field-label">Industry</label>
+        <input class="customer-settings-input" data-${prefix}-field="industry" type="text" value="${escapeHtml(draft.industry || '')}" placeholder="Industry" />
+      </div>
+      <div class="customer-settings-field">
+        <label class="team-settings-field-label">Website</label>
+        <input class="customer-settings-input" data-${prefix}-field="website" type="url" value="${escapeHtml(draft.website || '')}" placeholder="https://example.com" />
+      </div>
+      <div class="customer-settings-field">
+        <label class="team-settings-field-label">Help center / docs URL</label>
+        <input class="customer-settings-input" data-${prefix}-field="helpCenterUrl" type="url" value="${escapeHtml(draft.helpCenterUrl || '')}" placeholder="https://help.example.com" />
+      </div>
+      <div class="customer-settings-field-wide">
+        <label class="team-settings-field-label">Product or service summary</label>
+        <textarea class="customer-settings-textarea" data-${prefix}-field="productSummary" placeholder="What does this company do?">${escapeHtml(draft.productSummary || '')}</textarea>
+      </div>
+      <div class="customer-settings-field">
+        <label class="team-settings-field-label">Known teams</label>
+        <textarea class="customer-settings-textarea" data-${prefix}-field="knownTeamsText" placeholder="One team per line">${escapeHtml(draft.knownTeamsText || '')}</textarea>
+      </div>
+      <div class="customer-settings-field">
+        <label class="team-settings-field-label">Extra source URLs</label>
+        <textarea class="customer-settings-textarea" data-${prefix}-field="extraSourceUrlsText" placeholder="One URL per line">${escapeHtml(draft.extraSourceUrlsText || '')}</textarea>
+      </div>
+      <div class="customer-settings-field-wide">
+        <label class="team-settings-field-label">General information</label>
+        <textarea class="customer-settings-textarea" data-${prefix}-field="generalNotes" placeholder="Anything else the onboarding agent should know about this customer...">${escapeHtml(draft.generalNotes || '')}</textarea>
+      </div>
+    </div>`;
+}
+
 function renderCustomerSettingsModal() {
   const body = document.getElementById('customer-settings-body');
   if (!body) return;
 
-  const isSettings = _customerSettingsMode === 'settings';
-
-  // Update modal title/subtitle based on mode
   const modalEl = document.getElementById('customer-settings-modal');
   if (modalEl) {
     const h3 = modalEl.querySelector('.modal-header h3');
     const sub = modalEl.querySelector('.modal-subtitle');
-    if (h3) h3.textContent = isSettings ? 'Add customers' : 'Edit customers';
-    if (sub) sub.textContent = isSettings
-      ? 'Add new customer profiles to the default set. Existing customers cannot be edited here.'
-      : 'Update the starter customer profiles used as initial onboarding context.';
+    if (h3) h3.textContent = 'Manage Customers';
+    if (sub) sub.textContent = 'Add your own customer profiles or use the built-in defaults.';
   }
 
-  const rows = _customerSettingsDraft.map((profile, index) => {
-    const isProtected = isSettings && _protectedCustomerIds.has(profile.id);
-    const disabledAttr = isProtected ? ' disabled' : '';
-    const protectedClass = isProtected ? ' protected' : '';
-    return `
-    <div class="customer-settings-card${protectedClass}" data-index="${index}">
-      <div class="customer-settings-card-header">
-        <div>
-          <div class="customer-settings-card-title" data-customer-title="${index}">${escapeHtml(profile.company || `Customer ${index + 1}`)}</div>
-          <div class="customer-settings-card-subtitle">${isProtected ? 'Default customer — read only' : 'This is the starter context the onboarding agent can begin from.'}</div>
-        </div>
-        ${isProtected ? '' : `<button class="customer-settings-delete-btn" data-delete-index="${index}" type="button">Delete</button>`}
+  const isAddCollapsed = _addSectionCollapsed || _editingUserCustomerIndex !== null;
+
+  // ── Section 1: Default customers ──
+  const defaultRows = _defaultCustomerProfiles.map(p => `
+    <div class="cs-default-row">
+      <span class="cs-default-company">${escapeHtml(p.company)}</span>
+      <span class="cs-default-sep">&middot;</span>
+      <span class="cs-default-description">${escapeHtml(p.description || p.industry || '')}</span>
+    </div>`).join('');
+
+  const section1 = `
+    <div class="cs-section">
+      <div class="cs-section-header">
+        <div class="cs-section-title">Default Customers</div>
+        <div class="cs-section-note">System-level demo profiles — these can't be edited or removed.</div>
       </div>
-      <div class="customer-settings-grid">
-        <div class="customer-settings-field">
-          <label class="team-settings-field-label" for="customer-company-${index}">Company name</label>
-          <input class="customer-settings-input" id="customer-company-${index}" data-index="${index}" data-customer-field="company" type="text" value="${escapeHtml(profile.company || '')}" placeholder="Company name"${disabledAttr} />
+      <div class="cs-defaults-list">${defaultRows}</div>
+    </div>`;
+
+  // ── Section 2: Add new customer ──
+  const section2 = `
+    <div class="cs-section cs-section-add${isAddCollapsed ? ' collapsed' : ''}">
+      <button class="cs-add-collapsed-header" id="cs-expand-add-btn" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add New Customer
+      </button>
+      <div class="cs-section-header">
+        <div class="cs-section-title">Add New Customer</div>
+      </div>
+      <div class="cs-add-form">
+        ${_renderCustomerFormFields(_addCustomerDraft || {}, 'add')}
+        <div class="cs-add-form-actions">
+          <button class="cs-add-save-btn" id="cs-add-save-btn" type="button">Save</button>
+          <button class="customer-settings-add-btn customer-settings-upload-btn" id="customer-settings-upload-btn" type="button">Upload file</button>
+          <input type="file" id="customer-settings-file-input" accept=".pdf,.docx,.txt,.csv" style="display:none">
         </div>
-        <div class="customer-settings-field">
-          <label class="team-settings-field-label" for="customer-industry-${index}">Industry</label>
-          <input class="customer-settings-input" id="customer-industry-${index}" data-index="${index}" data-customer-field="industry" type="text" value="${escapeHtml(profile.industry || '')}" placeholder="Industry"${disabledAttr} />
-        </div>
-        <div class="customer-settings-field">
-          <label class="team-settings-field-label" for="customer-website-${index}">Website</label>
-          <input class="customer-settings-input" id="customer-website-${index}" data-index="${index}" data-customer-field="website" type="url" value="${escapeHtml(profile.website || '')}" placeholder="https://example.com"${disabledAttr} />
-        </div>
-        <div class="customer-settings-field">
-          <label class="team-settings-field-label" for="customer-help-${index}">Help center / docs URL</label>
-          <input class="customer-settings-input" id="customer-help-${index}" data-index="${index}" data-customer-field="helpCenterUrl" type="url" value="${escapeHtml(profile.helpCenterUrl || '')}" placeholder="https://help.example.com"${disabledAttr} />
-        </div>
-        <div class="customer-settings-field-wide">
-          <label class="team-settings-field-label" for="customer-summary-${index}">Product or service summary</label>
-          <textarea class="customer-settings-textarea" id="customer-summary-${index}" data-index="${index}" data-customer-field="productSummary" placeholder="What does this company do?"${disabledAttr}>${escapeHtml(profile.productSummary || '')}</textarea>
-        </div>
-        <div class="customer-settings-field">
-          <label class="team-settings-field-label" for="customer-teams-${index}">Known teams</label>
-          <textarea class="customer-settings-textarea" id="customer-teams-${index}" data-index="${index}" data-customer-field="knownTeamsText" placeholder="One team per line"${disabledAttr}>${escapeHtml(profile.knownTeamsText || '')}</textarea>
-        </div>
-        <div class="customer-settings-field">
-          <label class="team-settings-field-label" for="customer-sources-${index}">Extra source URLs</label>
-          <textarea class="customer-settings-textarea" id="customer-sources-${index}" data-index="${index}" data-customer-field="extraSourceUrlsText" placeholder="One URL per line"${disabledAttr}>${escapeHtml(profile.extraSourceUrlsText || '')}</textarea>
-        </div>
-        <div class="customer-settings-field-wide">
-          <label class="team-settings-field-label" for="customer-notes-${index}">General information</label>
-          <textarea class="customer-settings-textarea" id="customer-notes-${index}" data-index="${index}" data-customer-field="generalNotes" placeholder="Anything else the onboarding agent should know about this customer..."${disabledAttr}>${escapeHtml(profile.generalNotes || '')}</textarea>
-        </div>
+        <div class="customer-settings-upload-status" id="customer-settings-upload-status" style="display:none"></div>
+        <div class="cs-error" id="cs-add-error"></div>
       </div>
     </div>`;
-  }).join('');
 
-  body.innerHTML = `
-    <div class="customer-settings-toolbar">
-      <div class="customer-settings-toolbar-note">${isSettings
-        ? 'New customers you add will be available as onboarding context for everyone.'
-        : 'Changes are stored locally in this browser and become the starter company context the onboarding assistant can use.'}</div>
-    </div>
-    <div class="customer-settings-list">${rows}</div>
-    <div class="customer-settings-footer-tools">
-      <button class="customer-settings-add-btn" id="customer-settings-add-btn" type="button">Add customer</button>
-      <button class="customer-settings-add-btn customer-settings-upload-btn" id="customer-settings-upload-btn" type="button">Upload file</button>
-      <input type="file" id="customer-settings-file-input" accept=".pdf,.docx,.txt,.csv" style="display:none">
-    </div>
-    <div class="customer-settings-upload-status" id="customer-settings-upload-status" style="display:none"></div>
-    <div class="customer-settings-error" id="customer-settings-error"></div>
-  `;
-
-  body.querySelectorAll('[data-customer-field]').forEach((input) => {
-    if (input.disabled) return; // skip protected inputs
-    input.addEventListener('input', () => {
-      const index = Number(input.dataset.index);
-      const field = input.dataset.customerField;
-      if (Number.isNaN(index) || !_customerSettingsDraft[index] || !field) return;
-      _customerSettingsDraft[index][field] = input.value;
-      if (field === 'company') {
-        const title = body.querySelector(`[data-customer-title="${index}"]`);
-        if (title) title.textContent = input.value.trim() || `Customer ${index + 1}`;
+  // ── Section 3: User customers ──
+  let userRows = '';
+  if (_userCustomerProfiles.length === 0) {
+    userRows = '<div class="cs-user-empty">No custom customers yet.</div>';
+  } else {
+    userRows = _userCustomerProfiles.map((p, i) => {
+      const isEditing = _editingUserCustomerIndex === i;
+      let html = `
+        <div class="cs-user-row${isEditing ? ' editing' : ''}" data-user-index="${i}">
+          <div class="cs-user-info">
+            <span class="cs-user-company">${escapeHtml(p.company)}</span>
+            <span class="cs-user-industry">${escapeHtml(p.industry || '')}</span>
+          </div>
+          <div class="cs-user-actions">
+            <button class="cs-user-edit-btn" data-user-edit="${i}" type="button" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="cs-user-delete-btn" data-user-delete="${i}" type="button" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>`;
+      if (isEditing && _editingUserCustomerDraft) {
+        html += `
+          <div class="cs-user-edit-drawer">
+            ${_renderCustomerFormFields(_editingUserCustomerDraft, 'edit')}
+            <div class="cs-edit-drawer-actions">
+              <button class="cs-edit-cancel-btn" id="cs-edit-cancel-btn" type="button">Cancel</button>
+              <button class="cs-edit-save-btn" id="cs-edit-save-btn" type="button">Save</button>
+            </div>
+            <div class="cs-error" id="cs-edit-error"></div>
+          </div>`;
       }
+      return html;
+    }).join('');
+  }
+
+  const section3 = `
+    <div class="cs-section">
+      <div class="cs-section-header">
+        <div class="cs-section-title">Your Customers</div>
+      </div>
+      <div class="cs-user-list">${userRows}</div>
+    </div>`;
+
+  body.innerHTML = section1 + section2 + section3;
+
+  // ── Wire events ──
+
+  // Add form: bind inputs to _addCustomerDraft
+  body.querySelectorAll('[data-add-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      if (_addCustomerDraft) _addCustomerDraft[input.dataset.addField] = input.value;
     });
   });
 
-  body.querySelectorAll('[data-delete-index]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const index = Number(btn.dataset.deleteIndex);
-      if (Number.isNaN(index)) return;
-      _customerSettingsDraft.splice(index, 1);
-      renderCustomerSettingsModal();
-    });
-  });
-
-  body.querySelector('#customer-settings-add-btn')?.addEventListener('click', () => {
-    _customerSettingsDraft.push({
-      ...createBlankCustomerProfile(),
-      knownTeamsText: '',
-      extraSourceUrlsText: '',
-    });
+  // Add form: save
+  body.querySelector('#cs-add-save-btn')?.addEventListener('click', () => {
+    const errorEl = body.querySelector('#cs-add-error');
+    const v = _validateDraft(_addCustomerDraft, _allProfilesList(), null);
+    if (v.error) { if (errorEl) errorEl.textContent = v.error; return; }
+    const profile = _profileFromDraft(_addCustomerDraft, _userCustomerProfiles.length);
+    _userCustomerProfiles.push(profile);
+    _persistAndRefresh();
+    _addCustomerDraft = { ...createBlankCustomerProfile(), knownTeamsText: '', extraSourceUrlsText: '' };
     renderCustomerSettingsModal();
     requestAnimationFrame(() => {
-      body.querySelector('.customer-settings-card:last-child [data-customer-field="company"]')?.focus();
+      const rows = body.querySelectorAll('.cs-user-row');
+      if (rows.length) rows[rows.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   });
 
-  // Upload button → triggers hidden file input
+  // Add form: upload file
   body.querySelector('#customer-settings-upload-btn')?.addEventListener('click', () => {
     body.querySelector('#customer-settings-file-input')?.click();
   });
-
-  // File selected → extract + LLM analyze → create pre-filled card
   body.querySelector('#customer-settings-file-input')?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const statusEl = body.querySelector('#customer-settings-upload-status');
     const uploadBtn = body.querySelector('#customer-settings-upload-btn');
     if (statusEl) { statusEl.style.display = ''; statusEl.textContent = `Analyzing ${file.name}…`; }
     if (uploadBtn) uploadBtn.disabled = true;
-
     try {
       const profile = await AdminAssistant.analyzeFileForCustomer(file);
-      const newProfile = {
+      _addCustomerDraft = {
         ...createBlankCustomerProfile(),
         company: profile.company || '',
         industry: profile.industry || '',
@@ -5398,60 +5470,92 @@ function renderCustomerSettingsModal() {
         knownTeamsText: (profile.knownTeams || []).join('\n'),
         extraSourceUrlsText: '',
       };
-      _customerSettingsDraft.push(newProfile);
+      // Ensure add section is expanded
+      _editingUserCustomerIndex = null;
+      _editingUserCustomerDraft = null;
       renderCustomerSettingsModal();
-      requestAnimationFrame(() => {
-        const lastCard = body.querySelector('.customer-settings-card:last-child');
-        if (lastCard) lastCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
     } catch (err) {
-      if (statusEl) { statusEl.textContent = `Failed to analyze file: ${err.message}`; }
+      if (statusEl) statusEl.textContent = `Failed to analyze file: ${err.message}`;
     } finally {
       if (uploadBtn) uploadBtn.disabled = false;
     }
   });
+
+  // Expand add section (when collapsed)
+  body.querySelector('#cs-expand-add-btn')?.addEventListener('click', () => {
+    _editingUserCustomerIndex = null;
+    _editingUserCustomerDraft = null;
+    _addSectionCollapsed = false;
+    renderCustomerSettingsModal();
+  });
+
+  // User customer: edit buttons
+  body.querySelectorAll('[data-user-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.userEdit);
+      if (Number.isNaN(idx) || !_userCustomerProfiles[idx]) return;
+      _editingUserCustomerIndex = idx;
+      _editingUserCustomerDraft = _draftFromProfile(_userCustomerProfiles[idx], idx);
+      renderCustomerSettingsModal();
+    });
+  });
+
+  // User customer: delete buttons
+  body.querySelectorAll('[data-user-delete]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.userDelete);
+      if (Number.isNaN(idx) || !_userCustomerProfiles[idx]) return;
+      if (!confirm(`Delete "${_userCustomerProfiles[idx].company}"?`)) return;
+      _userCustomerProfiles.splice(idx, 1);
+      if (_editingUserCustomerIndex === idx) {
+        _editingUserCustomerIndex = null;
+        _editingUserCustomerDraft = null;
+      } else if (_editingUserCustomerIndex !== null && _editingUserCustomerIndex > idx) {
+        _editingUserCustomerIndex--;
+      }
+      _persistAndRefresh();
+      renderCustomerSettingsModal();
+    });
+  });
+
+  // Edit drawer: bind inputs
+  body.querySelectorAll('[data-edit-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      if (_editingUserCustomerDraft) _editingUserCustomerDraft[input.dataset.editField] = input.value;
+    });
+  });
+
+  // Edit drawer: save
+  body.querySelector('#cs-edit-save-btn')?.addEventListener('click', () => {
+    const errorEl = body.querySelector('#cs-edit-error');
+    const originalId = _userCustomerProfiles[_editingUserCustomerIndex]?.id;
+    const v = _validateDraft(_editingUserCustomerDraft, _allProfilesList(), originalId);
+    if (v.error) { if (errorEl) errorEl.textContent = v.error; return; }
+    _userCustomerProfiles[_editingUserCustomerIndex] = _profileFromDraft(_editingUserCustomerDraft, _editingUserCustomerIndex);
+    _editingUserCustomerIndex = null;
+    _editingUserCustomerDraft = null;
+    _addSectionCollapsed = true;
+    _persistAndRefresh();
+    renderCustomerSettingsModal();
+  });
+
+  // Edit drawer: cancel
+  body.querySelector('#cs-edit-cancel-btn')?.addEventListener('click', () => {
+    _editingUserCustomerIndex = null;
+    _editingUserCustomerDraft = null;
+    _addSectionCollapsed = true;
+    renderCustomerSettingsModal();
+  });
 }
 
-function validateCustomerSettingsDraft() {
-  const profiles = [];
-  const seenCompanies = new Set();
-
-  for (let index = 0; index < _customerSettingsDraft.length; index += 1) {
-    const draft = _customerSettingsDraft[index];
-    if (isBlankCustomerDraft(draft)) continue;
-
-    const company = String(draft.company || '').trim();
-    if (!company) {
-      return { error: 'Every saved customer needs a company name.' };
-    }
-
-    const companyKey = company.toLowerCase();
-    if (seenCompanies.has(companyKey)) {
-      return { error: `Customer names need to be unique. "${company}" appears more than once.` };
-    }
-    seenCompanies.add(companyKey);
-
-    profiles.push(normalizeCustomerProfile({
-      ...draft,
-      company,
-      industry: String(draft.industry || '').trim(),
-      website: String(draft.website || '').trim(),
-      helpCenterUrl: String(draft.helpCenterUrl || '').trim(),
-      productSummary: String(draft.productSummary || '').trim(),
-      generalNotes: String(draft.generalNotes || '').trim(),
-      extraSourceUrls: uniqueNonEmptyLines(draft.extraSourceUrlsText),
-      knownTeams: buildKnownTeamsFromText(draft.knownTeamsText),
-    }, index));
-  }
-
-  return { profiles };
-}
-
-async function openCustomerSettingsModal(mode = 'admin') {
-  _customerSettingsMode = mode;
+async function openCustomerSettingsModal() {
   const profiles = await loadCustomerProfiles();
-  _protectedCustomerIds = mode === 'settings' ? new Set(profiles.map(p => p.id)) : new Set();
-  _customerSettingsDraft = buildCustomerSettingsDraft(profiles);
+  _defaultCustomerProfiles = profiles.filter(p => _builtInCustomerIds.has(p.id));
+  _userCustomerProfiles = profiles.filter(p => !_builtInCustomerIds.has(p.id));
+  _addCustomerDraft = { ...createBlankCustomerProfile(), knownTeamsText: '', extraSourceUrlsText: '' };
+  _editingUserCustomerIndex = null;
+  _editingUserCustomerDraft = null;
+  _addSectionCollapsed = false;
   renderCustomerSettingsModal();
   const overlay = document.getElementById('customer-settings-modal-overlay');
   if (overlay) overlay.style.display = 'flex';
@@ -5460,22 +5564,6 @@ async function openCustomerSettingsModal(mode = 'admin') {
 function closeCustomerSettingsModal() {
   const overlay = document.getElementById('customer-settings-modal-overlay');
   if (overlay) overlay.style.display = 'none';
-}
-
-function saveCustomerSettingsModal() {
-  const errorEl = document.getElementById('customer-settings-error');
-  const { profiles, error } = validateCustomerSettingsDraft();
-  if (error) {
-    if (errorEl) errorEl.textContent = error;
-    return false;
-  }
-  saveCustomerProfiles(profiles);
-  closeCustomerSettingsModal();
-  // Refresh the setup screen grid if visible
-  if (window.AdminAssistant?.refreshMetaStart) {
-    window.AdminAssistant.refreshMetaStart();
-  }
-  return true;
 }
 
 // Wire up button and modal controls
@@ -5492,7 +5580,6 @@ document.getElementById('team-settings-cancel')?.addEventListener('click', close
 document.getElementById('team-settings-save')?.addEventListener('click', saveTeamSettingsModal);
 document.getElementById('customer-settings-modal-close')?.addEventListener('click', closeCustomerSettingsModal);
 document.getElementById('customer-settings-cancel')?.addEventListener('click', closeCustomerSettingsModal);
-document.getElementById('customer-settings-save')?.addEventListener('click', saveCustomerSettingsModal);
 
 // Close on overlay backdrop click
 document.getElementById('team-settings-modal-overlay')?.addEventListener('click', (e) => {
@@ -5668,8 +5755,8 @@ window._prototypeGuideAPI = {
   triggerAction: function (actionId) {
     switch (actionId) {
       case 'manage-teams': openTeamSettingsModal(); break;
-      case 'add-customer': openCustomerSettingsModal('settings'); break;
-      case 'edit-customers': openCustomerSettingsModal('admin'); break;
+      case 'add-customer': openCustomerSettingsModal(); break;
+      case 'edit-customers': openCustomerSettingsModal(); break;
       case 'edit-teams': openTeamSettingsModal('default'); break;
       case 'reset-all': performResetAll(); break;
       case 'reset-onboarding': performResetOnboarding(); break;
@@ -5686,277 +5773,70 @@ if (typeof AdminAssistant !== 'undefined') {
 // ── ONBOARDING OVERLAY ──────────────────────────────────────
 (function() {
   const ONBOARDING_KEY = 'trengo_onboarding_done';
+  const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode';
+  const WALKTHROUGH_TITLE = 'Prototype Walkthrough';
+  const WALKTHROUGH_SUBTITLE = 'Internal only. Quick context for reviewers providing feedback.';
   const ONBOARDING_STEPS = [
     {
-      text: 'This prototype explores a customisable analytics model with five broadly applicable default sections. Focus feedback on the overall structure, logic, and decisions it supports.',
-      getTargets: () => [],
-      placement: 'center'
+      text: 'This prototype explores a customisable analytics model with five broadly applicable default sections. Focus feedback on the overall structure, logic, and decisions it supports.'
     },
     {
-      text: 'Sidecar — the panel on the right — answers concept questions and collects your feedback. Use the icons below its header for settings.',
-      getTargets: () => [],
-      placement: 'center'
+      text: 'Sidecar — the panel on the right — answers concept questions and collects your feedback. Use the icons below its header for settings.'
     },
     {
-      text: 'The default navigation is only a starting point. The model is designed to be customised to each company\u2019s language, structure, and priorities. In edit mode, users can add, remove, reorder, and resize.',
-      getTargets: () => [
-        document.querySelector('#sub-nav-tabs'),
-        document.querySelector(`.section-content[data-section="${state.activeSection}"] .widget-card`) ||
-          document.querySelector('.section-content .widget-card')
-      ],
-      placement: 'center-dual'
+      text: 'The default navigation is only a starting point. The model is designed to be customised to each company’s language, structure, and priorities. In edit mode, users can also add, remove, reorder, and resize charts.'
     }
   ];
 
   let onboardingStep = 0;
   const overlay       = document.getElementById('onboarding-overlay');
   const stepsContainer = document.getElementById('onboarding-steps');
-  const arrowsSvg     = document.getElementById('onboarding-arrows');
+  let onboardingBodyText = null;
+  let onboardingSkipBtn = null;
+  let onboardingNextBtn = null;
+  let onboardingDots = [];
 
-  function arrowGeometry(x1, y1, x2, y2, bendDirection = 1, curvatureScale = 1) {
-    const dx = x2 - x1, dy = y2 - y1;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (!dist) {
-      return { mx: x1, my: y1, ux: 1, uy: 0, px: 0, py: 1 };
-    }
-    const curvature = Math.min(dist * 0.3, 60) * curvatureScale;
-    const nx = -dy / dist * curvature * bendDirection;
-    const ny =  dx / dist * curvature * bendDirection;
-    const mx = (x1 + x2) / 2 + nx;
-    const my = (y1 + y2) / 2 + ny;
-    // Tangent direction at t=1 on quadratic bezier
-    const tx = x2 - mx, ty = y2 - my;
-    const tLen = Math.sqrt(tx * tx + ty * ty);
-    const ux = tx / tLen, uy = ty / tLen; // unit tangent
-    const px = -uy,       py =  ux;       // unit perpendicular
-    return { mx, my, ux, uy, px, py };
+  function animateStepText() {
+    if (!onboardingBodyText) return;
+    onboardingBodyText.classList.remove('onboarding-step-text-enter');
+    // Restart the text-only transition for each new message.
+    void onboardingBodyText.offsetWidth;
+    onboardingBodyText.classList.add('onboarding-step-text-enter');
   }
 
-  function drawArrow(x1, y1, x2, y2, options = {}) {
-    const { bendDirection = 1, curvatureScale = 1 } = options;
-    const HEAD = 13;   // arrowhead length
-    const WING = 0.38; // half-width ratio relative to HEAD
-
-    const { mx, my, ux, uy, px, py } = arrowGeometry(x1, y1, x2, y2, bendDirection, curvatureScale);
-
-    // Stop the path slightly before the tip so the stroke doesn't bleed through
-    const pathEndX = x2 - ux * HEAD * 0.6;
-    const pathEndY = y2 - uy * HEAD * 0.6;
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M${x1},${y1} Q${mx},${my} ${pathEndX},${pathEndY}`);
-    arrowsSvg.appendChild(path);
-
-    // Arrowhead — sharp isoceles triangle pointing at (x2, y2)
-    const tipX = x2, tipY = y2;
-    const baseX = tipX - ux * HEAD;
-    const baseY = tipY - uy * HEAD;
-    const p1x = baseX + px * HEAD * WING;
-    const p1y = baseY + py * HEAD * WING;
-    const p2x = baseX - px * HEAD * WING;
-    const p2y = baseY - py * HEAD * WING;
-    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    arrow.setAttribute('points', `${tipX},${tipY} ${p1x},${p1y} ${p2x},${p2y}`);
-    arrowsSvg.appendChild(arrow);
-  }
-
-  function findVisibleWalkthroughWidgetTarget(cardLeft, cardTop) {
-    const candidates = [
-      ...document.querySelectorAll(`.section-content[data-section="${state.activeSection}"] .widget-card`),
-      ...document.querySelectorAll('.section-content .widget-card')
-    ];
-    const seen = new Set();
-    const unique = candidates.filter((el) => {
-      if (!el || seen.has(el)) return false;
-      seen.add(el);
-      return true;
-    });
-    if (unique.length === 0) return null;
-
-    const viewportTop = 96;
-    const viewportBottom = window.innerHeight - 32;
-    const visible = unique
-      .map((el) => ({ el, rect: el.getBoundingClientRect() }))
-      .filter(({ rect }) =>
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.bottom > viewportTop &&
-        rect.top < viewportBottom
-      );
-
-    const pool = visible.length > 0 ? visible : unique.map((el) => ({ el, rect: el.getBoundingClientRect() }));
-    const preferredX = cardLeft - 120;
-    const preferredY = cardTop + 34;
-
-    pool.sort((a, b) => {
-      const aScore = Math.hypot((a.rect.right - 14) - preferredX, (a.rect.top + 14) - preferredY)
-        + (a.rect.right > cardLeft ? 400 : 0)
-        + (a.rect.top < viewportTop ? 200 : 0);
-      const bScore = Math.hypot((b.rect.right - 14) - preferredX, (b.rect.top + 14) - preferredY)
-        + (b.rect.right > cardLeft ? 400 : 0)
-        + (b.rect.top < viewportTop ? 200 : 0);
-      return aScore - bScore;
-    });
-
-    return pool[0]?.el || null;
-  }
-
-  function positionStep(index) {
-    arrowsSvg.innerHTML = '';
-    const step = ONBOARDING_STEPS[index];
-    const card = stepsContainer.children[index];
-    if (!card) return;
-
-    const targets = step.getTargets();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    // Reset card position so we can measure it
-    card.style.top = '0px';
-    card.style.left = '0px';
-    card.style.removeProperty('right');
-    const cardRect = card.getBoundingClientRect();
-    const cw = cardRect.width;
-    const ch = cardRect.height;
-
-    if (step.placement === 'above-subnav') {
-      const nav = targets[0];
-      if (!nav) return;
-      const nr = nav.getBoundingClientRect();
-      // Position card below the sub-nav with a larger gap to clear the header/subtitle
-      const mainLeft = 64; // sidebar width
-      const mainRight = vw;
-      const centerX = (mainLeft + mainRight) / 2;
-      const cardLeft = centerX - cw / 2;
-      const cardTop = nr.bottom + 80;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-      // Arrow from card top-center UP to sub-nav bottom edge
-      drawArrow(cardLeft + cw / 2, cardTop - 4, nr.left + nr.width * 0.35, nr.bottom - 4);
-
-    } else if (step.placement === 'right-of-cog') {
-      const cog = targets[0];
-      if (!cog) return;
-      const cr = cog.getBoundingClientRect();
-      // Card well to the right of sidebar so arrow is clearly visible
-      const cardLeft = 140;
-      const cardTop = cr.top + cr.height / 2 - ch / 2;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-      // Arrow from card left edge to just right of cog
-      drawArrow(cardLeft - 4, cardTop + ch / 2, cr.right + 2, cr.top + cr.height / 2);
-
-    } else if (step.placement === 'center') {
-      const mainLeft = 64;
-      const mainRight = vw;
-      const centerX = (mainLeft + mainRight) / 2;
-      const centerY = vh / 2;
-      card.style.left = (centerX - cw / 2) + 'px';
-      card.style.top = (centerY - ch / 2) + 'px';
-      // No arrows — intro step has no target element
-
-    } else if (step.placement === 'center-dual') {
-      const mainLeft = 64;
-      const mainRight = vw;
-      const centerX = (mainLeft + mainRight) / 2;
-      const centerY = vh / 2;
-      const cardLeft = centerX - cw / 2;
-      const cardTop = centerY - ch / 2;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-
-      const cardTopLeftX = cardLeft + 56;
-      const cardTopLeftY = cardTop + 18;
-      const cardBottomLeftX = cardLeft + 18;
-      const cardBottomLeftY = cardTop + ch - 58;
-
-      // Arrow 1: to the bottom-right of the tab navigation
-      if (targets[0]) {
-        const navRect = targets[0].getBoundingClientRect();
-        drawArrow(
-          cardTopLeftX,
-          cardTopLeftY,
-          navRect.right - 12,
-          navRect.bottom - 8
-        );
-      }
-
-      // Arrow 2: to the top-right corner of a widget card
-      const widgetTarget = findVisibleWalkthroughWidgetTarget(cardLeft, cardTop) || targets[1];
-      if (widgetTarget) {
-        const widgetRect = widgetTarget.getBoundingClientRect();
-        drawArrow(
-          cardBottomLeftX,
-          cardBottomLeftY,
-          widgetRect.right - 14,
-          widgetRect.top + 14,
-          { bendDirection: -1, curvatureScale: 0.62 }
-        );
-      }
-    }
+  function updateControls() {
+    if (!onboardingSkipBtn || !onboardingNextBtn) return;
+    const isLastStep = onboardingStep === ONBOARDING_STEPS.length - 1;
+    onboardingSkipBtn.classList.toggle('hidden', isLastStep);
+    onboardingSkipBtn.disabled = isLastStep;
+    onboardingNextBtn.innerHTML = isLastStep
+      ? '<span class="onboarding-next-text">Done</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      : '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
   }
 
   function updateDots() {
-    // Each card has its own dot set — only update the active card's dots
-    const card = stepsContainer.children[onboardingStep];
-    if (!card) return;
-    card.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
+    onboardingDots.forEach((dot, i) => {
       dot.classList.toggle('active', i === onboardingStep);
     });
   }
 
-  function updateNextButton() {
-    const card = stepsContainer.children[onboardingStep];
-    if (!card) return;
-    const nextText = card.querySelector('.onboarding-next-text');
-    const nextIcon = card.querySelector('.onboarding-next-icon');
-    const skipBtn  = card.querySelector('.onboarding-skip');
-    const isLast   = onboardingStep === ONBOARDING_STEPS.length - 1;
-    if (nextText) nextText.textContent = isLast ? 'Done' : 'Next';
-    if (nextIcon) nextIcon.innerHTML = isLast
-      ? '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-      : '<polyline points="9 6 15 12 9 18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
-    if (skipBtn) skipBtn.classList.toggle('hidden', isLast);
-  }
-
   function showStep(index) {
-    const cards = stepsContainer.querySelectorAll('.onboarding-step-card');
-    cards.forEach((c, i) => {
-      if (i === index) {
-        c.style.display = '';
-        c.classList.remove('exit');
-        // Position before making visible so card doesn't flash at wrong spot
-        positionStep(index);
-        // Force reflow then add active
-        void c.offsetWidth;
-        c.classList.add('active');
-      } else {
-        c.classList.remove('active');
-      }
-    });
+    onboardingStep = index;
+    if (onboardingBodyText) {
+      onboardingBodyText.textContent = ONBOARDING_STEPS[index].text;
+      animateStepText();
+    }
+    updateControls();
     updateDots();
-    updateNextButton();
   }
 
   function nextOnboardingStep() {
-    const cards = stepsContainer.querySelectorAll('.onboarding-step-card');
-    const current = cards[onboardingStep];
-    if (current) {
-      current.classList.remove('active');
-      current.classList.add('exit');
-    }
-
-    onboardingStep++;
-    if (onboardingStep >= ONBOARDING_STEPS.length) {
+    const nextIndex = onboardingStep + 1;
+    if (nextIndex >= ONBOARDING_STEPS.length) {
       closeOnboarding();
       return;
     }
-
-    // Wait for exit transition, then show next
-    setTimeout(() => {
-      if (current) current.style.display = 'none';
-      showStep(onboardingStep);
-    }, 350);
+    showStep(nextIndex);
   }
 
   function closeOnboarding() {
@@ -5965,88 +5845,95 @@ if (typeof AdminAssistant !== 'undefined') {
     setTimeout(() => {
       overlay.style.display = 'none';
       overlay.classList.remove('closing');
-      // After walkthrough completes, start AI onboarding if available
-      if (typeof AdminAssistant !== 'undefined') {
-        AdminAssistant.tryStartOnboarding();
-      }
+      stepsContainer.innerHTML = '';
+      onboardingBodyText = null;
+      onboardingSkipBtn = null;
+      onboardingNextBtn = null;
+      onboardingDots = [];
     }, 350);
   }
 
   function showOnboarding() {
     stepsContainer.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'onboarding-step-card';
 
-    ONBOARDING_STEPS.forEach((step, i) => {
-      const card = document.createElement('div');
-      card.className = 'onboarding-step-card';
+    const header = document.createElement('div');
+    header.className = 'onboarding-card-header';
 
-      // Text body
-      const body = document.createElement('p');
-      body.className = 'onboarding-step-text';
-      body.textContent = step.text;
-      card.appendChild(body);
+    const title = document.createElement('h2');
+    title.className = 'onboarding-title';
+    title.textContent = WALKTHROUGH_TITLE;
 
-      // Footer: dots · skip · next
-      const footer = document.createElement('div');
-      footer.className = 'onboarding-card-footer';
+    const subtitle = document.createElement('p');
+    subtitle.className = 'onboarding-subtitle';
+    subtitle.textContent = WALKTHROUGH_SUBTITLE;
 
-      // Dots (same set in every card, active one updated per step)
-      const dotsWrap = document.createElement('div');
-      dotsWrap.className = 'onboarding-dots';
-      ONBOARDING_STEPS.forEach((_, di) => {
-        const dot = document.createElement('div');
-        dot.className = 'onboarding-dot' + (di === i ? ' active' : '');
-        dotsWrap.appendChild(dot);
-      });
+    header.appendChild(title);
+    header.appendChild(subtitle);
+    card.appendChild(header);
 
-      // Skip button
-      const skipBtn = document.createElement('button');
-      skipBtn.className = 'onboarding-skip';
-      skipBtn.innerHTML = 'Skip intro <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-      skipBtn.addEventListener('click', closeOnboarding);
+    const bodyWrap = document.createElement('div');
+    bodyWrap.className = 'onboarding-step-body';
 
-      // Next/Done button
-      const nextBtn = document.createElement('button');
-      nextBtn.className = 'onboarding-next';
-      nextBtn.innerHTML = '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
-      nextBtn.addEventListener('click', nextOnboardingStep);
+    const bodyTextWrap = document.createElement('div');
+    bodyTextWrap.className = 'onboarding-step-text-wrap';
 
-      footer.appendChild(dotsWrap);
-      footer.appendChild(skipBtn);
-      footer.appendChild(nextBtn);
-      card.appendChild(footer);
+    const body = document.createElement('p');
+    body.className = 'onboarding-step-text';
+    body.setAttribute('aria-live', 'polite');
+    bodyTextWrap.appendChild(body);
+    bodyWrap.appendChild(bodyTextWrap);
+    card.appendChild(bodyWrap);
 
-      if (i !== 0) card.style.display = 'none';
-      stepsContainer.appendChild(card);
+    const footer = document.createElement('div');
+    footer.className = 'onboarding-card-footer';
+
+    const dotsWrap = document.createElement('div');
+    dotsWrap.className = 'onboarding-dots';
+    onboardingDots = ONBOARDING_STEPS.map(() => {
+      const dot = document.createElement('div');
+      dot.className = 'onboarding-dot';
+      dotsWrap.appendChild(dot);
+      return dot;
     });
 
-    onboardingStep = 0;
-    overlay.style.display = 'block';
-    updateNextButton();
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'onboarding-skip';
+    skipBtn.innerHTML = 'Skip intro <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    skipBtn.addEventListener('click', closeOnboarding);
 
-    // Position first step after a short delay so layout is computed
-    setTimeout(() => {
-      const firstCard = stepsContainer.children[0];
-      if (firstCard) {
-        positionStep(0);
-        void firstCard.offsetWidth;
-        firstCard.classList.add('active');
-      }
-    }, 50);
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'onboarding-next';
+    nextBtn.addEventListener('click', nextOnboardingStep);
+
+    footer.appendChild(dotsWrap);
+    footer.appendChild(skipBtn);
+    footer.appendChild(nextBtn);
+    card.appendChild(footer);
+
+    stepsContainer.appendChild(card);
+    onboardingBodyText = body;
+    onboardingSkipBtn = skipBtn;
+    onboardingNextBtn = nextBtn;
+    onboardingStep = 0;
+    overlay.classList.remove('closing');
+    overlay.style.display = 'block';
+    requestAnimationFrame(() => showStep(0));
   }
 
   function initOnboarding() {
     if (localStorage.getItem(ONBOARDING_KEY)) return;
+    if (typeof AdminAssistant !== 'undefined' && localStorage.getItem(AI_SETUP_MODE_KEY) !== 'assistant') return;
 
     // Wait for analytics page to be visible, then show walkthrough
     const waitForReady = () => {
       const analyticsPage = document.getElementById('analytics-page');
       if (analyticsPage && analyticsPage.style.display !== 'none') {
-        // Force mount overview section if not loaded (needed for step 3 widget X target)
         const overviewContent = document.querySelector('.section-content[data-section="overview"]');
         if (overviewContent && !overviewContent.classList.contains('loaded')) {
           mountSection('overview');
         }
-        // Small extra delay to let mount finish rendering
         setTimeout(showOnboarding, 100);
       } else {
         setTimeout(waitForReady, 200);
@@ -6054,14 +5941,6 @@ if (typeof AdminAssistant !== 'undefined') {
     };
     setTimeout(waitForReady, 300);
   }
-
-  // Reposition on resize
-  let onboardingResizeTimer;
-  window.addEventListener('resize', () => {
-    if (overlay.style.display === 'none') return;
-    clearTimeout(onboardingResizeTimer);
-    onboardingResizeTimer = setTimeout(() => positionStep(onboardingStep), 100);
-  });
 
   window.triggerWalkthrough = function() {
     localStorage.removeItem(ONBOARDING_KEY);
