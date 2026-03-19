@@ -77,6 +77,16 @@ const USER_TEAMS_KEY      = 'trengo_user_teams';
 const DEFAULT_TEAMS_KEY   = 'trengo_default_teams';
 const CUSTOMER_PROFILES_KEY = 'trengo_customer_profiles';
 const ANCHORS_NAV_USER_KEY = 'trengo_anchors_nav_user';
+const CONFIDENCE_THRESHOLDS_KEY = 'trengo_confidence_thresholds';
+
+// Onboarding confidence thresholds (1-10 scale, stored in localStorage, controllable from SideCar admin)
+window._confidenceThresholds = (function () {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CONFIDENCE_THRESHOLDS_KEY));
+    if (stored) return stored;
+  } catch (_) { /* ignore */ }
+  return { confidenceSkipComponents: 5, confidenceAutoDraft: 7, confidenceSkipDensity: 8 };
+})();
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
   'northstar-health': {
@@ -5695,7 +5705,11 @@ window._prototypeGuideAPI = {
     };
   },
   getAdminData: function () {
+    var thresholds = window._confidenceThresholds || {};
     return {
+      confidenceSkipComponents: thresholds.confidenceSkipComponents,
+      confidenceAutoDraft: thresholds.confidenceAutoDraft,
+      confidenceSkipDensity: thresholds.confidenceSkipDensity,
       flags: FEATURE_FLAGS.map(function (f) {
         return {
           id: f.id,
@@ -5750,6 +5764,13 @@ window._prototypeGuideAPI = {
     // Generic toggle handler — routes to specific implementations
     if (key === 'anchorsNavUser') {
       this.setAnchorsNavUser(checked);
+    }
+  },
+  setSlider: function (key, value) {
+    // Confidence threshold sliders — persist to localStorage and update global
+    if (key in window._confidenceThresholds) {
+      window._confidenceThresholds[key] = value;
+      localStorage.setItem(CONFIDENCE_THRESHOLDS_KEY, JSON.stringify(window._confidenceThresholds));
     }
   },
   triggerAction: function (actionId) {

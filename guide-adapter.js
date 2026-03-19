@@ -193,6 +193,10 @@
         if (api && e.data.key) api.setToggle(e.data.key, !!e.data.checked);
         break;
 
+      case 'guide:set-slider':
+        if (api && api.setSlider && e.data.key != null) api.setSlider(e.data.key, e.data.value);
+        break;
+
       // Legacy: keep old message for backward compat
       case 'guide:set-anchors-nav-user':
         if (api) api.setToggle('anchorsNavUser', !!e.data.checked);
