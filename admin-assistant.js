@@ -720,11 +720,11 @@ Adaptive steps (not rigid phases — skip or reorder based on context):
    - If context is thin: proceed with gathering steps below.
 
 2. Source/context gathering — CONDITIONAL.
-   - If the customer profile already has rich context (website, teams with focus, channels, AI/automation data), show the source input as a compact optional add-on alongside the next step — not as a standalone blocking phase. The user can skip it by engaging with the next interactive element.
-   - Only foreground the source step when the customer profile is thin and additional context would meaningfully improve the proposal.
+   - If the customer profile already has rich context (website, teams with focus, channels, AI/automation data), do NOT use show_source_input. Instead, briefly mention in plain text what context you already have (1-2 lines) and note the user can share more anytime. Then move on.
+   - Only use the show_source_input component when the customer profile is genuinely thin and additional context would meaningfully improve the proposal.
 ${role === 'agent'
   ? '  - For agents: if offered, show source input for file upload or personal notes. Do not ask for website URLs — company context is already shown as read-only reference.'
-  : '  - If a website, help center, or known source already exists, mention it briefly. Keep the recap to 1-2 lines.'}
+  : '  - If a website, help center, or known source already exists, mention it conversationally — do not re-present it through the source input UI.'}
    - After a source step succeeds, briefly acknowledge which source types were actually used.
 
 3. Structural confirmation — ADAPTIVE.
@@ -5154,7 +5154,7 @@ ${role === 'agent'
       ? window.getRoleScopedPrototypeTeams(_role || 'admin').map(team => team.name)
       : [];
 
-    let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Please begin with a short hello and one-line orientation for a new user, then check what is already known, ask for sources that would help, confirm the key structural decisions (teams, scope, what decisions the dashboard should support), understand the specific signals that matter, and then propose a first draft.';
+    let initialUserMsg = 'Hi! I\'m ready to set up my analytics dashboard. Here\'s what I know about my company — use it to get started, and ask me anything else you need.';
     if (_role === 'supervisor') {
       initialUserMsg += ` This should stay scoped to the teams this supervisor oversees${scopedTeams.length ? `: ${scopedTeams.join(', ')}` : ''}.`;
     } else if (_role === 'agent') {
