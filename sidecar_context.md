@@ -428,50 +428,50 @@ type: modal-group
 button: Configure thresholds
 description: Confidence thresholds that control onboarding agent decisions
 
-#### Skip source gathering
+#### Source gathering
 type: slider
 key: confidenceSkipSourceGathering
-description: Skip asking for source material (0=never ask, 10=always ask)
+description: How much context before asking for sources
 min: 0
 max: 10
 step: 1
 
-#### Skip team confirmation
+#### Team confirmation
 type: slider
 key: confidenceSkipTeamConfirmation
-description: Skip confirming team focus assignments (0=never ask, 10=always ask)
+description: How much context before confirming teams
 min: 0
 max: 10
 step: 1
 
-#### Skip decision goals
+#### Decision goals
 type: slider
 key: confidenceSkipDecisionGoals
-description: Skip asking what decisions the dashboard should support (0=never ask, 10=always ask)
+description: How much context before asking about goals
 min: 0
 max: 10
 step: 1
 
-#### Skip signal follow-up
+#### Signal follow-up
 type: slider
 key: confidenceSkipSignalFollowup
-description: Skip drilling into specific signals before choosing widgets (0=never ask, 10=always ask)
+description: How much context before asking about signals
 min: 0
 max: 10
 step: 1
 
-#### Auto-draft threshold
+#### Auto-draft
 type: slider
 key: confidenceAutoDraft
-description: Draft immediately without questions (0=always auto-draft, 10=always ask first)
+description: How much context before drafting
 min: 0
 max: 10
 step: 1
 
-#### Skip density question
+#### Density question
 type: slider
 key: confidenceSkipDensity
-description: Infer content density directly (0=never ask, 10=always ask)
+description: How much context before asking about density
 min: 0
 max: 10
 step: 1
@@ -479,7 +479,7 @@ step: 1
 #### Correction sensitivity
 type: slider
 key: correctionSensitivity
-description: How readily user deviations are logged as AI corrections (0=log nothing, 10=log every deviation)
+description: How readily deviations are logged as corrections
 min: 0
 max: 10
 step: 1
