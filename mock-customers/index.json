@@ -2,8 +2,8 @@
   "customers": [
     {
       "id": "northstar-health",
-      "company": "Northstar Health",
-      "industry": "Healthcare",
+      "company": "Northstar Wellness",
+      "industry": "Health & Beauty Services",
       "description": "Existing — all features, all data",
       "file": "northstar-health.json"
     },

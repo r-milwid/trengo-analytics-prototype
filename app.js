@@ -80,12 +80,14 @@ const ANCHORS_NAV_USER_KEY = 'trengo_anchors_nav_user';
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
   'northstar-health': {
-    legacyWebsites: ['https://www.northstarhealth.io'],
+    legacyWebsites: ['https://www.northstarhealth.io', 'https://connect.doctolib.com/'],
     next: {
-      website: 'https://connect.doctolib.com/',
-      helpCenterUrl: 'https://connect.doctolib.com/nl/helpcentrum',
-      productSummary: 'Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.',
-      suggestedPreviewContext: 'Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams.',
+      company: 'Northstar Wellness',
+      industry: 'Health & Beauty Services',
+      website: 'https://www.northstarwellness.eu/',
+      helpCenterUrl: 'https://help.northstarwellness.eu/',
+      productSummary: 'Premium wellness and beauty group operating spa locations, beauty salons, and wellness studios across the Benelux and France.',
+      suggestedPreviewContext: 'Focus on booking responsiveness, cross-location service coordination, membership conversion, and client satisfaction trends.',
     },
   },
   'luma-commerce': {
@@ -522,33 +524,33 @@ function ensureUniqueCustomerIds(profiles = []) {
 const BUILT_IN_CUSTOMER_PROFILES = ensureUniqueCustomerIds([
   {
     id: 'northstar-health',
-    company: 'Northstar Health',
-    industry: 'Healthcare',
+    company: 'Northstar Wellness',
+    industry: 'Health & Beauty Services',
     description: 'Existing — all features, all data',
     stage: 'mature',
     workspaceCreatedAt: '2024-09-15T00:00:00Z',
-    goals: ['Reduce first response time during peak hours', 'Improve cross-team escalation tracking', 'Increase AI resolution rate for routine patient inquiries', 'Maintain CSAT above 90%'],
+    goals: ['Reduce first response time during peak booking hours', 'Improve cross-location coordination for VIP clients', 'Increase AI resolution rate for routine booking and product inquiries', 'Maintain CSAT above 90%'],
     featureStatus: { voice: true, aiAgents: true, csat: true, journeys: true, knowledgeBase: true },
-    productSummary: 'Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.',
-    website: 'https://connect.doctolib.com/',
-    helpCenterUrl: 'https://connect.doctolib.com/nl/helpcentrum',
+    productSummary: 'Premium wellness and beauty group operating spa locations, beauty salons, and wellness studios across the Benelux and France.',
+    website: 'https://www.northstarwellness.eu/',
+    helpCenterUrl: 'https://help.northstarwellness.eu/',
     knownTeams: [
-      { name: 'Patient Support', likelyFocus: 'resolve', size: 12, description: 'Handles patient inquiries, access issues, and communication-related questions' },
-      { name: 'Sales', likelyFocus: 'convert', size: 6, description: 'Inbound demo requests and outbound outreach to clinics and care networks' },
-      { name: 'Implementation', likelyFocus: 'resolve', size: 4, description: 'Guides new healthcare organizations through setup, rollout, and training' },
-      { name: 'Enterprise CS', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for larger care groups and multi-site accounts' }
+      { name: 'Client Services', likelyFocus: 'resolve', size: 12, description: 'Handles booking inquiries, service questions, complaints, and general client communication' },
+      { name: 'Membership Sales', likelyFocus: 'convert', size: 6, description: 'Membership sign-ups, package upsells, corporate wellness deals, and gift card sales' },
+      { name: 'Location Onboarding', likelyFocus: 'resolve', size: 4, description: 'Supports new location launches, staff training, and system rollouts' },
+      { name: 'VIP Client Care', likelyFocus: 'resolve', size: 3, description: 'Dedicated support for premium members and high-value repeat clients' }
     ],
     channels: ['email', 'whatsapp', 'live-chat', 'voice', 'sms'],
     plan: 'Scale',
     estimatedAgents: 25,
-    terminologyHints: { customer: 'patient', ticket: 'case', deal: 'partnership', agent: 'care coordinator', resolution: 'case closure' },
+    terminologyHints: { customer: 'client', ticket: 'request', deal: 'membership deal', agent: 'wellness advisor', resolution: 'resolved' },
     currentSetup: {
-      primaryUseCase: 'Care-team communication and patient coordination',
+      primaryUseCase: 'Client booking management and multi-location service coordination',
       busiestChannels: ['whatsapp', 'voice'],
       avgMonthlyConversations: 8500,
-      topPainPoints: ['Long first-response times during peak demand', 'Difficulty tracking escalated coordination issues across teams']
+      topPainPoints: ['Long first-response times during peak booking hours', 'Difficulty tracking escalated service issues across locations']
     },
-    suggestedPreviewContext: 'Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams.'
+    suggestedPreviewContext: 'Focus on booking responsiveness, cross-location service coordination, membership conversion, and client satisfaction trends.'
   },
   {
     id: 'luma-commerce',

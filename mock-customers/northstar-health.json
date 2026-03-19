@@ -1,38 +1,38 @@
 {
   "id": "northstar-health",
-  "company": "Northstar Health",
-  "industry": "Healthcare",
+  "company": "Northstar Wellness",
+  "industry": "Health & Beauty Services",
   "stage": "mature",
   "workspaceCreatedAt": "2024-09-15T00:00:00Z",
-  "goals": ["Reduce first response time during peak hours", "Improve cross-team escalation tracking", "Increase AI resolution rate for routine patient inquiries", "Maintain CSAT above 90%"],
+  "goals": ["Reduce first response time during peak booking hours", "Improve cross-location coordination for VIP clients", "Increase AI resolution rate for routine booking and product inquiries", "Maintain CSAT above 90%"],
   "featureStatus": { "voice": true, "aiAgents": true, "csat": true, "journeys": true, "knowledgeBase": true },
-  "productSummary": "Healthcare communication and coordination platform for clinics, hospitals, and specialty care teams. Supports secure collaboration, patient communication, and operational coordination across care settings.",
-  "website": "https://connect.doctolib.com/",
-  "helpCenterUrl": "https://connect.doctolib.com/nl/helpcentrum",
+  "productSummary": "Premium wellness and beauty group operating spa locations, beauty salons, and wellness studios across the Benelux and France. Handles appointment booking, client communication, membership management, and therapist coordination.",
+  "website": "https://www.northstarwellness.eu/",
+  "helpCenterUrl": "https://help.northstarwellness.eu/",
   "knownTeams": [
-    { "name": "Patient Support", "likelyFocus": "resolve", "size": 12, "description": "Handles patient inquiries, access issues, and communication-related questions" },
-    { "name": "Sales", "likelyFocus": "convert", "size": 6, "description": "Inbound demo requests and outbound outreach to clinics and care networks" },
-    { "name": "Implementation", "likelyFocus": "resolve", "size": 4, "description": "Guides new healthcare organizations through setup, rollout, and training" },
-    { "name": "Enterprise CS", "likelyFocus": "resolve", "size": 3, "description": "Dedicated support for larger care groups and multi-site accounts" }
+    { "name": "Client Services", "likelyFocus": "resolve", "size": 12, "description": "Handles booking inquiries, service questions, complaints, and general client communication" },
+    { "name": "Membership Sales", "likelyFocus": "convert", "size": 6, "description": "Membership sign-ups, package upsells, corporate wellness deals, and gift card sales" },
+    { "name": "Location Onboarding", "likelyFocus": "resolve", "size": 4, "description": "Supports new location launches, staff training, and system rollouts" },
+    { "name": "VIP Client Care", "likelyFocus": "resolve", "size": 3, "description": "Dedicated support for premium members and high-value repeat clients" }
   ],
   "channels": ["email", "whatsapp", "live-chat", "voice", "sms"],
   "plan": "Scale",
   "estimatedAgents": 25,
   "terminologyHints": {
-    "customer": "patient",
-    "ticket": "case",
-    "deal": "partnership",
-    "agent": "care coordinator",
-    "resolution": "case closure"
+    "customer": "client",
+    "ticket": "request",
+    "deal": "membership deal",
+    "agent": "wellness advisor",
+    "resolution": "resolved"
   },
   "currentSetup": {
-    "primaryUseCase": "Care-team communication and patient coordination",
+    "primaryUseCase": "Client booking management and multi-location service coordination",
     "busiestChannels": ["whatsapp", "voice"],
     "avgMonthlyConversations": 8500,
-    "topPainPoints": ["Long first-response times during peak demand", "Difficulty tracking escalated coordination issues across teams"]
+    "topPainPoints": ["Long first-response times during peak booking hours", "Difficulty tracking escalated service issues across locations"]
   },
   "analyticsDataInventory": {
-    "coverageSummary": "Northstar has support, sales, voice, survey, automation, and knowledge-base source coverage with event, hourly, daily, monthly, and quarterly rollups.",
+    "coverageSummary": "Northstar Wellness has support, sales, voice, survey, automation, and knowledge-base source coverage with event, hourly, daily, monthly, and quarterly rollups.",
     "sourceSystems": [
       { "name": "Trengo messaging", "entities": ["conversation", "message", "ticket"], "grains": ["event", "15-minute", "hourly", "daily"], "retention": "18 months" },
       { "name": "Voice platform", "entities": ["call", "queue event", "callback request"], "grains": ["event", "hourly", "daily"], "retention": "15 months" },
@@ -75,101 +75,101 @@
       "governance": ["source system", "sync timestamp", "quality flag", "fiscal quarter"]
     },
     "businessDefinitions": {
-      "openTicket": "Cases not yet resolved or closed, including waiting-on-customer states.",
-      "firstResponse": "Time from ticket creation to first human or approved AI response, excluding auto-acknowledgements.",
-      "resolutionTime": "Time from ticket creation to final resolved state; reopened cases restart the timer from the reopen event.",
-      "newContact": "First contact from a patient, clinic, or care organization in the trailing 180 days.",
-      "aiResolved": "Cases closed without human handoff after an approved AI response path.",
-      "attributedChannel": "First meaningful inbound channel unless the case is converted to voice within 10 minutes."
+      "openTicket": "Client requests not yet resolved, including pending bookings and service complaints.",
+      "firstResponse": "Time from request creation to first human or approved AI response, excluding auto-acknowledgements.",
+      "resolutionTime": "Time from request creation to final resolved state; reopened requests restart the timer from the reopen event.",
+      "newContact": "First contact from a client or prospect in the trailing 180 days.",
+      "aiResolved": "Requests closed without human handoff after an approved AI response path.",
+      "attributedChannel": "First meaningful inbound channel unless the request is converted to voice within 10 minutes."
     },
     "dataQuality": {
       "refreshCadence": "Hourly for operational metrics, nightly for CRM and finance snapshots.",
       "lateArrivingWindow": "Up to 48 hours for survey and CRM corrections.",
-      "knownBlindSpots": ["Manual notes from external care systems are not joined automatically", "Older SMS metadata before 2025-Q2 is daily-only"]
+      "knownBlindSpots": ["Manual notes from external booking systems are not joined automatically", "Older SMS metadata before 2025-Q2 is daily-only"]
     },
     "auditability": {
       "recordFields": ["source_system", "synced_at", "quality_flag", "is_late_arriving"],
       "changeHistory": ["merge history", "correction log", "backfill window"],
-      "piiHandling": "PHI-sensitive fields remain tokenized outside aggregated analytics views."
+      "piiHandling": "Client contact details are access-controlled and masked in shared analytics views."
     },
     "knownGaps": [
-      "No direct EHR outcome join for clinical follow-up completion",
+      "No direct booking system outcome join for treatment follow-up completion",
       "Some partner-generated referrals still rely on campaign tags instead of a stable source id"
     ]
   },
   "analyticsDataModel": {
     "geographies": [
-      { "region": "Benelux", "country": "Netherlands", "city": "Amsterdam", "language": "nl-NL", "businessUnit": "Care Operations", "weight": 4 },
-      { "region": "France", "country": "France", "city": "Paris", "language": "fr-FR", "businessUnit": "Strategic Care", "weight": 3 },
-      { "region": "DACH", "country": "Germany", "city": "Berlin", "language": "de-DE", "businessUnit": "Enterprise Growth", "weight": 2 }
+      { "region": "Benelux", "country": "Netherlands", "city": "Amsterdam", "language": "nl-NL", "businessUnit": "Spa Operations", "weight": 4 },
+      { "region": "France", "country": "France", "city": "Paris", "language": "fr-FR", "businessUnit": "Premium Salons", "weight": 3 },
+      { "region": "DACH", "country": "Germany", "city": "Berlin", "language": "de-DE", "businessUnit": "Wellness Studios", "weight": 2 }
     ],
     "accountSegments": [
-      { "accountSegment": "Independent clinics", "accountTier": "Growth", "plan": "Scale", "lifecycleStage": "Active", "cohort": "2024-Q4", "weight": 4 },
-      { "accountSegment": "Hospital groups", "accountTier": "Enterprise", "plan": "Enterprise", "lifecycleStage": "Expansion", "cohort": "2024-Q1", "weight": 3 },
-      { "accountSegment": "Specialty networks", "accountTier": "Strategic", "plan": "Enterprise Plus", "lifecycleStage": "Renewal", "cohort": "2023-Q3", "weight": 2 }
+      { "accountSegment": "Walk-in clients", "accountTier": "Standard", "plan": "Pay-per-visit", "lifecycleStage": "Active", "cohort": "2024-Q4", "weight": 4 },
+      { "accountSegment": "Members", "accountTier": "Premium", "plan": "Monthly membership", "lifecycleStage": "Expansion", "cohort": "2024-Q1", "weight": 3 },
+      { "accountSegment": "Corporate wellness", "accountTier": "Enterprise", "plan": "Corporate package", "lifecycleStage": "Renewal", "cohort": "2023-Q3", "weight": 2 }
     ],
     "queues": [
-      { "queue": "Patient Access", "priority": "High", "slaPolicy": "P2 30m / 8h", "weight": 4 },
-      { "queue": "Care Coordination", "priority": "Standard", "slaPolicy": "P3 4h / 24h", "weight": 3 },
-      { "queue": "Clinical Incidents", "priority": "Urgent", "slaPolicy": "P1 15m / 4h", "weight": 2 }
+      { "queue": "Booking Support", "priority": "High", "slaPolicy": "P2 30m / 8h", "weight": 4 },
+      { "queue": "Treatment Coordination", "priority": "Standard", "slaPolicy": "P3 4h / 24h", "weight": 3 },
+      { "queue": "Urgent Complaints", "priority": "Urgent", "slaPolicy": "P1 15m / 4h", "weight": 2 }
     ],
     "productAreas": [
-      { "productLine": "Patient Messaging", "featureArea": "Appointment reminders", "issueType": "Appointment change", "weight": 4 },
-      { "productLine": "Care Coordination", "featureArea": "Referral workflows", "issueType": "Referral follow-up", "weight": 3 },
-      { "productLine": "Voice & Callback", "featureArea": "Triage queue", "issueType": "Missed call or callback", "weight": 2 },
-      { "productLine": "Admin", "featureArea": "Staff access", "issueType": "Login or SSO", "weight": 2 }
+      { "productLine": "Client Messaging", "featureArea": "Booking reminders", "issueType": "Appointment change", "weight": 4 },
+      { "productLine": "Treatment Coordination", "featureArea": "Referral & loyalty", "issueType": "Referral follow-up", "weight": 3 },
+      { "productLine": "Voice & Callback", "featureArea": "Booking line", "issueType": "Missed call or callback", "weight": 2 },
+      { "productLine": "Admin", "featureArea": "Staff access", "issueType": "Login or account issue", "weight": 2 }
     ],
     "campaigns": [
-      { "campaign": "Digital clinic acquisition", "source": "Paid search", "weight": 3 },
-      { "campaign": "Hospital ABM", "source": "Outbound", "weight": 2 },
-      { "campaign": "Partner referrals", "source": "Partner", "weight": 2 },
-      { "campaign": "Webinar follow-up", "source": "Website", "weight": 1 }
+      { "campaign": "New location launch", "source": "Paid search", "weight": 3 },
+      { "campaign": "Corporate wellness outreach", "source": "Outbound", "weight": 2 },
+      { "campaign": "Referral rewards", "source": "Partner", "weight": 2 },
+      { "campaign": "Seasonal promotions", "source": "Website", "weight": 1 }
     ],
     "knowledgeArticles": [
-      { "article": "Reset MFA for staff", "articleCategory": "Access", "weight": 3 },
-      { "article": "Reschedule patient appointment", "articleCategory": "Scheduling", "weight": 4 },
-      { "article": "Route urgent referral", "articleCategory": "Coordination", "weight": 2 },
+      { "article": "Reschedule or cancel a booking", "articleCategory": "Bookings", "weight": 4 },
+      { "article": "Reset account or MFA", "articleCategory": "Access", "weight": 3 },
+      { "article": "Membership upgrade options", "articleCategory": "Membership", "weight": 2 },
       { "article": "Handle no-answer callbacks", "articleCategory": "Voice", "weight": 2 }
     ],
     "aiModels": [
-      { "aiModel": "patient-triage-gpt-5-mini", "promptVersion": "patient-triage-v4", "guardrailType": "PHI", "weight": 4 },
-      { "aiModel": "care-routing-gpt-5-mini", "promptVersion": "care-routing-v3", "guardrailType": "Escalation", "weight": 3 },
+      { "aiModel": "booking-triage-gpt-5-mini", "promptVersion": "booking-triage-v4", "guardrailType": "Privacy", "weight": 4 },
+      { "aiModel": "service-routing-gpt-5-mini", "promptVersion": "service-routing-v3", "guardrailType": "Escalation", "weight": 3 },
       { "aiModel": "voice-summary-gpt-5-mini", "promptVersion": "voice-summary-v2", "guardrailType": "Compliance", "weight": 2 }
     ],
     "automationJourneys": [
-      { "journey": "Appointment confirmation", "journeyVersion": "v3.2", "triggerType": "Booking created", "exitReason": "Confirmed automatically", "weight": 4 },
-      { "journey": "Referral triage", "journeyVersion": "v2.8", "triggerType": "Referral submitted", "exitReason": "Handed to coordination", "weight": 3 },
+      { "journey": "Booking confirmation", "journeyVersion": "v3.2", "triggerType": "Booking created", "exitReason": "Confirmed automatically", "weight": 4 },
+      { "journey": "Referral follow-up", "journeyVersion": "v2.8", "triggerType": "Referral submitted", "exitReason": "Reward issued", "weight": 3 },
       { "journey": "Missed-call callback", "journeyVersion": "v1.9", "triggerType": "Missed call", "exitReason": "Callback booked", "weight": 2 }
     ],
     "dealAttributes": [
-      { "dealOwner": "Emma Laurent", "currency": "EUR", "closeReason": "Care-network expansion", "competitor": "Intercom Health", "weight": 3 },
-      { "dealOwner": "Noah Muller", "currency": "EUR", "closeReason": "Procurement approved", "competitor": "Salesforce Health Cloud", "weight": 2 },
-      { "dealOwner": "Luca Vermeer", "currency": "GBP", "closeReason": "Pilot converted", "competitor": "Zendesk", "weight": 2 }
+      { "dealOwner": "Emma Laurent", "currency": "EUR", "closeReason": "Corporate package signed", "competitor": "Urban Sports Club", "weight": 3 },
+      { "dealOwner": "Noah Muller", "currency": "EUR", "closeReason": "Membership upgraded", "competitor": "Treatwell", "weight": 2 },
+      { "dealOwner": "Luca Vermeer", "currency": "GBP", "closeReason": "Pilot converted to annual", "competitor": "Fresha", "weight": 2 }
     ],
     "callAttributes": [
-      { "voiceLine": "Patient Support line", "connectionResult": "Connected", "recordingFlag": "Recorded", "weight": 4 },
-      { "voiceLine": "Clinic Priority line", "connectionResult": "Transferred", "recordingFlag": "Recorded", "weight": 3 },
-      { "voiceLine": "Referral callback queue", "connectionResult": "Voicemail", "recordingFlag": "Not recorded", "weight": 2 }
+      { "voiceLine": "Booking hotline", "connectionResult": "Connected", "recordingFlag": "Recorded", "weight": 4 },
+      { "voiceLine": "VIP client line", "connectionResult": "Transferred", "recordingFlag": "Recorded", "weight": 3 },
+      { "voiceLine": "Callback queue", "connectionResult": "Voicemail", "recordingFlag": "Not recorded", "weight": 2 }
     ],
     "surveyDetails": [
-      { "surveyTemplate": "Patient support follow-up", "surveyQuestion": "How satisfied were you with the support you received?", "deliveryChannel": "Email", "respondentType": "Patient", "sentimentLabel": "Positive", "weight": 3 },
-      { "surveyTemplate": "Clinic admin follow-up", "surveyQuestion": "Was your care-team issue resolved quickly enough?", "deliveryChannel": "SMS", "respondentType": "Clinic admin", "sentimentLabel": "Neutral", "weight": 2 },
+      { "surveyTemplate": "Post-visit follow-up", "surveyQuestion": "How satisfied were you with your visit today?", "deliveryChannel": "Email", "respondentType": "Client", "sentimentLabel": "Positive", "weight": 3 },
+      { "surveyTemplate": "Service feedback", "surveyQuestion": "Was your treatment handled to your expectations?", "deliveryChannel": "SMS", "respondentType": "Client", "sentimentLabel": "Neutral", "weight": 2 },
       { "surveyTemplate": "Voice callback survey", "surveyQuestion": "How would you rate the callback experience?", "deliveryChannel": "SMS", "respondentType": "Caller", "sentimentLabel": "Negative", "weight": 1 }
     ],
     "workforcePlans": [
-      { "schedule": "Weekday triage coverage", "shift": "Morning", "weight": 4 },
-      { "schedule": "Care coordination coverage", "shift": "Afternoon", "weight": 3 },
-      { "schedule": "After-hours clinic support", "shift": "Evening", "weight": 2 },
+      { "schedule": "Peak booking coverage", "shift": "Morning", "weight": 4 },
+      { "schedule": "Treatment coordination", "shift": "Afternoon", "weight": 3 },
+      { "schedule": "After-hours support", "shift": "Evening", "weight": 2 },
       { "schedule": "Weekend callback coverage", "shift": "Weekend", "weight": 1 }
     ],
     "intentVersions": {
-      "support": "care-support-2026.1",
-      "sales": "care-sales-2026.1",
-      "default": "care-shared-2026.1"
+      "support": "wellness-support-2026.1",
+      "sales": "wellness-sales-2026.1",
+      "default": "wellness-shared-2026.1"
     },
-    "voiceLines": ["Patient Support line", "Clinic Priority line", "Referral callback queue"],
-    "supportIntents": ["Appointment changes", "Patient portal access", "Referral status", "Billing help", "Prescription query", "Lab result follow-up", "Care-team coordination"],
-    "salesIntents": ["Demo request", "Multi-site rollout", "Pricing request", "Procurement review", "Renewal expansion", "Partner inquiry", "Integration consult"]
+    "voiceLines": ["Booking hotline", "VIP client line", "Callback queue"],
+    "supportIntents": ["Appointment changes", "Service complaint", "Product recommendation", "Billing help", "Treatment inquiry", "Loyalty points", "Location info"],
+    "salesIntents": ["Membership inquiry", "Corporate wellness deal", "Pricing request", "Gift card purchase", "Renewal offer", "Partner inquiry", "Package upgrade"]
   },
-  "suggestedPreviewContext": "Focus on coordination responsiveness, cross-team escalation tracking, and communication reliability across care teams."
+  "suggestedPreviewContext": "Focus on booking responsiveness, cross-location service coordination, membership conversion, and client satisfaction trends."
 }
