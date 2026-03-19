@@ -85,7 +85,15 @@ window._confidenceThresholds = (function () {
     const stored = JSON.parse(localStorage.getItem(CONFIDENCE_THRESHOLDS_KEY));
     if (stored) return stored;
   } catch (_) { /* ignore */ }
-  return { confidenceSkipComponents: 5, confidenceAutoDraft: 7, confidenceSkipDensity: 8 };
+  return {
+    confidenceSkipSourceGathering: 5,
+    confidenceSkipTeamConfirmation: 5,
+    confidenceSkipDecisionGoals: 6,
+    confidenceSkipSignalFollowup: 7,
+    confidenceAutoDraft: 7,
+    confidenceSkipDensity: 8,
+    correctionSensitivity: 5
+  };
 })();
 
 const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
@@ -5706,9 +5714,13 @@ window._prototypeGuideAPI = {
   getAdminData: function () {
     var thresholds = window._confidenceThresholds || {};
     return {
-      confidenceSkipComponents: thresholds.confidenceSkipComponents,
+      confidenceSkipSourceGathering: thresholds.confidenceSkipSourceGathering,
+      confidenceSkipTeamConfirmation: thresholds.confidenceSkipTeamConfirmation,
+      confidenceSkipDecisionGoals: thresholds.confidenceSkipDecisionGoals,
+      confidenceSkipSignalFollowup: thresholds.confidenceSkipSignalFollowup,
       confidenceAutoDraft: thresholds.confidenceAutoDraft,
       confidenceSkipDensity: thresholds.confidenceSkipDensity,
+      correctionSensitivity: thresholds.correctionSensitivity,
       flags: FEATURE_FLAGS.map(function (f) {
         return {
           id: f.id,

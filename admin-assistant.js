@@ -464,8 +464,10 @@ const AdminAssistant = (() => {
 
     // At zero threshold, remove heavy gathering tools entirely (hard "off" switch)
     const thresholds = window._confidenceThresholds || {};
-    if ((thresholds.confidenceSkipComponents ?? 5) <= 0) {
+    if ((thresholds.confidenceSkipSourceGathering ?? 5) <= 0) {
       allowed.delete('show_source_input');
+    }
+    if ((thresholds.confidenceSkipTeamConfirmation ?? 5) <= 0) {
       allowed.delete('show_team_assignment_matrix');
     }
 
@@ -479,10 +481,14 @@ const AdminAssistant = (() => {
 
     // Confidence thresholds (controllable from SideCar admin)
     const thresholds = window._confidenceThresholds || {};
-    const _confidenceThresholds = {
-      skipComponents: thresholds.confidenceSkipComponents ?? 5,
+    const _ct = {
+      skipSource: thresholds.confidenceSkipSourceGathering ?? 5,
+      skipTeam: thresholds.confidenceSkipTeamConfirmation ?? 5,
+      skipGoals: thresholds.confidenceSkipDecisionGoals ?? 6,
+      skipSignals: thresholds.confidenceSkipSignalFollowup ?? 7,
       autoDraft: thresholds.confidenceAutoDraft ?? 7,
       skipDensity: thresholds.confidenceSkipDensity ?? 8,
+      correctionSensitivity: thresholds.correctionSensitivity ?? 5,
     };
 
     // Build widget catalog summary
@@ -721,45 +727,33 @@ The onboarding flow is adaptive, not a fixed sequence. At each step, take the li
 
 Guiding principle: before each decision point, assess how confident you are about THAT SPECIFIC decision on a 0-10 scale (0 = no basis at all, 10 = fully justified). Each decision has its own confidence — you might be 9/10 on team structure but 4/10 on which metrics matter. Reassess as the conversation progresses.
 
-The admin controls three information-gathering dials (0-10). A lower number means rely on available context and skip gathering steps; a higher number means actively seek more input before deciding. Think of these as how thorough the admin wants you to be — not just a confidence cutoff.
-${_confidenceThresholds.skipComponents <= 0 ? `
-- Skip heavy components: 0/10 — NEVER use show_source_input or show_team_assignment_matrix. These tools are disabled. Skip all heavy gathering components — summarize what you know and move on immediately.` : _confidenceThresholds.skipComponents >= 10 ? `
-- Skip heavy components: 10/10 — ALWAYS use show_source_input and show_team_assignment_matrix to gather context from the user, even if you feel fully confident. The admin wants maximum information gathering before any decisions are made.` : `
-- Skip heavy components: ${_confidenceThresholds.skipComponents}/10 — only skip a heavy gathering component (show_source_input, show_team_assignment_matrix) when your confidence about that specific decision clearly exceeds this level. At ${_confidenceThresholds.skipComponents}/10, ${_confidenceThresholds.skipComponents <= 3 ? 'lean toward skipping unless you genuinely lack context' : _confidenceThresholds.skipComponents >= 7 ? 'lean toward showing gathering components unless you are very confident' : 'use your judgment — skip when confident, gather when uncertain'}.`}
-- Auto-draft: ${_confidenceThresholds.autoDraft}/10 — when your confidence about the OVERALL draft (tabs, charts, metrics combined) is at or above this, build it directly.
-${_confidenceThresholds.skipDensity <= 0 ? `- Skip density question: 0/10 — never ask about content density. Infer it directly and apply.` : _confidenceThresholds.skipDensity >= 10 ? `- Skip density question: 10/10 — always ask about content density explicitly before building a draft.` : `- Skip density question: ${_confidenceThresholds.skipDensity}/10 — when your confidence about the right content density is at or above this, infer it directly.`}
+Decision-level thresholds (calibrated by admin — each controls a specific gathering step):
+- Source gathering: ${_ct.skipSource}/10 — skip show_source_input when your confidence about having enough context exceeds this.
+- Team confirmation: ${_ct.skipTeam}/10 — skip show_team_assignment_matrix when your confidence about team focus exceeds this.
+- Decision goals: ${_ct.skipGoals}/10 — skip asking "what decisions should this dashboard support?" when your confidence about goals exceeds this.
+- Signal follow-up: ${_ct.skipSignals}/10 — skip drilling into specific signals (SLA, CSAT, AI, knowledge gaps) when your confidence about which metrics matter exceeds this.
+- Auto-draft: ${_ct.autoDraft}/10 — build the draft directly when your OVERALL confidence (tabs + charts + metrics combined) exceeds this.
+- Density: ${_ct.skipDensity}/10 — infer content density directly when your confidence about the right density exceeds this.
 
 Adaptive steps (not rigid phases — skip or reorder based on context):
 
-1. Initial assessment: for each area below (sources, team structure, goals, density, widget selection), quickly rate your confidence separately. This determines which steps to take and which to skip.
+1. Initial assessment: for each area below, quickly rate your confidence separately. This determines which steps to take and which to skip.
 
 2. Source/context gathering.
-${_confidenceThresholds.skipComponents <= 0
-  ? '   - Source gathering is disabled. Do not use show_source_input. Mention what context you already have and move on.'
-  : _confidenceThresholds.skipComponents >= 10
-    ? '   - Always use show_source_input to gather additional context from the user before building a draft, regardless of how much context you think you have.'
-    : `   - Rate your confidence about having enough context to make good widget choices. If at or above ${_confidenceThresholds.skipComponents}/10, do not use show_source_input — mention what you already have in plain text and move on. The source component pauses the conversation, so only use it when additional material would meaningfully improve your decisions.`}
+   - Rate your confidence about having enough context to make good widget choices. If at or above ${_ct.skipSource}/10, do not use show_source_input — mention what you already have in plain text and move on. The source component pauses the conversation, so only use it when additional material would meaningfully improve your decisions.
 ${role === 'agent'
   ? '  - For agents: if offered, show source input for file upload or personal notes. Do not ask for website URLs — company context is already shown as read-only reference.'
   : '  - If a website, help center, or known source already exists, mention it conversationally — do not re-present it through the source input UI.'}
    - After a source step succeeds, briefly acknowledge which source types were actually used.
 
 3. Structural confirmation.
-${_confidenceThresholds.skipComponents <= 0
-  ? '   - Team focus gathering is disabled. Do not use show_team_assignment_matrix. Mention the classification in plain text and move on.'
-  : _confidenceThresholds.skipComponents >= 10
-    ? '   - Team focus: always use show_team_assignment_matrix to confirm team classifications with the user, even if you feel confident about the teams.'
-    : `   - Team focus: rate your confidence that you know each team's focus well enough to choose the right tabs and metrics for them. If at or above ${_confidenceThresholds.skipComponents}/10, do not use show_team_assignment_matrix — mention the classification in plain text and move on. Only use the matrix when getting team focus wrong would produce a materially different draft.`}
+   - Team focus: rate your confidence that you know each team's focus well enough to choose the right tabs and metrics. If at or above ${_ct.skipTeam}/10, do not use show_team_assignment_matrix — mention the classification in plain text and move on. Only use the matrix when getting team focus wrong would produce a materially different draft.
    - Lens: the lens has been auto-determined from team data. If lens is null (mixed teams), charts and metrics from both support and sales are visible. You can narrow the lens with set_lens if the user's goals clearly favor one side. Do not ask the user to choose a lens when it's already set or when mixed is appropriate.
-   - Decision goals: rate your confidence that you know what decisions the dashboard should support. If the goals in customer_data are already specific enough to drive chart and metric choices, skip asking. Only ask when the answer would change your draft.
+   - Decision goals: rate your confidence that you know what decisions the dashboard should support. If at or above ${_ct.skipGoals}/10, skip asking and use available goals directly. Only ask when the answer would change your draft.
 
-4. Content depth.
-${_confidenceThresholds.skipDensity <= 0
-  ? '   - Do not ask about density. Infer the right density and apply it directly in the draft.'
-  : _confidenceThresholds.skipDensity >= 10
-    ? '   - Always ask the user explicitly about their preferred content density before building a draft.'
-    : `   - Rate your confidence about the right density for this user. If at or above ${_confidenceThresholds.skipDensity}/10, skip asking and apply your inference directly in the draft — the user can adjust during refinement.${_confidenceThresholds.skipComponents > 0 ? ` If below that but at or above ${_confidenceThresholds.skipComponents}/10, present density as a pre-selected option with a one-line rationale. Below ${_confidenceThresholds.skipComponents}/10, show the density question with no pre-selection.` : ''}`}
-   - Before proposing charts and metrics, go one level deeper than broad categories. If the user says they care about "support quality", that is not enough — ask which specific signals matter (CSAT, reopen rate, knowledge gaps, etc.). Frame it around the user's workflow and decisions, not as a feature checklist.
+4. Signal depth and content density.
+   - Signals: rate your confidence about which specific metrics/signals matter for this customer. If at or above ${_ct.skipSignals}/10, infer the signal selection from context (featureStatus, goals, analyticsDataInventory) without asking. Below that, ask one targeted follow-up about which specific signals matter — frame it around workflow and decisions, not as a feature checklist.
+   - Density: rate your confidence about the right content density. If at or above ${_ct.skipDensity}/10, infer and apply directly. Below that, present density as a choice with show_options.
 
 5. Build draft (tab structure + widget selection).
    - Use configure_tabs with explicit per-tab widget membership (widgets array per tab) for precise placement.

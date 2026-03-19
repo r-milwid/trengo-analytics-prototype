@@ -423,26 +423,63 @@ buttons: edit-customers=Customers, edit-teams=Teams
 
 ---
 
-### Skip components threshold
+### Onboarding thresholds
+type: modal-group
+button: Configure thresholds
+description: Confidence thresholds that control onboarding agent decisions
+
+#### Skip source gathering
 type: slider
-key: confidenceSkipComponents
-description: Information-gathering depth (0=never gather, 10=always gather). Controls whether source input and team matrix are shown.
+key: confidenceSkipSourceGathering
+description: Skip asking for source material (0=never ask, 10=always ask)
 min: 0
 max: 10
 step: 1
 
-### Auto-draft threshold
+#### Skip team confirmation
+type: slider
+key: confidenceSkipTeamConfirmation
+description: Skip confirming team focus assignments (0=never ask, 10=always ask)
+min: 0
+max: 10
+step: 1
+
+#### Skip decision goals
+type: slider
+key: confidenceSkipDecisionGoals
+description: Skip asking what decisions the dashboard should support (0=never ask, 10=always ask)
+min: 0
+max: 10
+step: 1
+
+#### Skip signal follow-up
+type: slider
+key: confidenceSkipSignalFollowup
+description: Skip drilling into specific signals before choosing widgets (0=never ask, 10=always ask)
+min: 0
+max: 10
+step: 1
+
+#### Auto-draft threshold
 type: slider
 key: confidenceAutoDraft
-description: Confidence needed to draft immediately (0=always auto-draft, 10=always ask first)
+description: Draft immediately without questions (0=always auto-draft, 10=always ask first)
 min: 0
 max: 10
 step: 1
 
-### Skip density question threshold
+#### Skip density question
 type: slider
 key: confidenceSkipDensity
-description: Confidence needed to infer density (0=never ask, 10=always ask about content density)
+description: Infer content density directly (0=never ask, 10=always ask)
+min: 0
+max: 10
+step: 1
+
+#### Correction sensitivity
+type: slider
+key: correctionSensitivity
+description: How readily user deviations are logged as AI corrections (0=log nothing, 10=log every deviation)
 min: 0
 max: 10
 step: 1
