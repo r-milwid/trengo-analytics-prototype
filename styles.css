@@ -2374,18 +2374,7 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   position: fixed;
   inset: 0;
   z-index: 1000;
-}
-.onboarding-header {
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
-  text-align: center;
-  pointer-events: none;
-  background: var(--white);
-  padding: 8px 20px 10px;
-  border-radius: var(--radius);
+  overflow: hidden;
 }
 .onboarding-title {
   margin: 0;
@@ -2396,9 +2385,8 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   letter-spacing: -0.01em;
 }
 .onboarding-subtitle {
-  margin: 3px 0 0;
+  margin: 6px 0 0;
   font-size: 13px;
-  font-style: italic;
   color: rgba(0, 0, 0, 0.55);
   font-family: var(--font);
   font-weight: 400;
@@ -2408,61 +2396,62 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   inset: 0;
   background: rgba(0, 0, 0, 0.25);
 }
-.onboarding-arrows {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 3;
-}
-.onboarding-arrows path {
-  fill: none;
-  stroke: #00a884;
-  stroke-width: 4.5;
-  stroke-linecap: round;
-}
-.onboarding-arrows polygon {
-  fill: #00a884;
-}
 
 /* Step cards */
 .onboarding-steps {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.onboarding-steps-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.onboarding-step {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 40px;
+  box-sizing: border-box;
 }
 .onboarding-step-card {
-  position: absolute;
   background: var(--white);
   color: var(--gray-800);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 20px 24px 16px;
-  max-width: 380px;
+  padding: 24px 30px 18px;
+  width: min(475px, calc(100vw - 80px));
+  min-height: min(360px, calc(100vh - 80px));
+  max-height: calc(100vh - 80px);
   font-size: 14px;
   line-height: 1.55;
   font-family: var(--font);
   pointer-events: auto;
-  opacity: 0;
-  transform: translateX(40px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  overflow: auto;
 }
-.onboarding-step-card.active {
-  opacity: 1;
-  transform: translateX(0);
+.onboarding-card-header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
 }
-.onboarding-step-card.exit {
-  opacity: 0;
-  transform: translateX(-40px);
+.onboarding-step-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
 }
 .onboarding-step-text {
   margin: 0;
   flex: 1;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 /* Card footer: dots · skip · next */

@@ -5224,6 +5224,7 @@ let _userCustomerProfiles = [];
 let _addCustomerDraft = null;
 let _editingUserCustomerIndex = null;
 let _editingUserCustomerDraft = null;
+let _addSectionCollapsed = false;
 const _builtInCustomerIds = new Set(BUILT_IN_CUSTOMER_PROFILES.map(p => p.id));
 
 function buildKnownTeamsFromText(value) {
@@ -5326,7 +5327,7 @@ function renderCustomerSettingsModal() {
     if (sub) sub.textContent = 'Add your own customer profiles or use the built-in defaults.';
   }
 
-  const isAddCollapsed = _editingUserCustomerIndex !== null;
+  const isAddCollapsed = _addSectionCollapsed || _editingUserCustomerIndex !== null;
 
   // ── Section 1: Default customers ──
   const defaultRows = _defaultCustomerProfiles.map(p => `
@@ -5484,6 +5485,7 @@ function renderCustomerSettingsModal() {
   body.querySelector('#cs-expand-add-btn')?.addEventListener('click', () => {
     _editingUserCustomerIndex = null;
     _editingUserCustomerDraft = null;
+    _addSectionCollapsed = false;
     renderCustomerSettingsModal();
   });
 
@@ -5532,6 +5534,7 @@ function renderCustomerSettingsModal() {
     _userCustomerProfiles[_editingUserCustomerIndex] = _profileFromDraft(_editingUserCustomerDraft, _editingUserCustomerIndex);
     _editingUserCustomerIndex = null;
     _editingUserCustomerDraft = null;
+    _addSectionCollapsed = true;
     _persistAndRefresh();
     renderCustomerSettingsModal();
   });
@@ -5540,6 +5543,7 @@ function renderCustomerSettingsModal() {
   body.querySelector('#cs-edit-cancel-btn')?.addEventListener('click', () => {
     _editingUserCustomerIndex = null;
     _editingUserCustomerDraft = null;
+    _addSectionCollapsed = true;
     renderCustomerSettingsModal();
   });
 }
@@ -5551,6 +5555,7 @@ async function openCustomerSettingsModal() {
   _addCustomerDraft = { ...createBlankCustomerProfile(), knownTeamsText: '', extraSourceUrlsText: '' };
   _editingUserCustomerIndex = null;
   _editingUserCustomerDraft = null;
+  _addSectionCollapsed = false;
   renderCustomerSettingsModal();
   const overlay = document.getElementById('customer-settings-modal-overlay');
   if (overlay) overlay.style.display = 'flex';
@@ -5768,277 +5773,54 @@ if (typeof AdminAssistant !== 'undefined') {
 // ── ONBOARDING OVERLAY ──────────────────────────────────────
 (function() {
   const ONBOARDING_KEY = 'trengo_onboarding_done';
+  const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode';
+  const WALKTHROUGH_TITLE = 'Prototype Walkthrough';
+  const WALKTHROUGH_SUBTITLE = 'Internal only. Quick context for reviewers providing feedback.';
   const ONBOARDING_STEPS = [
     {
-      text: 'This prototype explores a customisable analytics model with five broadly applicable default sections. Focus feedback on the overall structure, logic, and decisions it supports.',
-      getTargets: () => [],
-      placement: 'center'
+      text: 'This prototype explores a customisable analytics model with five broadly applicable default sections. Focus feedback on the overall structure, logic, and decisions it supports.'
     },
     {
-      text: 'Sidecar — the panel on the right — answers concept questions and collects your feedback. Use the icons below its header for settings.',
-      getTargets: () => [],
-      placement: 'center'
+      text: 'Sidecar — the panel on the right — answers concept questions and collects your feedback. Use the icons below its header for settings.'
     },
     {
-      text: 'The default navigation is only a starting point. The model is designed to be customised to each company\u2019s language, structure, and priorities. In edit mode, users can add, remove, reorder, and resize.',
-      getTargets: () => [
-        document.querySelector('#sub-nav-tabs'),
-        document.querySelector(`.section-content[data-section="${state.activeSection}"] .widget-card`) ||
-          document.querySelector('.section-content .widget-card')
-      ],
-      placement: 'center-dual'
+      text: 'The default navigation is only a starting point. The model is designed to be customised to each company’s language, structure, and priorities. In edit mode, users can also add, remove, reorder, and resize charts.'
     }
   ];
 
   let onboardingStep = 0;
   const overlay       = document.getElementById('onboarding-overlay');
   const stepsContainer = document.getElementById('onboarding-steps');
-  const arrowsSvg     = document.getElementById('onboarding-arrows');
-
-  function arrowGeometry(x1, y1, x2, y2, bendDirection = 1, curvatureScale = 1) {
-    const dx = x2 - x1, dy = y2 - y1;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (!dist) {
-      return { mx: x1, my: y1, ux: 1, uy: 0, px: 0, py: 1 };
-    }
-    const curvature = Math.min(dist * 0.3, 60) * curvatureScale;
-    const nx = -dy / dist * curvature * bendDirection;
-    const ny =  dx / dist * curvature * bendDirection;
-    const mx = (x1 + x2) / 2 + nx;
-    const my = (y1 + y2) / 2 + ny;
-    // Tangent direction at t=1 on quadratic bezier
-    const tx = x2 - mx, ty = y2 - my;
-    const tLen = Math.sqrt(tx * tx + ty * ty);
-    const ux = tx / tLen, uy = ty / tLen; // unit tangent
-    const px = -uy,       py =  ux;       // unit perpendicular
-    return { mx, my, ux, uy, px, py };
+  function getStepCards() {
+    return stepsContainer.querySelectorAll('.onboarding-step-card');
   }
 
-  function drawArrow(x1, y1, x2, y2, options = {}) {
-    const { bendDirection = 1, curvatureScale = 1 } = options;
-    const HEAD = 13;   // arrowhead length
-    const WING = 0.38; // half-width ratio relative to HEAD
-
-    const { mx, my, ux, uy, px, py } = arrowGeometry(x1, y1, x2, y2, bendDirection, curvatureScale);
-
-    // Stop the path slightly before the tip so the stroke doesn't bleed through
-    const pathEndX = x2 - ux * HEAD * 0.6;
-    const pathEndY = y2 - uy * HEAD * 0.6;
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M${x1},${y1} Q${mx},${my} ${pathEndX},${pathEndY}`);
-    arrowsSvg.appendChild(path);
-
-    // Arrowhead — sharp isoceles triangle pointing at (x2, y2)
-    const tipX = x2, tipY = y2;
-    const baseX = tipX - ux * HEAD;
-    const baseY = tipY - uy * HEAD;
-    const p1x = baseX + px * HEAD * WING;
-    const p1y = baseY + py * HEAD * WING;
-    const p2x = baseX - px * HEAD * WING;
-    const p2y = baseY - py * HEAD * WING;
-    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    arrow.setAttribute('points', `${tipX},${tipY} ${p1x},${p1y} ${p2x},${p2y}`);
-    arrowsSvg.appendChild(arrow);
-  }
-
-  function findVisibleWalkthroughWidgetTarget(cardLeft, cardTop) {
-    const candidates = [
-      ...document.querySelectorAll(`.section-content[data-section="${state.activeSection}"] .widget-card`),
-      ...document.querySelectorAll('.section-content .widget-card')
-    ];
-    const seen = new Set();
-    const unique = candidates.filter((el) => {
-      if (!el || seen.has(el)) return false;
-      seen.add(el);
-      return true;
-    });
-    if (unique.length === 0) return null;
-
-    const viewportTop = 96;
-    const viewportBottom = window.innerHeight - 32;
-    const visible = unique
-      .map((el) => ({ el, rect: el.getBoundingClientRect() }))
-      .filter(({ rect }) =>
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.bottom > viewportTop &&
-        rect.top < viewportBottom
-      );
-
-    const pool = visible.length > 0 ? visible : unique.map((el) => ({ el, rect: el.getBoundingClientRect() }));
-    const preferredX = cardLeft - 120;
-    const preferredY = cardTop + 34;
-
-    pool.sort((a, b) => {
-      const aScore = Math.hypot((a.rect.right - 14) - preferredX, (a.rect.top + 14) - preferredY)
-        + (a.rect.right > cardLeft ? 400 : 0)
-        + (a.rect.top < viewportTop ? 200 : 0);
-      const bScore = Math.hypot((b.rect.right - 14) - preferredX, (b.rect.top + 14) - preferredY)
-        + (b.rect.right > cardLeft ? 400 : 0)
-        + (b.rect.top < viewportTop ? 200 : 0);
-      return aScore - bScore;
-    });
-
-    return pool[0]?.el || null;
-  }
-
-  function positionStep(index) {
-    arrowsSvg.innerHTML = '';
-    const step = ONBOARDING_STEPS[index];
-    const card = stepsContainer.children[index];
-    if (!card) return;
-
-    const targets = step.getTargets();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    // Reset card position so we can measure it
-    card.style.top = '0px';
-    card.style.left = '0px';
-    card.style.removeProperty('right');
-    const cardRect = card.getBoundingClientRect();
-    const cw = cardRect.width;
-    const ch = cardRect.height;
-
-    if (step.placement === 'above-subnav') {
-      const nav = targets[0];
-      if (!nav) return;
-      const nr = nav.getBoundingClientRect();
-      // Position card below the sub-nav with a larger gap to clear the header/subtitle
-      const mainLeft = 64; // sidebar width
-      const mainRight = vw;
-      const centerX = (mainLeft + mainRight) / 2;
-      const cardLeft = centerX - cw / 2;
-      const cardTop = nr.bottom + 80;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-      // Arrow from card top-center UP to sub-nav bottom edge
-      drawArrow(cardLeft + cw / 2, cardTop - 4, nr.left + nr.width * 0.35, nr.bottom - 4);
-
-    } else if (step.placement === 'right-of-cog') {
-      const cog = targets[0];
-      if (!cog) return;
-      const cr = cog.getBoundingClientRect();
-      // Card well to the right of sidebar so arrow is clearly visible
-      const cardLeft = 140;
-      const cardTop = cr.top + cr.height / 2 - ch / 2;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-      // Arrow from card left edge to just right of cog
-      drawArrow(cardLeft - 4, cardTop + ch / 2, cr.right + 2, cr.top + cr.height / 2);
-
-    } else if (step.placement === 'center') {
-      const mainLeft = 64;
-      const mainRight = vw;
-      const centerX = (mainLeft + mainRight) / 2;
-      const centerY = vh / 2;
-      card.style.left = (centerX - cw / 2) + 'px';
-      card.style.top = (centerY - ch / 2) + 'px';
-      // No arrows — intro step has no target element
-
-    } else if (step.placement === 'center-dual') {
-      const mainLeft = 64;
-      const mainRight = vw;
-      const centerX = (mainLeft + mainRight) / 2;
-      const centerY = vh / 2;
-      const cardLeft = centerX - cw / 2;
-      const cardTop = centerY - ch / 2;
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
-
-      const cardTopLeftX = cardLeft + 56;
-      const cardTopLeftY = cardTop + 18;
-      const cardBottomLeftX = cardLeft + 18;
-      const cardBottomLeftY = cardTop + ch - 58;
-
-      // Arrow 1: to the bottom-right of the tab navigation
-      if (targets[0]) {
-        const navRect = targets[0].getBoundingClientRect();
-        drawArrow(
-          cardTopLeftX,
-          cardTopLeftY,
-          navRect.right - 12,
-          navRect.bottom - 8
-        );
-      }
-
-      // Arrow 2: to the top-right corner of a widget card
-      const widgetTarget = findVisibleWalkthroughWidgetTarget(cardLeft, cardTop) || targets[1];
-      if (widgetTarget) {
-        const widgetRect = widgetTarget.getBoundingClientRect();
-        drawArrow(
-          cardBottomLeftX,
-          cardBottomLeftY,
-          widgetRect.right - 14,
-          widgetRect.top + 14,
-          { bendDirection: -1, curvatureScale: 0.62 }
-        );
-      }
-    }
+  function getStepsTrack() {
+    return stepsContainer.querySelector('.onboarding-steps-track');
   }
 
   function updateDots() {
-    // Each card has its own dot set — only update the active card's dots
-    const card = stepsContainer.children[onboardingStep];
-    if (!card) return;
-    card.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
-      dot.classList.toggle('active', i === onboardingStep);
+    getStepCards().forEach((card) => {
+      card.querySelectorAll('.onboarding-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === onboardingStep);
+      });
     });
-  }
-
-  function updateNextButton() {
-    const card = stepsContainer.children[onboardingStep];
-    if (!card) return;
-    const nextText = card.querySelector('.onboarding-next-text');
-    const nextIcon = card.querySelector('.onboarding-next-icon');
-    const skipBtn  = card.querySelector('.onboarding-skip');
-    const isLast   = onboardingStep === ONBOARDING_STEPS.length - 1;
-    if (nextText) nextText.textContent = isLast ? 'Done' : 'Next';
-    if (nextIcon) nextIcon.innerHTML = isLast
-      ? '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-      : '<polyline points="9 6 15 12 9 18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
-    if (skipBtn) skipBtn.classList.toggle('hidden', isLast);
   }
 
   function showStep(index) {
-    const cards = stepsContainer.querySelectorAll('.onboarding-step-card');
-    cards.forEach((c, i) => {
-      if (i === index) {
-        c.style.display = '';
-        c.classList.remove('exit');
-        // Position before making visible so card doesn't flash at wrong spot
-        positionStep(index);
-        // Force reflow then add active
-        void c.offsetWidth;
-        c.classList.add('active');
-      } else {
-        c.classList.remove('active');
-      }
-    });
+    onboardingStep = index;
+    const track = getStepsTrack();
+    if (track) track.style.transform = `translateX(-${index * 100}%)`;
     updateDots();
-    updateNextButton();
   }
 
   function nextOnboardingStep() {
-    const cards = stepsContainer.querySelectorAll('.onboarding-step-card');
-    const current = cards[onboardingStep];
-    if (current) {
-      current.classList.remove('active');
-      current.classList.add('exit');
-    }
-
-    onboardingStep++;
-    if (onboardingStep >= ONBOARDING_STEPS.length) {
+    const nextIndex = onboardingStep + 1;
+    if (nextIndex >= ONBOARDING_STEPS.length) {
       closeOnboarding();
       return;
     }
-
-    // Wait for exit transition, then show next
-    setTimeout(() => {
-      if (current) current.style.display = 'none';
-      showStep(onboardingStep);
-    }, 350);
+    showStep(nextIndex);
   }
 
   function closeOnboarding() {
@@ -6047,25 +5829,46 @@ if (typeof AdminAssistant !== 'undefined') {
     setTimeout(() => {
       overlay.style.display = 'none';
       overlay.classList.remove('closing');
-      // After walkthrough completes, start AI onboarding if available
-      if (typeof AdminAssistant !== 'undefined') {
-        AdminAssistant.tryStartOnboarding();
-      }
+      const track = getStepsTrack();
+      if (track) track.style.transform = 'translateX(0)';
     }, 350);
   }
 
   function showOnboarding() {
     stepsContainer.innerHTML = '';
+    const track = document.createElement('div');
+    track.className = 'onboarding-steps-track';
 
     ONBOARDING_STEPS.forEach((step, i) => {
+      const slide = document.createElement('div');
+      slide.className = 'onboarding-step';
+
       const card = document.createElement('div');
       card.className = 'onboarding-step-card';
 
-      // Text body
+      const header = document.createElement('div');
+      header.className = 'onboarding-card-header';
+
+      const title = document.createElement('h2');
+      title.className = 'onboarding-title';
+      title.textContent = WALKTHROUGH_TITLE;
+
+      const subtitle = document.createElement('p');
+      subtitle.className = 'onboarding-subtitle';
+      subtitle.textContent = WALKTHROUGH_SUBTITLE;
+
+      header.appendChild(title);
+      header.appendChild(subtitle);
+      card.appendChild(header);
+
+      const bodyWrap = document.createElement('div');
+      bodyWrap.className = 'onboarding-step-body';
+
       const body = document.createElement('p');
       body.className = 'onboarding-step-text';
       body.textContent = step.text;
-      card.appendChild(body);
+      bodyWrap.appendChild(body);
+      card.appendChild(bodyWrap);
 
       // Footer: dots · skip · next
       const footer = document.createElement('div');
@@ -6084,12 +5887,15 @@ if (typeof AdminAssistant !== 'undefined') {
       const skipBtn = document.createElement('button');
       skipBtn.className = 'onboarding-skip';
       skipBtn.innerHTML = 'Skip intro <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      if (i === ONBOARDING_STEPS.length - 1) skipBtn.classList.add('hidden');
       skipBtn.addEventListener('click', closeOnboarding);
 
       // Next/Done button
       const nextBtn = document.createElement('button');
       nextBtn.className = 'onboarding-next';
-      nextBtn.innerHTML = '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+      nextBtn.innerHTML = i === ONBOARDING_STEPS.length - 1
+        ? '<span class="onboarding-next-text">Done</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        : '<span class="onboarding-next-text">Next</span><svg class="onboarding-next-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
       nextBtn.addEventListener('click', nextOnboardingStep);
 
       footer.appendChild(dotsWrap);
@@ -6097,38 +5903,29 @@ if (typeof AdminAssistant !== 'undefined') {
       footer.appendChild(nextBtn);
       card.appendChild(footer);
 
-      if (i !== 0) card.style.display = 'none';
-      stepsContainer.appendChild(card);
+      slide.appendChild(card);
+      track.appendChild(slide);
     });
 
+    stepsContainer.appendChild(track);
     onboardingStep = 0;
+    overlay.classList.remove('closing');
     overlay.style.display = 'block';
-    updateNextButton();
-
-    // Position first step after a short delay so layout is computed
-    setTimeout(() => {
-      const firstCard = stepsContainer.children[0];
-      if (firstCard) {
-        positionStep(0);
-        void firstCard.offsetWidth;
-        firstCard.classList.add('active');
-      }
-    }, 50);
+    requestAnimationFrame(() => showStep(0));
   }
 
   function initOnboarding() {
     if (localStorage.getItem(ONBOARDING_KEY)) return;
+    if (typeof AdminAssistant !== 'undefined' && localStorage.getItem(AI_SETUP_MODE_KEY) !== 'assistant') return;
 
     // Wait for analytics page to be visible, then show walkthrough
     const waitForReady = () => {
       const analyticsPage = document.getElementById('analytics-page');
       if (analyticsPage && analyticsPage.style.display !== 'none') {
-        // Force mount overview section if not loaded (needed for step 3 widget X target)
         const overviewContent = document.querySelector('.section-content[data-section="overview"]');
         if (overviewContent && !overviewContent.classList.contains('loaded')) {
           mountSection('overview');
         }
-        // Small extra delay to let mount finish rendering
         setTimeout(showOnboarding, 100);
       } else {
         setTimeout(waitForReady, 200);
@@ -6136,14 +5933,6 @@ if (typeof AdminAssistant !== 'undefined') {
     };
     setTimeout(waitForReady, 300);
   }
-
-  // Reposition on resize
-  let onboardingResizeTimer;
-  window.addEventListener('resize', () => {
-    if (overlay.style.display === 'none') return;
-    clearTimeout(onboardingResizeTimer);
-    onboardingResizeTimer = setTimeout(() => positionStep(onboardingStep), 100);
-  });
 
   window.triggerWalkthrough = function() {
     localStorage.removeItem(ONBOARDING_KEY);
