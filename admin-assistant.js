@@ -2853,12 +2853,17 @@ ${role === 'agent'
     removeTypingIndicators();
   }
 
-  function showConfigChange(text) {
+  function showConfigChange(text, { variant = 'success' } = {}) {
     const container = getMessagesContainer();
     if (!container) return;
     const pill = document.createElement('div');
     pill.className = 'ai-setup-config-change';
-    pill.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#00490C" fill-opacity="0.15"/><path d="M5 8l2 2 4-4" stroke="#00490C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${escapeHtml(text)}</span>`;
+    const icons = {
+      success: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#00490C" fill-opacity="0.15"/><path d="M5 8l2 2 4-4" stroke="#00490C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      warning: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#92400e" fill-opacity="0.15"/><path d="M8 5.5v3" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="10.75" r="0.75" fill="#92400e"/></svg>`,
+    };
+    pill.innerHTML = `${icons[variant] || icons.success}<span>${escapeHtml(text)}</span>`;
+    if (variant === 'warning') pill.classList.add('ai-setup-config-warning');
     container.appendChild(pill);
     animateThreadElement(pill);
     scrollThreadRevealIntoView(container, pill);
@@ -4125,7 +4130,7 @@ ${role === 'agent'
         const partialMessage = websiteFailure
           ? 'I couldn’t fetch one or more website sources, but I used the other context that was available.'
           : 'I used the sources that worked and skipped the ones I couldn’t read.';
-        showConfigChange(partialMessage);
+        showConfigChange(partialMessage, { variant: 'warning' });
       }
 
       wrapper.classList.add('ai-setup-source-resolved');
