@@ -120,7 +120,6 @@ const LEGACY_CUSTOMER_PROFILE_MIGRATIONS = {
 
 const FEATURE_FLAGS = [
   { id: 'anchors-nav',      label: 'Anchors navigation',      desc: 'Navigate between sections by scrolling instead of tabs', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
-  { id: 'onboarding-transition', label: 'Onboarding transition', desc: '', triState: { off: 'Off', me: 'Me', everyone: 'Everyone' } },
 ];
 
 function getFeatureFlagValue(id) {
@@ -5743,9 +5742,6 @@ window._prototypeGuideAPI = {
     // Use the existing flag setter which handles localStorage
     setFeatureFlag(id, value);
     // Trigger known side effects
-    if (id === 'onboarding-transition') {
-      syncAssistantFabIcon();
-    }
     if (id === 'anchors-nav') {
       var userToggle = localStorage.getItem(ANCHORS_NAV_USER_KEY) === 'true';
       applyNavMode((value !== 'off' || userToggle) ? 'anchors' : 'tabs');
