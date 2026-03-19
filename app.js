@@ -5820,11 +5820,12 @@ if (typeof AdminAssistant !== 'undefined') {
     });
   }
 
-  function showStep(index) {
+  function showStep(index, { animate = true } = {}) {
     onboardingStep = index;
     if (onboardingBodyText) {
       onboardingBodyText.textContent = ONBOARDING_STEPS[index].text;
-      animateStepText();
+      if (animate) animateStepText();
+      else onboardingBodyText.classList.remove('onboarding-step-text-enter');
     }
     updateControls();
     updateDots();
@@ -5919,7 +5920,7 @@ if (typeof AdminAssistant !== 'undefined') {
     onboardingStep = 0;
     overlay.classList.remove('closing');
     overlay.style.display = 'block';
-    requestAnimationFrame(() => showStep(0));
+    showStep(0, { animate: false });
   }
 
   function initOnboarding() {

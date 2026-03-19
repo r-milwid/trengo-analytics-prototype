@@ -2467,7 +2467,7 @@ body[data-role="agent"] .edit-only-ui        { display: none !important; }
   line-height: 1.7;
 }
 .onboarding-step-text.onboarding-step-text-enter {
-  animation: onboardingStepTextSlide 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: onboardingStepTextSlide 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes onboardingStepTextSlide {
