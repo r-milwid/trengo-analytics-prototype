@@ -1275,10 +1275,14 @@ ${role === 'agent'
       AssistantStorage.setPendingProposalSource(_session, options.source);
     }
     AssistantStorage.setPendingTabDraft(_session, null);
+    // Rebuild widget map from current tab state so the preview shows charts
+    const freshWidgetMap = buildPreviewWidgetMap(draft);
     AssistantStorage.setSuggestedConfigDraft(_session, {
       ...existingDraft,
       tabs: draft,
-      widgetIdsByTab: existingDraft.widgetIdsByTab || {},
+      widgetIdsByTab: Object.keys(freshWidgetMap).length > 0
+        ? freshWidgetMap
+        : existingDraft.widgetIdsByTab || {},
     });
     AssistantStorage.save(_session);
     renderPreview();
