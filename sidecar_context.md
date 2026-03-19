@@ -426,23 +426,23 @@ buttons: edit-customers=Customers, edit-teams=Teams
 ### Skip components threshold
 type: slider
 key: confidenceSkipComponents
-description: Minimum confidence (1-10) to skip heavy gathering components (source input, team matrix)
-min: 1
+description: Information-gathering depth (0=never gather, 10=always gather). Controls whether source input and team matrix are shown.
+min: 0
 max: 10
 step: 1
 
 ### Auto-draft threshold
 type: slider
 key: confidenceAutoDraft
-description: Minimum confidence (1-10) to draft immediately without any questions
-min: 1
+description: Confidence needed to draft immediately (0=always auto-draft, 10=always ask first)
+min: 0
 max: 10
 step: 1
 
 ### Skip density question threshold
 type: slider
 key: confidenceSkipDensity
-description: Minimum confidence (1-10) to skip the content density question and infer directly
-min: 1
+description: Confidence needed to infer density (0=never ask, 10=always ask about content density)
+min: 0
 max: 10
 step: 1
