@@ -417,12 +417,6 @@ action: reset-subnav
 
 ## Admin
 
-### Onboarding transition
-type: toggle
-flag: onboarding-transition
-
----
-
 ### Demo data
 type: button-row
 buttons: edit-customers=Customers, edit-teams=Teams

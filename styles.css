@@ -1503,8 +1503,7 @@ body.drawer-open .main-content { margin-right: 320px; }
 }
 
 .customer-settings-card.protected {
-  opacity: 0.55;
-  pointer-events: none;
+  display: none; /* replaced by cs-section layout */
 }
 
 .customer-settings-card-header {
@@ -1631,6 +1630,255 @@ body.drawer-open .main-content { margin-right: 320px; }
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* ── Customer modal: section layout ── */
+.cs-section {
+  margin-bottom: 20px;
+}
+.cs-section:last-child {
+  margin-bottom: 0;
+}
+.cs-section-header {
+  margin-bottom: 10px;
+}
+.cs-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cs-section-note {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
+
+/* Section 1: Default customer rows */
+.cs-defaults-list {
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--gray-50);
+}
+.cs-default-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.cs-default-row:last-child {
+  border-bottom: none;
+}
+.cs-default-company {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+  flex-shrink: 0;
+}
+.cs-default-sep {
+  color: var(--gray-300);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.cs-default-description {
+  font-size: 12px;
+  color: var(--gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Section 2: Add form */
+.cs-section-add {
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  overflow: hidden;
+}
+.cs-section-add .cs-section-header {
+  padding: 14px 16px 0;
+  margin-bottom: 14px;
+}
+.cs-section-add .cs-add-form {
+  padding: 0 16px 16px;
+}
+.cs-section-add.collapsed .cs-add-form,
+.cs-section-add.collapsed .cs-section-header {
+  display: none;
+}
+.cs-add-collapsed-header {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.12s;
+}
+.cs-add-collapsed-header:hover {
+  background: var(--gray-50);
+}
+.cs-section-add.collapsed .cs-add-collapsed-header {
+  display: flex;
+}
+.cs-add-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.cs-add-save-btn {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  border: none;
+  cursor: pointer;
+  background: var(--gray-900);
+  color: var(--white);
+  transition: background 0.15s;
+}
+.cs-add-save-btn:hover {
+  background: var(--gray-800);
+}
+
+/* Section 3: User customer rows */
+.cs-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+}
+.cs-user-row.editing {
+  border-radius: 10px 10px 0 0;
+  border-bottom-color: transparent;
+}
+.cs-user-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.cs-user-company {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+  flex-shrink: 0;
+}
+.cs-user-industry {
+  font-size: 12px;
+  color: var(--gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cs-user-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.cs-user-edit-btn,
+.cs-user-delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-500);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.cs-user-edit-btn:hover {
+  border-color: var(--gray-400);
+  color: var(--gray-700);
+}
+.cs-user-delete-btn:hover {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: var(--red-light);
+  color: var(--red);
+}
+
+/* Edit drawer */
+.cs-user-edit-drawer {
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  background: var(--gray-50);
+  margin-top: -6px;
+  margin-bottom: 2px;
+}
+.cs-edit-drawer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.cs-edit-save-btn {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  border: none;
+  cursor: pointer;
+  background: var(--gray-900);
+  color: var(--white);
+  transition: background 0.15s;
+}
+.cs-edit-save-btn:hover {
+  background: var(--gray-800);
+}
+.cs-edit-cancel-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cs-edit-cancel-btn:hover {
+  border-color: var(--gray-400);
+  background: var(--gray-100);
+}
+.cs-user-empty {
+  font-size: 12px;
+  color: var(--gray-400);
+  padding: 10px 0;
+}
+.cs-error {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #b42318;
 }
 
 .ai-chat-label {

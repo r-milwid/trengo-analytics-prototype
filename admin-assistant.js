@@ -4957,7 +4957,7 @@ ${role === 'agent'
       card.querySelector('.ai-setup-customer-edit').addEventListener('click', (e) => {
         e.stopPropagation();
         if (typeof window.openCustomerSettingsModal === 'function') {
-          window.openCustomerSettingsModal('admin');
+          window.openCustomerSettingsModal();
         }
       });
       grid.appendChild(card);
@@ -4968,7 +4968,7 @@ ${role === 'agent'
     if (addBtn) {
       addBtn.onclick = () => {
         if (typeof window.openCustomerSettingsModal === 'function') {
-          window.openCustomerSettingsModal('admin');
+          window.openCustomerSettingsModal();
         }
       };
     }
