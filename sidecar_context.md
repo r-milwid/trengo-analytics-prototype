@@ -435,6 +435,8 @@ description: How much context before asking for sources
 min: 0
 max: 10
 step: 1
+minLabel: None
+maxLabel: Max
 
 #### Team confirmation
 type: slider
@@ -443,6 +445,8 @@ description: How much context before confirming teams
 min: 0
 max: 10
 step: 1
+minLabel: None
+maxLabel: Max
 
 #### Decision goals
 type: slider
@@ -451,6 +455,8 @@ description: How much context before asking about goals
 min: 0
 max: 10
 step: 1
+minLabel: None
+maxLabel: Max
 
 #### Signal follow-up
 type: slider
@@ -459,6 +465,8 @@ description: How much context before asking about signals
 min: 0
 max: 10
 step: 1
+minLabel: None
+maxLabel: Max
 
 #### Auto-draft
 type: slider
@@ -467,6 +475,8 @@ description: How much context before drafting
 min: 0
 max: 10
 step: 1
+minLabel: None
+maxLabel: Max
 
 #### Density question
 type: slider
@@ -475,6 +485,8 @@ description: How much context before asking about density
 min: 0
 max: 10
 step: 1
+minLabel: None
+maxLabel: Max
 
 #### Correction sensitivity
 type: slider
@@ -483,3 +495,5 @@ description: How readily deviations are logged as corrections
 min: 0
 max: 10
 step: 1
+minLabel: Off
+maxLabel: All
