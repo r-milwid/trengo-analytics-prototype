@@ -399,20 +399,7 @@ body {
 .scope-indicator.visible { display: inline-flex; }
 
 /* Filter bar */
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-  position: relative;
-}
-.filter-bar[data-location="top"] {
-  position: absolute;
-  top: clamp(12px, 2vw, 20px);
-  right: clamp(96px, 16vw, 168px);
-  z-index: 2;
-}
+.filter-bar { display: flex; gap: 8px; }
 .filter-chip {
   display: flex;
   align-items: center;
@@ -426,79 +413,11 @@ body {
   cursor: pointer;
   transition: border-color .15s;
   position: relative;
-  white-space: nowrap;
 }
 .filter-chip:hover { border-color: var(--gray-400); }
 .filter-chip.active-filter { border-color: var(--black); background: var(--gray-50); }
 .filter-chip.filter-applied { border-color: var(--accent); color: var(--accent); font-weight: 500; }
-.filter-chip-label {
-  display: inline;
-  min-width: 0;
-}
-.filter-chip-icon {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--gray-100);
-  color: currentColor;
-  flex-shrink: 0;
-}
-.filter-chip-icon svg {
-  display: block;
-  width: 14px;
-  height: 14px;
-}
-.filter-chip-chevron {
-  flex-shrink: 0;
-}
-.filter-chip--date .filter-chip-icon {
-  background: var(--blue-light);
-}
-.filter-chip--channel .filter-chip-icon {
-  background: rgba(20, 184, 166, 0.14);
-}
-.filter-chip--team .filter-chip-icon {
-  background: var(--purple-light);
-}
-
-.filter-bar[data-mode="full"] .filter-chip,
-.filter-chip[data-mode="full"] {
-  padding: 5px 12px;
-  justify-content: flex-start;
-}
-.filter-bar[data-mode="full"] .filter-chip-label,
-.filter-chip[data-mode="full"] .filter-chip-label {
-  display: inline;
-}
-.filter-bar[data-mode="full"] .filter-chip-icon,
-.filter-chip[data-mode="full"] .filter-chip-icon {
-  display: none;
-}
-.filter-bar[data-mode="full"] .filter-chip-chevron,
-.filter-chip[data-mode="full"] .filter-chip-chevron {
-  display: inline-block;
-}
-
-.filter-bar[data-mode="compact"] .filter-chip,
-.filter-chip[data-mode="compact"] {
-  padding: 5px 8px;
-  justify-content: center;
-}
-.filter-bar[data-mode="compact"] .filter-chip-label,
-.filter-chip[data-mode="compact"] .filter-chip-label {
-  display: none;
-}
-.filter-bar[data-mode="compact"] .filter-chip-icon,
-.filter-chip[data-mode="compact"] .filter-chip-icon {
-  display: inline-flex;
-}
-.filter-bar[data-mode="compact"] .filter-chip-chevron,
-.filter-chip[data-mode="compact"] .filter-chip-chevron {
-  display: none;
-}
+.filter-chip-icon { padding: 5px 8px; }
 
 /* Sub-nav */
 .sub-nav {
