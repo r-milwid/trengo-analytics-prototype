@@ -4189,7 +4189,7 @@ function renderTabs() {
   addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>`;
   addBtn.addEventListener('click', () => createNewTab());
   nav.appendChild(addBtn);
-
+  scheduleResponsiveFilterLayoutUpdate();
 }
 
 function renderSections() {
@@ -4498,7 +4498,9 @@ function navigate(view) {
       if (state.navMode === 'anchors') {
         resetLazySections();
       }
+      scheduleResponsiveFilterLayoutUpdate();
     }, 50);
+    scheduleResponsiveFilterLayoutUpdate();
   } else {
     state.currentView = 'landing';
     document.getElementById('landing-state').style.display = 'flex';
@@ -4586,6 +4588,8 @@ function setViewEditMode(mode) {
     [...state.loadedSections].forEach(s => remountSection(s));
   }
   applyTeamSettingsFlag();
+  renderFilterChips(_filterChipCompactMode);
+  scheduleResponsiveFilterLayoutUpdate();
 }
 
 // Default: View/Edit mode enabled on load
@@ -4660,6 +4664,170 @@ async function performResetAll() {
 
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
+const FILTER_CHIP_IDS = ['filter-date', 'filter-channel', 'filter-team'];
+const FILTER_CHIP_CHEVRON_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l3 3 3-3"/></svg>`;
+const FILTER_CHIP_ICON_SVG = {
+  'filter-date': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12"/><path d="M5 1.5v3"/><path d="M11 1.5v3"/></svg>`,
+  'filter-channel': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10a1 1 0 011 1v4a1 1 0 01-1 1H8.2L5 14v-3.5H3a1 1 0 01-1-1v-4a1 1 0 011-1z"/><path d="M5 7h6"/></svg>`,
+  'filter-team': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="5.2" r="2"/><circle cx="11" cy="6.2" r="1.7"/><path d="M1.8 13.2c.7-2.3 2.5-3.6 5.2-3.6s4.5 1.3 5.2 3.6"/><path d="M8.6 13.2c.4-1.4 1.5-2.3 3.1-2.3 1.4 0 2.5.7 3.1 2.3"/></svg>`
+};
+let _filterChipCompactMode = false;
+let _filterLayoutSyncRaf = 0;
+let _filterLayoutResizeObserver = null;
+
+function getFilterBarEl() {
+  return document.querySelector('.filter-bar');
+}
+
+function getSubNavEl() {
+  return document.getElementById('sub-nav');
+}
+
+function getSubNavTabsEl() {
+  return document.getElementById('sub-nav-tabs');
+}
+
+function getSubNavActionsEl() {
+  return document.getElementById('sub-nav-actions');
+}
+
+function getFilterChipLabel(filterId) {
+  if (filterId === 'filter-date') return state.dateFilter || 'Last 30 days';
+  if (filterId === 'filter-channel') {
+    const n = state.channelFilter.size;
+    if (n === 0) return 'All channels';
+    if (n === 1) return [...state.channelFilter][0];
+    return `${n} channels`;
+  }
+  if (filterId === 'filter-team') return state.teamFilter || 'All teams';
+  return '';
+}
+
+function renderFilterChip(filterId, compact = _filterChipCompactMode) {
+  const chip = document.getElementById(filterId);
+  if (!chip) return;
+
+  const label = getFilterChipLabel(filterId);
+  const filterBar = getFilterBarEl();
+  chip.dataset.mode = compact ? 'compact' : 'full';
+  chip.dataset.location = filterBar?.dataset.location || 'subnav';
+  chip.dataset.filterKey = filterId.replace('filter-', '');
+  chip.setAttribute('aria-label', label);
+  chip.title = label;
+  chip.innerHTML = compact
+    ? (FILTER_CHIP_ICON_SVG[filterId] || FILTER_CHIP_ICON_SVG['filter-date'])
+    : `<span>${escapeHtml(label)}</span>${FILTER_CHIP_CHEVRON_SVG}`;
+}
+
+function renderFilterChips(compact = _filterChipCompactMode) {
+  FILTER_CHIP_IDS.forEach(filterId => renderFilterChip(filterId, compact));
+}
+
+function moveFilterBarToSubNav() {
+  const filterBar = getFilterBarEl();
+  const subNav = getSubNavEl();
+  const tabs = getSubNavTabsEl();
+  if (!filterBar || !subNav) return;
+  if (filterBar.parentElement === subNav) return;
+  subNav.insertBefore(filterBar, tabs ? tabs.nextSibling : subNav.firstChild);
+  filterBar.dataset.location = 'subnav';
+}
+
+function moveFilterBarToTopRow() {
+  const filterBar = getFilterBarEl();
+  const actions = getSubNavActionsEl();
+  const anchor = viewEditToggleBtn || document.getElementById('viewedit-toggle-btn');
+  if (!filterBar || !actions) return;
+  if (anchor && anchor.parentElement === actions) {
+    actions.insertBefore(filterBar, anchor);
+  } else {
+    actions.appendChild(filterBar);
+  }
+  filterBar.dataset.location = 'top';
+}
+
+function repositionSharedFilterDropdown() {
+  const dropdown = document.getElementById('filter-dropdown');
+  if (!dropdown || dropdown.style.display !== 'block') return;
+  const filterId = dropdown.dataset.filter;
+  if (!filterId) return;
+  const chip = document.getElementById(filterId);
+  if (!chip) return;
+  const rect = chip.getBoundingClientRect();
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+  dropdown.style.left = rect.left + 'px';
+}
+
+function repositionChannelDropdown() {
+  const dropdown = document.getElementById('channel-dropdown');
+  if (!dropdown || dropdown.style.display !== 'flex') return;
+  const chip = document.getElementById('filter-channel');
+  if (!chip) return;
+  const rect = chip.getBoundingClientRect();
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+  dropdown.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 400)) + 'px';
+}
+
+function repositionOpenFilterDropdowns() {
+  repositionSharedFilterDropdown();
+  repositionChannelDropdown();
+}
+
+function syncResponsiveFilterLayout() {
+  const filterBar = getFilterBarEl();
+  const subNav = getSubNavEl();
+  const tabs = getSubNavTabsEl();
+  const header = document.getElementById('analytics-header');
+  if (!filterBar || !subNav || !tabs || state.currentView !== 'analytics') return;
+
+  moveFilterBarToSubNav();
+  renderFilterChips(false);
+  const fullFits = tabs.scrollWidth + filterBar.scrollWidth <= subNav.clientWidth + 1;
+
+  let compactMode = false;
+  let dockedTop = false;
+
+  if (!fullFits) {
+    renderFilterChips(true);
+    moveFilterBarToSubNav();
+    compactMode = true;
+    dockedTop = tabs.scrollWidth + filterBar.scrollWidth > subNav.clientWidth + 1;
+  }
+
+  _filterChipCompactMode = compactMode;
+  renderFilterChips(compactMode);
+  if (dockedTop) moveFilterBarToTopRow();
+  else moveFilterBarToSubNav();
+  filterBar.dataset.mode = compactMode ? 'compact' : 'full';
+  filterBar.dataset.location = dockedTop ? 'top' : 'subnav';
+  if (header) {
+    header.dataset.location = dockedTop ? 'top' : 'subnav';
+    header.dataset.mode = compactMode ? 'compact' : 'full';
+  }
+  subNav.dataset.location = dockedTop ? 'top' : 'subnav';
+  subNav.dataset.mode = compactMode ? 'compact' : 'full';
+  repositionOpenFilterDropdowns();
+}
+
+function scheduleResponsiveFilterLayoutUpdate() {
+  if (_filterLayoutSyncRaf) return;
+  _filterLayoutSyncRaf = requestAnimationFrame(() => {
+    _filterLayoutSyncRaf = 0;
+    syncResponsiveFilterLayout();
+  });
+}
+
+window.addEventListener('resize', scheduleResponsiveFilterLayoutUpdate);
+if (window.ResizeObserver) {
+  _filterLayoutResizeObserver = new ResizeObserver(() => scheduleResponsiveFilterLayoutUpdate());
+  [
+    document.getElementById('analytics-header'),
+    document.getElementById('sub-nav'),
+    document.getElementById('sub-nav-tabs'),
+    document.getElementById('sub-nav-actions')
+  ].filter(Boolean).forEach(el => _filterLayoutResizeObserver.observe(el));
+}
+
 function buildTickSVG() {
   return `<svg class="filter-option-tick" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6.5 5.5 10 11 3"/></svg>`;
 }
@@ -4788,13 +4956,10 @@ function updateChannelChipLabel() {
   const chip = document.getElementById('filter-channel');
   if (!chip) return;
   const n = state.channelFilter.size;
-  let label;
-  if (n === 0) label = 'All channels';
-  else if (n === 1) label = [...state.channelFilter][0];
-  else label = n + ' channels';
-  chip.querySelector('span').textContent = label;
   // Toggle active styling on chip when filter is applied
   chip.classList.toggle('filter-applied', n > 0);
+  renderFilterChip('filter-channel', _filterChipCompactMode);
+  scheduleResponsiveFilterLayoutUpdate();
 }
 
 const filterConfigs = {
@@ -4832,9 +4997,8 @@ function updateTeamFilterOptions() {
 
   const chip = document.getElementById('filter-team');
   if (chip) {
-    const label = chip.querySelector('span');
-    if (label) label.textContent = state.teamFilter;
     chip.classList.toggle('filter-applied', state.teamFilter !== 'All teams');
+    renderFilterChip('filter-team', _filterChipCompactMode);
   }
 
   const dropdown = document.getElementById('filter-dropdown');
@@ -4844,6 +5008,8 @@ function updateTeamFilterOptions() {
       `<div class="filter-option ${state.teamFilter === opt ? 'selected' : ''}" data-value="${opt}"><span class="filter-option-label">${opt}</span>${buildTickSVG()}</div>`
     ).join('');
   }
+
+  scheduleResponsiveFilterLayoutUpdate();
 }
 
 updateTeamFilterOptions();
@@ -4895,7 +5061,6 @@ Object.keys(filterConfigs).forEach(filterId => {
 });
 
 // Single delegated listener on content — wired once, handles all filters
-const _filterLabels = { 'filter-date': 'Date', 'filter-channel': 'Channel', 'filter-team': 'Team' };
 document.getElementById('filter-dropdown-content').addEventListener('click', e => {
   const item = e.target.closest('.filter-option');
   if (!item) return;
@@ -4920,12 +5085,17 @@ document.getElementById('filter-dropdown-content').addEventListener('click', e =
   // Leaf item — apply filter + close
   state[config.stateKey] = item.dataset.value;
   window.sendEvent('Filter changed — ' + config.stateKey + ' = ' + item.dataset.value);
-  chip.querySelector('span').textContent = item.dataset.value;
   dropdown.style.display = 'none';
   chip.classList.remove('active-filter');
   [...state.loadedSections].forEach(s => remountSection(s));
   if (filterId === 'filter-team') syncLensButtons();
   if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
+  if (filterId === 'filter-channel') {
+    updateChannelChipLabel();
+  } else {
+    renderFilterChip(filterId, _filterChipCompactMode);
+    scheduleResponsiveFilterLayoutUpdate();
+  }
 });
 
 // ── Channel two-panel: types panel click ──────────────────────
@@ -5007,6 +5177,7 @@ let _teamSettingsMode = 'session'; // 'session' | 'default'
 function applyTeamSettingsFlag() {
   const btn = document.getElementById('team-display-settings-btn');
   if (btn) btn.style.display = _currentViewMode === 'edit' ? '' : 'none';
+  scheduleResponsiveFilterLayoutUpdate();
 }
 
 function buildTeamSettingsDraft(teams) {
