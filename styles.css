@@ -1108,26 +1108,6 @@ body {
   max-height: 600px;
 }
 
-/* Empty state tile */
-.empty-tile {
-  background: var(--gray-50);
-  border: 2px dashed var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: 32px;
-  text-align: center;
-  color: var(--gray-400);
-  font-size: 13px;
-}
-.empty-tile .add-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 12px;
-  color: var(--blue);
-  font-weight: 500;
-  cursor: pointer;
-}
-
 /* ============================================================
    TABLE WIDGET
    ============================================================ */
@@ -2359,7 +2339,6 @@ body[data-viewmode="view"] .drag-handle        { display: none !important; }
 body[data-viewmode="view"] .add-widget-btn      { display: none !important; }
 body[data-viewmode="view"] .resize-handle       { display: none !important; }
 body[data-viewmode="view"] .widget-action-btn:not(.widget-download-btn) { display: none !important; }
-body[data-viewmode="view"] .empty-tile          { display: none !important; }
 body[data-viewmode="view"] #manage-widgets-btn  { display: none !important; }
 body[data-viewmode="view"] .edit-only-ui        { display: none !important; }
 

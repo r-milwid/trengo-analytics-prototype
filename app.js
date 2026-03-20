@@ -1683,7 +1683,7 @@ function moveWidget(sectionId, id, direction) {
 
 function buildRowRects(sectionId, gridEl, layout) {
   const rects = Array.from({ length: layout.rows.length }, () => ({ top: Infinity, bottom: -Infinity }));
-  gridEl.querySelectorAll('.widget-card, .empty-tile, .drag-placeholder').forEach(el => {
+  gridEl.querySelectorAll('.widget-card, .drag-placeholder').forEach(el => {
     const rowIdx = Number(el.dataset.row);
     if (Number.isNaN(rowIdx)) return;
     const r = rects[rowIdx];
@@ -2172,32 +2172,6 @@ function onResizeMove(e) {
       resizeState.placeholder.style.gridRow = placement.row + 1;
       resizeState.placeholder.dataset.row = placement.row;
 
-      // Adjust empty tile in the same row so it doesn't overlap the resized card
-      const grid = resizeState.cardEl ? resizeState.cardEl.closest('.widget-grid') : null;
-      if (grid) {
-        const row = layout.rows[placement.row];
-        if (row) {
-          // Calculate total occupied columns in this row (using original spans, not the resize target)
-          const rowIds = rowCardIds(row);
-          let occupiedCols = 0;
-          rowIds.forEach(id => {
-            const p = layout.placements[id];
-            if (p) occupiedCols += (id === widgetId ? targetSpan : p.span);
-          });
-          const emptySpan = Math.max(0, 12 - occupiedCols);
-          const emptyStart = occupiedCols;
-          grid.querySelectorAll('.empty-tile').forEach(tile => {
-            if (Number(tile.dataset.row) === placement.row) {
-              if (emptySpan <= 0) {
-                tile.style.display = 'none';
-              } else {
-                tile.style.display = '';
-                tile.style.gridColumn = `${emptyStart + 1} / span ${emptySpan}`;
-              }
-            }
-          });
-        }
-      }
     }
     // Keep card content undistorted; only move ghost edge + placeholder
     if (resizeState.ghostCard && resizeState.cardRect) {
@@ -3579,66 +3553,13 @@ function mountSection(sectionId) {
 
   const widgets = getVisibleWidgets(sectionId);
   const baseLayout = ensureLayout(sectionId, widgets);
-  const { layout, emptyTiles } = normalizeLayout(sectionId, baseLayout);
+  const { layout } = normalizeLayout(sectionId, baseLayout);
 
   widgets.forEach(w => {
     const placement = layout.placements[w.id];
     const card = renderWidget(w, sectionId, placement, layout.rows, layout);
     if (card) grid.appendChild(card);
   });
-
-  // Count widgets that could be added via the drawer (from all categories, not on this tab)
-  const tabWidgetSet = state.tabWidgets[sectionId] || new Set();
-  let availableNotOnTab = 0;
-  Object.keys(WIDGETS).forEach(cat => {
-    WIDGETS[cat].forEach(w => {
-      if (tabWidgetSet.has(w.id)) return; // already on this tab
-      if (getStateOverride(w) === 'hide') return; // not available in this role/lens
-      if (w.hideWhenTeamFiltered && state.teamFilter && state.teamFilter !== 'All teams') return;
-      if (w.hideWhenChannelFiltered && state.channelFilter.size > 0) return;
-      if (w.hideWhenNonVoiceChannel && isNonVoiceChannelActive()) return;
-      availableNotOnTab++;
-    });
-  });
-  const hiddenCount = availableNotOnTab;
-  const allWidgets = getWidgetsForTab(sectionId);
-  const isEmptyPage = tabWidgetSet.size === 0;
-  const emptyPageHtml = `<div>Add widgets to build this page</div>
-    <div class="add-cta" onclick="openWidgetDrawer('${sectionId}')">+ Manage widgets</div>`;
-
-  if (emptyTiles.length > 0) {
-    emptyTiles.forEach(tile => {
-      const empty = document.createElement('div');
-      empty.className = 'empty-tile';
-      if (isEmptyPage) {
-        empty.innerHTML = emptyPageHtml;
-      } else if (hiddenCount > 0) {
-        empty.innerHTML = `<div>${hiddenCount} more widget${hiddenCount > 1 ? 's' : ''} available</div>
-          <div class="add-cta" onclick="openWidgetDrawer('${sectionId}')">+ Add widgets</div>`;
-      } else {
-        empty.innerHTML = `<div>All widgets are shown</div>`;
-      }
-      empty.style.gridColumn = `${tile.col + 1} / span ${tile.span}`;
-      empty.style.gridRow = tile.row + 1;
-      empty.dataset.row = tile.row;
-      grid.appendChild(empty);
-    });
-  } else if (hiddenCount >= 0 || isEmptyPage) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-tile';
-    if (isEmptyPage) {
-      empty.innerHTML = emptyPageHtml;
-    } else if (hiddenCount > 0) {
-      empty.innerHTML = `<div>${hiddenCount} more widget${hiddenCount > 1 ? 's' : ''} available</div>
-        <div class="add-cta" onclick="openWidgetDrawer('${sectionId}')">+ Add widgets</div>`;
-    } else {
-      empty.innerHTML = `<div>All widgets are shown</div>`;
-    }
-    empty.style.gridColumn = `1 / span 12`;
-    empty.style.gridRow = layout.rows.length + 1;
-    empty.dataset.row = layout.rows.length;
-    grid.appendChild(empty);
-  }
 
   contentEl.appendChild(grid);
   contentEl.classList.add('loaded');
