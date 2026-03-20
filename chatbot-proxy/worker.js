@@ -151,28 +151,116 @@ export default {
       }
     }
 
-    // ── POST /onboarding/chat — Sonnet proxy with tool_use ────
+    // ── POST /onboarding/chat — AI proxy with Anthropic → OpenAI fallback ────
     if (path === '/onboarding/chat' && request.method === 'POST') {
       try {
         const { system, messages, tools } = await request.json();
-        const body = {
-          model: 'claude-sonnet-4-6',
-          max_tokens: 4096,
-          system,
-          messages,
-        };
-        if (tools && tools.length > 0) body.tools = tools;
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': env.ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify(body),
-        });
-        const data = await response.json();
-        return json(data);
+
+        // --- Provider 1: Anthropic (Claude Sonnet) ---
+        if (env.ANTHROPIC_API_KEY) {
+          const anthropicBody = {
+            model: 'claude-sonnet-4-6',
+            max_tokens: 4096,
+            system,
+            messages,
+          };
+          if (tools && tools.length > 0) anthropicBody.tools = tools;
+          const anthropicResp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify(anthropicBody),
+          });
+          const anthropicData = await anthropicResp.json();
+          // Only fall through on billing/auth errors, not on successful responses (even with stop_reason)
+          if (anthropicResp.ok) return json(anthropicData);
+          const errType = anthropicData?.error?.type || '';
+          const errMsg = anthropicData?.error?.message || '';
+          const isBillingOrAuth = errType === 'authentication_error' ||
+            errMsg.toLowerCase().includes('credit') ||
+            errMsg.toLowerCase().includes('billing') ||
+            anthropicResp.status === 401 || anthropicResp.status === 403;
+          if (!isBillingOrAuth) return json(anthropicData, anthropicResp.status);
+          // Billing/auth error → fall through to OpenAI
+        }
+
+        // --- Provider 2: OpenAI (GPT-4.1) ---
+        if (env.OPENAI_API_KEY) {
+          // Convert Anthropic message format to OpenAI format
+          const openaiMessages = [];
+          if (system) openaiMessages.push({ role: 'system', content: system });
+          for (const msg of messages) {
+            if (typeof msg.content === 'string') {
+              openaiMessages.push({ role: msg.role, content: msg.content });
+            } else if (Array.isArray(msg.content)) {
+              // Handle tool_result blocks and text blocks
+              const parts = [];
+              const toolResults = [];
+              for (const block of msg.content) {
+                if (block.type === 'text') parts.push(block.text);
+                else if (block.type === 'tool_use') {
+                  // Assistant tool call — handled separately
+                  openaiMessages.push({ role: 'assistant', content: parts.length ? parts.join('\n') : null,
+                    tool_calls: [{ id: block.id, type: 'function', function: { name: block.name, arguments: JSON.stringify(block.input) } }] });
+                  parts.length = 0;
+                  continue;
+                } else if (block.type === 'tool_result') {
+                  toolResults.push({ role: 'tool', tool_call_id: block.tool_use_id, content: typeof block.content === 'string' ? block.content : JSON.stringify(block.content) });
+                }
+              }
+              if (parts.length > 0) openaiMessages.push({ role: msg.role, content: parts.join('\n') });
+              toolResults.forEach(tr => openaiMessages.push(tr));
+            }
+          }
+
+          // Convert Anthropic tools to OpenAI function format
+          let openaiTools;
+          if (tools && tools.length > 0) {
+            openaiTools = tools.map(t => ({
+              type: 'function',
+              function: { name: t.name, description: t.description, parameters: t.input_schema },
+            }));
+          }
+
+          const openaiBody = { model: 'gpt-4.1', messages: openaiMessages, max_tokens: 4096 };
+          if (openaiTools) openaiBody.tools = openaiTools;
+
+          const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.OPENAI_API_KEY}` },
+            body: JSON.stringify(openaiBody),
+          });
+          const openaiData = await openaiResp.json();
+
+          if (openaiResp.ok) {
+            // Normalise OpenAI response → Anthropic format for frontend compatibility
+            const choice = openaiData.choices?.[0];
+            const contentBlocks = [];
+            if (choice?.message?.content) contentBlocks.push({ type: 'text', text: choice.message.content });
+            if (choice?.message?.tool_calls) {
+              for (const tc of choice.message.tool_calls) {
+                contentBlocks.push({
+                  type: 'tool_use', id: tc.id, name: tc.function.name,
+                  input: JSON.parse(tc.function.arguments || '{}'),
+                });
+              }
+            }
+            return json({
+              id: openaiData.id, type: 'message', role: 'assistant', content: contentBlocks,
+              stop_reason: choice?.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn',
+              model: openaiData.model, provider: 'openai',
+            });
+          }
+          const openaiErr = openaiData?.error?.code || openaiData?.error?.type || '';
+          const isOpenAIBilling = openaiErr === 'insufficient_quota' || openaiResp.status === 401 || openaiResp.status === 429;
+          if (!isOpenAIBilling) return json({ error: openaiData?.error?.message || 'OpenAI error' }, openaiResp.status);
+          // Fall through to Gemini
+        }
+
+        return json({ error: 'No AI provider available — check API keys' }, 503);
       } catch (e) {
         return json({ error: 'proxy error', message: e.message }, 500);
       }
