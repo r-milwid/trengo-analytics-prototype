@@ -20,6 +20,8 @@ const AdminAssistant = (() => {
   const AI_SETUP_MODE_KEY = 'trengo_ai_setup_mode'; // 'onboarding' | 'assistant' | null
   const THREAD_REVEAL_DELAY_MS = 1200;
   const WORKING_WORD_ROTATION_MS = 2400;
+  const META_START_AUTO_SCROLL_DELAY_MS = 200;
+  const META_START_AUTO_SCROLL_TOP_MARGIN = 24;
   const BACKGROUND_WORKING_TOOLS = new Set([
     'inspect_data_capability',
     'plan_semantic_query',
@@ -126,6 +128,7 @@ const AdminAssistant = (() => {
   let _threadRevealGeneration = 0;
   let _threadScrollSequence = null;
   let _forceNextSequenceAutoScroll = false;
+  let _metaStartAutoScrollTimeout = null;
   let _robotPreviewRunning = false;
   const _statusWordRotations = new WeakMap();
 
@@ -712,14 +715,9 @@ Mode: ${mode.toUpperCase()} | Role: ${role}
 - Use show_tab_editor when direct editing is faster than conversational back-and-forth.
 - Use show_tab_proposal_choice when presenting a tab proposal. The choices should be: accept proposals, refine further, or keep defaults.
 - Use show_source_input when source material would help and the user has not already provided enough.
-- When there are only a few likely answers or next actions, lean toward clickable choices instead of free text, especially after a proposal, summary, or final check-in.
-- Prefer chips or other compact clickable choices when 2-4 likely responses would make the user's next step faster and clearer.
-- After summarizing a proposed setup or asking whether anything should change, strongly prefer compact clickable choices if the likely responses are things like yes/no, good to go, adjust, refine, or review.
-- If you are about to ask a short follow-up question and the likely answers are a small, clear set, prefer clickable choices over free text.
+- Use clickable choices for yes/no questions, confirmations, proceed/adjust decisions, and any question where you can reasonably anticipate the likely answers — up to 5 options, with an open-ended 'Other' option as a 6th when the set may not be exhaustive. Form the clickable options based on what you expect the most common or useful responses would be given the context. Fall back to plain text when the question is not easily answered by short options you can anticipate and requires an open-ended or free-form typed answer from the user.
 - If two short follow-up questions would each have a small, clear answer set, prefer asking them one at a time with clickable choices rather than bundling them into one free-text prompt.
 - If you are naming possible answers inside the question, that is usually a sign the user should be able to click them instead. Prefer a choice UI rather than embedding those options in prose.
-- If a question has an obvious either/or structure, or a short list like "A, B, C, or something else", prefer show_options or show_boolean_choice over plain text.
-- After source analysis, if the next clarification has a small likely answer set, strongly prefer clickable choices. Do not ask "two quick questions" as plain text if either question could be answered faster by clicking.
 - RULE: If you are about to send a message that contains options embedded in prose (e.g. "Would you like to A, B, or C?"), you MUST convert it to a show_options call instead. Prose-embedded choices are never acceptable when a tool alternative exists.
 - Prefer the smallest tool or tool sequence that can answer well or move the workflow forward. Do not chain tools just because they are available.
 </tool_choice>
@@ -5030,6 +5028,57 @@ ${role === 'agent'
     return true;
   }
 
+  function clearMetaStartAutoScroll() {
+    if (_metaStartAutoScrollTimeout) {
+      clearTimeout(_metaStartAutoScrollTimeout);
+      _metaStartAutoScrollTimeout = null;
+    }
+  }
+
+  function isElementClippedAtContainerBottom(element, container) {
+    if (!element || !container) return false;
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return elementRect.top < containerRect.bottom && elementRect.bottom > containerRect.bottom;
+  }
+
+  function getElementBottomAfterScroll(element, container, scrollTop) {
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const elementTopInContainer = container.scrollTop + (elementRect.top - containerRect.top);
+    const elementBottomInContainer = elementTopInContainer + elementRect.height;
+    return elementBottomInContainer - scrollTop;
+  }
+
+  // On short screens, a partial tap near the bottom should reveal the footer
+  // without scrolling so far that the tapped card disappears above the viewport.
+  function maybeAutoScrollMetaStartBottom(target) {
+    clearMetaStartAutoScroll();
+    if (!target?.isConnected) return;
+
+    const container = document.getElementById('ai-setup-meta');
+    if (!container || !container.isConnected || !isElementClippedAtContainerBottom(target, container)) return;
+
+    const bottomScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    if (bottomScrollTop <= container.scrollTop + 1) return;
+    if (getElementBottomAfterScroll(target, container, bottomScrollTop) <= META_START_AUTO_SCROLL_TOP_MARGIN) return;
+
+    _metaStartAutoScrollTimeout = window.setTimeout(() => {
+      _metaStartAutoScrollTimeout = null;
+      if (!target.isConnected || !container.isConnected) return;
+      if (!isElementClippedAtContainerBottom(target, container)) return;
+
+      const latestBottomScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+      if (getElementBottomAfterScroll(target, container, latestBottomScrollTop) <= META_START_AUTO_SCROLL_TOP_MARGIN) return;
+
+      const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 'auto' : 'smooth';
+      container.scrollTo({
+        top: latestBottomScrollTop,
+        behavior,
+      });
+    }, META_START_AUTO_SCROLL_DELAY_MS);
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  META-START: Customer + Role selection
   // ═══════════════════════════════════════════════════════════
@@ -5069,16 +5118,17 @@ ${role === 'agent'
       `;
       card.addEventListener('click', (e) => {
         if (e.target.closest('.ai-setup-customer-edit')) return;
-        selectCustomerCard(c.id);
+        selectCustomerCard(c.id, { autoScrollElement: card });
       });
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          selectCustomerCard(c.id);
+          selectCustomerCard(c.id, { autoScrollElement: card });
         }
       });
       card.querySelector('.ai-setup-customer-edit').addEventListener('click', (e) => {
         e.stopPropagation();
+        clearMetaStartAutoScroll();
         if (typeof window.openCustomerSettingsModal === 'function') {
           window.openCustomerSettingsModal();
         }
@@ -5090,6 +5140,7 @@ ${role === 'agent'
     const addBtn = document.getElementById('ai-setup-add-customer-btn');
     if (addBtn) {
       addBtn.onclick = () => {
+        clearMetaStartAutoScroll();
         if (typeof window.openCustomerSettingsModal === 'function') {
           window.openCustomerSettingsModal();
         }
@@ -5100,20 +5151,24 @@ ${role === 'agent'
     autoSelectPrevious(customers);
   }
 
-  function selectCustomerCard(customerId) {
+  function selectCustomerCard(customerId, options = {}) {
+    const { autoScrollElement = null } = options;
     _selectedCustomerId = customerId;
     document.querySelectorAll('.ai-setup-customer-card').forEach(card => {
       card.classList.toggle('selected', card.dataset.customerId === customerId);
     });
     updateContinueButton();
+    if (autoScrollElement) maybeAutoScrollMetaStartBottom(autoScrollElement);
   }
 
-  function selectRoleCard(role) {
+  function selectRoleCard(role, options = {}) {
+    const { autoScrollElement = null } = options;
     _selectedRole = role;
     document.querySelectorAll('.ai-setup-role-card').forEach(card => {
       card.classList.toggle('selected', card.dataset.role === role);
     });
     updateContinueButton();
+    if (autoScrollElement) maybeAutoScrollMetaStartBottom(autoScrollElement);
   }
 
   function updateContinueButton() {
@@ -5214,7 +5269,7 @@ ${role === 'agent'
 
   function initRoleSelection() {
     document.querySelectorAll('.ai-setup-role-card').forEach(card => {
-      card.onclick = () => selectRoleCard(card.dataset.role);
+      card.onclick = () => selectRoleCard(card.dataset.role, { autoScrollElement: card });
     });
   }
 
@@ -5225,6 +5280,7 @@ ${role === 'agent'
   function startOnboardingChat() {
     if (_startingOnboarding) return;
     _startingOnboarding = true;
+    clearMetaStartAutoScroll();
 
     // Snapshot state before onboarding begins — saves are suppressed until commit
     snapshotOnboardingState();
@@ -6554,6 +6610,7 @@ ${role === 'agent'
   }
 
   function hideOnboarding() {
+    clearMetaStartAutoScroll();
     const overlay = document.getElementById('ai-setup-overlay');
     if (overlay) overlay.style.display = 'none';
     // Re-enable settings cog clicks after onboarding
@@ -6589,6 +6646,7 @@ ${role === 'agent'
   }
 
   function resetOnboardingUIToStart() {
+    clearMetaStartAutoScroll();
     const overlay = document.getElementById('ai-setup-overlay');
     const meta = document.getElementById('ai-setup-meta');
     const split = document.getElementById('ai-setup-split');
