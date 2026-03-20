@@ -2132,6 +2132,7 @@ ${role === 'agent'
     AssistantStorage.setAssistantDisplayStartIndex(_session, null);
     AssistantStorage.save(_session);
     localStorage.setItem(AI_SETUP_MODE_KEY, 'assistant');
+    window.sendEvent('Onboarding — completed');
 
     await animateOnboardingToAssistant();
     hideOnboarding();
@@ -5104,6 +5105,7 @@ ${role === 'agent'
       card.addEventListener('click', (e) => {
         if (e.target.closest('.ai-setup-customer-edit')) return;
         selectCustomerCard(c.id, { autoScrollElement: card });
+        window.sendEvent('Onboarding — selected company: ' + c.company);
       });
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -5180,6 +5182,7 @@ ${role === 'agent'
     btn.dataset.wired = 'true';
     btn.addEventListener('click', async () => {
       if (!_selectedCustomerId || !_selectedRole) return;
+      window.sendEvent('Onboarding — continue to setup');
 
       // Resolve customer data
       let customers = [];
@@ -5254,7 +5257,10 @@ ${role === 'agent'
 
   function initRoleSelection() {
     document.querySelectorAll('.ai-setup-role-card').forEach(card => {
-      card.onclick = () => selectRoleCard(card.dataset.role, { autoScrollElement: card });
+      card.onclick = () => {
+        selectRoleCard(card.dataset.role, { autoScrollElement: card });
+        window.sendEvent('Onboarding — selected role: ' + card.dataset.role);
+      };
     });
   }
 
@@ -5279,6 +5285,7 @@ ${role === 'agent'
     // Transition UI from meta-start to split
     document.getElementById('ai-setup-meta').style.display = 'none';
     document.getElementById('ai-setup-split').style.display = '';
+    window.sendEvent('Onboarding — chat started');
 
     // Render initial preview
     renderPreview();

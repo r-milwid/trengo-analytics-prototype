@@ -1050,6 +1050,7 @@ function renderWidget(w, section, placement, rows, layout) {
     dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v7.5"/><path d="M4 7l3 3 3-3"/><path d="M2 11v1h10v-1"/></svg>';
     dlBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      window.sendEvent('Widget CSV downloaded — ' + w.title);
       downloadWidgetCSV(w);
     });
     actions.appendChild(dlBtn);
@@ -1081,6 +1082,7 @@ function renderWidget(w, section, placement, rows, layout) {
       const mode = btn.dataset.mode;
       if (mode === (state.chartViewMode[w.id] || 'chart')) return;
       state.chartViewMode[w.id] = mode;
+      window.sendEvent('Widget view — ' + w.id + ' switched to ' + mode);
       toggle.querySelectorAll('.widget-view-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
       body.innerHTML = '';
       if (state.charts[w.id]) { state.charts[w.id].destroy(); delete state.charts[w.id]; }
@@ -1136,6 +1138,7 @@ function renderWidget(w, section, placement, rows, layout) {
       toggleBtn.classList.toggle('expanded', isExpanded);
       toggleBtn.querySelector('span').textContent = isExpanded ? 'Show less' : 'Show more';
       if (isExpanded) expandedWidgets.add(w.id); else expandedWidgets.delete(w.id);
+      window.sendEvent('Widget ' + (isExpanded ? 'expanded' : 'collapsed') + ' — ' + w.id);
     });
     card.appendChild(toggleBtn);
   }
@@ -2010,6 +2013,7 @@ function onDragEnd() {
   window.removeEventListener('pointermove', onDragMove);
   window.removeEventListener('pointercancel', onDragEnd);
   DashboardConfig.notifyChanged();
+  window.sendEvent('Widget reordered');
 }
 
 function startResize(e, sectionId, widgetId) {
@@ -2217,6 +2221,7 @@ function onResizeEnd(e) {
   if (resizeState.snapTrack) { resizeState.snapTrack.remove(); resizeState.snapTrack = null; }
   if (resizeState.targetSpan && resizeState.sectionId && resizeState.widgetId) {
     setWidgetSpan(resizeState.sectionId, resizeState.widgetId, resizeState.targetSpan);
+    window.sendEvent('Widget resized — ' + resizeState.widgetId);
   }
   resizeState.active = false;
   resizeState.sectionId = null;
@@ -3740,6 +3745,7 @@ window.clearBarFilter = clearBarFilter;
 
 // ── HIDE / ADD WIDGETS ─────────────────────────────────────────
 function hideWidget(id, section) {
+  window.sendEvent('Widget hidden — ' + id);
   // Remove widget from the current tab's set
   if (state.tabWidgets[section]) {
     state.tabWidgets[section].delete(id);
@@ -4540,7 +4546,7 @@ document.querySelectorAll('#popout-lens-toggle .lens-preview-btn').forEach(btn =
     [...state.loadedSections].forEach(s => remountSection(s));
     syncLensButtons();
     if (document.body.classList.contains('drawer-open')) renderDrawerWidgets();
-    window.sendEvent('Preview toggle — changed');
+    window.sendEvent('Lens changed — ' + btn.dataset.lens);
     DashboardConfig.notifyChanged();
   });
 });
@@ -4589,6 +4595,7 @@ setViewEditMode('view');
 if (viewEditToggleBtn) {
   viewEditToggleBtn.addEventListener('click', () => {
     setViewEditMode(_currentViewMode === 'edit' ? 'view' : 'edit');
+    window.sendEvent('Edit mode — ' + (_currentViewMode === 'edit' ? 'entered' : 'exited'));
   });
 }
 
@@ -4912,6 +4919,7 @@ document.getElementById('filter-dropdown-content').addEventListener('click', e =
 
   // Leaf item — apply filter + close
   state[config.stateKey] = item.dataset.value;
+  window.sendEvent('Filter changed — ' + config.stateKey + ' = ' + item.dataset.value);
   chip.querySelector('span').textContent = item.dataset.value;
   dropdown.style.display = 'none';
   chip.classList.remove('active-filter');
@@ -4971,6 +4979,7 @@ document.getElementById('channel-dropdown-children').addEventListener('click', (
     else state.channelFilter.add(value);
   }
 
+  window.sendEvent('Filter — channel toggled: ' + value);
   updateChannelChipLabel();
   renderChannelChildrenPanel(_activeChannelType);
   renderChannelTypesPanel();
