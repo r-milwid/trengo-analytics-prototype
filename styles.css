@@ -408,10 +408,10 @@ body {
   position: relative;
 }
 .filter-bar[data-location="top"] {
-  position: static;
-  z-index: auto;
-  margin-right: 8px;
-  flex: 0 0 auto;
+  position: absolute;
+  top: clamp(12px, 2vw, 20px);
+  right: clamp(96px, 16vw, 168px);
+  z-index: 2;
 }
 .filter-chip {
   display: flex;

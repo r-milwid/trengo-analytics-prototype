@@ -3797,7 +3797,6 @@ window.openWidgetDrawer = function(sectionId) {
   updateDrawerCategoryLabel();
   updateDrawerSortLabel();
   renderDrawerWidgets();
-  scheduleResponsiveFilterLayoutUpdate();
 };
 
 const SORT_OPTIONS = [
@@ -4054,7 +4053,6 @@ document.getElementById('drawer-close').addEventListener('click', () => {
   const searchInput = document.getElementById('drawer-search-input');
   if (searchInput) searchInput.value = '';
   setManageWidgetsBtnLabel(false);
-  scheduleResponsiveFilterLayoutUpdate();
 });
 
 // ── TOOLTIP ────────────────────────────────────────────────────
@@ -4318,7 +4316,6 @@ function confirmDeleteTab() {
     document.body.classList.remove('drawer-open');
     _drawerSection = null;
     setManageWidgetsBtnLabel(false);
-    scheduleResponsiveFilterLayoutUpdate();
   }
 
   renderTabs();
@@ -4615,7 +4612,6 @@ if (manageWidgetsBtn) {
       document.body.classList.remove('drawer-open');
       _drawerSection = null;
       setManageWidgetsBtnLabel(false);
-      scheduleResponsiveFilterLayoutUpdate();
     } else {
       openWidgetDrawer(state.activeSection);
       setManageWidgetsBtnLabel(true);
@@ -4669,8 +4665,6 @@ async function performResetAll() {
 
 // ── FILTER DROPDOWNS ───────────────────────────────────────────
 const FILTER_CHIP_IDS = ['filter-date', 'filter-channel', 'filter-team'];
-const FILTER_BAR_MIN_GAP = 16;
-const FILTER_BAR_EDGE_PADDING = 8;
 const FILTER_CHIP_CHEVRON_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l3 3 3-3"/></svg>`;
 const FILTER_CHIP_ICON_SVG = {
   'filter-date': `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12"/><path d="M5 1.5v3"/><path d="M11 1.5v3"/></svg>`,
@@ -4709,10 +4703,6 @@ function getFilterChipLabel(filterId) {
   return '';
 }
 
-function buildFilterChipInnerHTML(filterId, label) {
-  return `<span class="filter-chip-label">${escapeHtml(label)}</span><span class="filter-chip-icon" aria-hidden="true">${FILTER_CHIP_ICON_SVG[filterId] || FILTER_CHIP_ICON_SVG['filter-date']}</span>${FILTER_CHIP_CHEVRON_SVG}`;
-}
-
 function renderFilterChip(filterId, compact = _filterChipCompactMode) {
   const chip = document.getElementById(filterId);
   if (!chip) return;
@@ -4724,7 +4714,9 @@ function renderFilterChip(filterId, compact = _filterChipCompactMode) {
   chip.dataset.filterKey = filterId.replace('filter-', '');
   chip.setAttribute('aria-label', label);
   chip.title = label;
-  chip.innerHTML = buildFilterChipInnerHTML(filterId, label);
+  chip.innerHTML = compact
+    ? (FILTER_CHIP_ICON_SVG[filterId] || FILTER_CHIP_ICON_SVG['filter-date'])
+    : `<span>${escapeHtml(label)}</span>${FILTER_CHIP_CHEVRON_SVG}`;
 }
 
 function renderFilterChips(compact = _filterChipCompactMode) {
@@ -4739,13 +4731,6 @@ function moveFilterBarToSubNav() {
   if (filterBar.parentElement === subNav) return;
   subNav.insertBefore(filterBar, tabs ? tabs.nextSibling : subNav.firstChild);
   filterBar.dataset.location = 'subnav';
-  filterBar.style.position = '';
-  filterBar.style.top = '';
-  filterBar.style.right = '';
-  filterBar.style.left = '';
-  filterBar.style.zIndex = '';
-  filterBar.style.margin = '';
-  filterBar.style.flex = '';
 }
 
 function moveFilterBarToTopRow() {
@@ -4759,13 +4744,6 @@ function moveFilterBarToTopRow() {
     actions.appendChild(filterBar);
   }
   filterBar.dataset.location = 'top';
-  filterBar.style.position = 'static';
-  filterBar.style.top = '';
-  filterBar.style.right = '';
-  filterBar.style.left = '';
-  filterBar.style.zIndex = '';
-  filterBar.style.margin = '0';
-  filterBar.style.flex = '0 0 auto';
 }
 
 function repositionSharedFilterDropdown() {
@@ -4795,20 +4773,6 @@ function repositionOpenFilterDropdowns() {
   repositionChannelDropdown();
 }
 
-function isFilterBarCramped(filterBar, subNav, tabs) {
-  const filterBarRect = filterBar.getBoundingClientRect();
-  const subNavRect = subNav.getBoundingClientRect();
-  const tabsRect = tabs.getBoundingClientRect();
-  const chips = [...filterBar.querySelectorAll('.filter-chip')];
-  const overflowed = filterBar.scrollWidth > filterBar.clientWidth + 1
-    || filterBar.scrollHeight > filterBar.clientHeight + 1
-    || chips.some(chip => chip.scrollWidth > chip.clientWidth + 1 || chip.scrollHeight > chip.clientHeight + 1);
-  const crowded = (filterBarRect.left - tabsRect.right) < FILTER_BAR_MIN_GAP;
-  const clipped = filterBarRect.left < subNavRect.left + FILTER_BAR_EDGE_PADDING
-    || filterBarRect.right > subNavRect.right - FILTER_BAR_EDGE_PADDING;
-  return overflowed || crowded || clipped;
-}
-
 function syncResponsiveFilterLayout() {
   const filterBar = getFilterBarEl();
   const subNav = getSubNavEl();
@@ -4818,10 +4782,7 @@ function syncResponsiveFilterLayout() {
 
   moveFilterBarToSubNav();
   renderFilterChips(false);
-  filterBar.dataset.mode = 'full';
-  filterBar.dataset.location = 'subnav';
-  void filterBar.offsetWidth;
-  const fullFits = !isFilterBarCramped(filterBar, subNav, tabs);
+  const fullFits = tabs.scrollWidth + filterBar.scrollWidth <= subNav.clientWidth + 1;
 
   let compactMode = false;
   let dockedTop = false;
@@ -4830,10 +4791,7 @@ function syncResponsiveFilterLayout() {
     renderFilterChips(true);
     moveFilterBarToSubNav();
     compactMode = true;
-    filterBar.dataset.mode = 'compact';
-    filterBar.dataset.location = 'subnav';
-    void filterBar.offsetWidth;
-    dockedTop = isFilterBarCramped(filterBar, subNav, tabs);
+    dockedTop = tabs.scrollWidth + filterBar.scrollWidth > subNav.clientWidth + 1;
   }
 
   _filterChipCompactMode = compactMode;
@@ -4860,10 +4818,6 @@ function scheduleResponsiveFilterLayoutUpdate() {
 }
 
 window.addEventListener('resize', scheduleResponsiveFilterLayoutUpdate);
-window.addEventListener('load', scheduleResponsiveFilterLayoutUpdate);
-if (document.fonts?.ready) {
-  document.fonts.ready.then(scheduleResponsiveFilterLayoutUpdate).catch(() => {});
-}
 if (window.ResizeObserver) {
   _filterLayoutResizeObserver = new ResizeObserver(() => scheduleResponsiveFilterLayoutUpdate());
   [
@@ -5851,7 +5805,6 @@ document.querySelectorAll('.add-widget-btn').forEach(btn => {
       document.body.classList.remove('drawer-open');
       _drawerSection = null;
       setManageWidgetsBtnLabel(false);
-      scheduleResponsiveFilterLayoutUpdate();
     } else {
       openWidgetDrawer(btn.dataset.section);
       setManageWidgetsBtnLabel(true);
