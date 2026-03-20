@@ -5921,11 +5921,6 @@ function isLocalConfigNewer(localConfig, remoteConfig) {
   handleHash();
   window.addEventListener('hashchange', handleHash);
   updateSectionsVisibility();
-  if (typeof AdminAssistant !== 'undefined' && typeof AdminAssistant.tryStartOnboarding === 'function') {
-    setTimeout(() => {
-      AdminAssistant.tryStartOnboarding();
-    }, 0);
-  }
 })();
 
 // Set Chart.js defaults
