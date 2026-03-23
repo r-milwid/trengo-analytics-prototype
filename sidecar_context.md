@@ -410,9 +410,9 @@ action: reset-onboarding
 
 ---
 
-### Sub Navigation
+### Prototype state
 type: action
-button: Reset All
+button: Reset prototype
 action: reset-subnav
 
 ## Admin
@@ -423,7 +423,7 @@ buttons: edit-customers=Customers, edit-teams=Teams
 
 ---
 
-### Onboarding thresholds
+### Decision Thresholds
 type: modal-group
 button: Configure thresholds
 description: Confidence thresholds that control onboarding agent decisions

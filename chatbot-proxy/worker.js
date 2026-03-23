@@ -176,7 +176,7 @@ export default {
           });
           const anthropicData = await anthropicResp.json();
           // Only fall through on billing/auth errors, not on successful responses (even with stop_reason)
-          if (anthropicResp.ok) return json(anthropicData);
+          if (anthropicResp.ok) return json({ ...anthropicData, provider: 'anthropic' });
           const errType = anthropicData?.error?.type || '';
           const errMsg = anthropicData?.error?.message || '';
           const isBillingOrAuth = errType === 'authentication_error' ||
@@ -225,8 +225,22 @@ export default {
             }));
           }
 
+          // Count user-initiated turns (excludes tool_result messages which are
+          // system-generated user messages). Early in the conversation the fallback
+          // model tends to skip interactive tools, so we force tool use for the
+          // first few exchanges to ensure clickable components always appear.
+          const userTurnCount = messages.filter(m =>
+            m.role === 'user' && (typeof m.content === 'string' || (Array.isArray(m.content) && m.content.some(b => b.type === 'text')))
+          ).length;
+          const isEarlyConversation = userTurnCount <= 3;
+
           const openaiBody = { model: 'gpt-4.1', messages: openaiMessages, max_tokens: 4096 };
-          if (openaiTools) openaiBody.tools = openaiTools;
+          if (openaiTools) {
+            openaiBody.tools = openaiTools;
+            // Force at least one tool call early in the conversation so interactive
+            // components always appear, even when the fallback model would skip them.
+            if (isEarlyConversation) openaiBody.tool_choice = 'required';
+          }
 
           const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
