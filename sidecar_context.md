@@ -417,9 +417,9 @@ action: reset-subnav
 
 ## Admin
 
-### Demo data
+### Prototype data
 type: button-row
-buttons: edit-customers=Customers, edit-teams=Teams
+buttons: edit-customers=Demo customers, edit-teams=Demo teams
 
 ---
 
